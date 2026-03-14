@@ -57,19 +57,30 @@ fn Breadcrumbs(items: Vec<Breadcrumb>) -> Element {
         nav {
             style: "display: flex; align-items: center; gap: 6px; overflow: hidden;",
             for (idx, crumb) in items.iter().enumerate() {
-                if idx > 0 {
-                    span {
-                        style: "color: var(--fsn-color-text-muted, #64748b); font-size: 12px; flex-shrink: 0;",
-                        "›"
+                {
+                    let color = if idx + 1 == items.len() {
+                        "var(--fsn-color-text-primary, #e2e8f0)"
+                    } else {
+                        "var(--fsn-color-text-muted, #94a3b8)"
+                    };
+                    let crumb_style = format!(
+                        "font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {color};"
+                    );
+                    rsx! {
+                        if idx > 0 {
+                            span {
+                                style: "color: var(--fsn-color-text-muted, #64748b); font-size: 12px; flex-shrink: 0;",
+                                "›"
+                            }
+                        }
+                        span {
+                            style: "{crumb_style}",
+                            if let Some(icon) = &crumb.icon {
+                                span { style: "margin-right: 4px;", "{icon}" }
+                            }
+                            "{crumb.label}"
+                        }
                     }
-                }
-                span {
-                    style: "font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \
-                            color: {if idx + 1 == items.len() { \"var(--fsn-color-text-primary, #e2e8f0)\" } else { \"var(--fsn-color-text-muted, #94a3b8)\" }};",
-                    if let Some(icon) = &crumb.icon {
-                        span { style: "margin-right: 4px;", "{icon}" }
-                    }
-                    "{crumb.label}"
                 }
             }
         }

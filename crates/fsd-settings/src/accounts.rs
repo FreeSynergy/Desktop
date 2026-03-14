@@ -97,7 +97,7 @@ pub fn AccountSettings() -> Element {
     let mut form = use_signal(AddProviderForm::default);
     let mut status_msg: Signal<Option<String>> = use_signal(|| None);
 
-    let save = move || {
+    let mut save = move || {
         match AccountsConfig::save(&providers.read()) {
             Ok(()) => *status_msg.write() = None,
             Err(e) => *status_msg.write() = Some(format!("Save error: {e}")),
@@ -216,13 +216,14 @@ pub fn AccountSettings() -> Element {
                 {
                     let provider = provider.clone();
                     let enabled = provider.enabled;
+                    let opacity = if enabled { "1" } else { "0.55" };
                     rsx! {
                         div {
                             key: "{idx}",
                             style: "display: flex; align-items: center; gap: 12px; padding: 12px 14px; \
                                     background: var(--fsn-color-bg-surface); border-radius: var(--fsn-radius-md); \
                                     margin-bottom: 8px; border: 1px solid var(--fsn-color-border-default); \
-                                    opacity: {if enabled { \"1\" } else { \"0.55\" }};",
+                                    opacity: {opacity};",
 
                             // Enable toggle
                             input {
@@ -230,7 +231,8 @@ pub fn AccountSettings() -> Element {
                                 checked: enabled,
                                 style: "cursor: pointer; width: 16px; height: 16px; flex-shrink: 0;",
                                 onchange: move |_| {
-                                    providers.write()[idx].enabled = !providers.read()[idx].enabled;
+                                    let cur = providers.read()[idx].enabled;
+                                    providers.write()[idx].enabled = !cur;
                                     save();
                                 },
                             }

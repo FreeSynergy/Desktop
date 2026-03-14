@@ -11,10 +11,11 @@ path = "src/main.rs"
 
 [features]
 default = ["desktop"]
-desktop = ["dioxus/desktop", "fsd-shell/desktop"]
+desktop = ["dioxus/desktop", "fsd-shell/desktop", "fsn-components/desktop"]
 
 [dependencies]
-fsd-shell = { workspace = true, default-features = false }
-dioxus    = { workspace = true }
-tracing   = { workspace = true }
+fsd-shell      = { workspace = true, default-features = false }
+fsn-components = { workspace = true }
+dioxus         = { workspace = true }
+tracing        = { workspace = true }
 tracing-subscriber = { workspace = true }

@@ -46,7 +46,10 @@ pub fn ShellSidebar(
     on_select: EventHandler<String>,
     on_toggle: EventHandler<()>,
 ) -> Element {
-    let width = if collapsed { "48px" } else { "240px" };
+    let width   = if collapsed { "48px" } else { "240px" };
+    let justify = if collapsed { "center" } else { "flex-end" };
+    let icon    = if collapsed { "▶" } else { "◀" };
+    let title   = if collapsed { "Expand" } else { "Collapse" };
     rsx! {
         nav {
             class: "fsd-sidebar",
@@ -57,14 +60,14 @@ pub fn ShellSidebar(
 
             // Collapse toggle
             div {
-                style: "padding: 6px; display: flex; justify-content: {if collapsed { \"center\" } else { \"flex-end\" }};",
+                style: "padding: 6px; display: flex; justify-content: {justify};",
                 button {
                     style: "background: none; border: none; cursor: pointer; \
                             color: var(--fsn-color-text-muted, #94a3b8); font-size: 14px; \
                             padding: 4px 6px; border-radius: 4px; line-height: 1;",
-                    title: if collapsed { "Expand" } else { "Collapse" },
+                    title: "{title}",
                     onclick: move |_| on_toggle.call(()),
-                    if collapsed { "▶" } else { "◀" }
+                    "{icon}"
                 }
             }
 

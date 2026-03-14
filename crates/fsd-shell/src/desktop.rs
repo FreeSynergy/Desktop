@@ -126,7 +126,7 @@ pub fn Desktop() -> Element {
             div { style: "grid-area: header;",
                 ShellHeader {
                     breadcrumbs,
-                    user_name: "Admin".into(),
+                    user_name: "Admin".to_string(),
                     user_avatar: None,
                 }
             }
