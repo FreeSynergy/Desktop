@@ -2,6 +2,8 @@
 use dioxus::prelude::*;
 
 use crate::service_list::ServiceList;
+use crate::resource_view::ResourceView;
+use crate::dep_graph::DependencyGraph;
 use crate::log_viewer::LogViewer;
 
 /// Active tab in the Conductor.
@@ -11,6 +13,7 @@ pub enum ConductorTab {
     Bots,
     Resources,
     Logs,
+    Graph,
 }
 
 /// Root component of the Conductor app.
@@ -33,6 +36,7 @@ pub fn ConductorApp() -> Element {
                 ConductorTabBtn { label: "Bots",     tab: ConductorTab::Bots,     active: active_tab }
                 ConductorTabBtn { label: "Resources",tab: ConductorTab::Resources, active: active_tab }
                 ConductorTabBtn { label: "Logs",     tab: ConductorTab::Logs,     active: active_tab }
+                ConductorTabBtn { label: "Graph",    tab: ConductorTab::Graph,    active: active_tab }
             }
 
             // Content area
@@ -43,7 +47,8 @@ pub fn ConductorApp() -> Element {
                 match *active_tab.read() {
                     ConductorTab::Services  => rsx! { ServiceList { selected: selected_service } },
                     ConductorTab::Bots      => rsx! { div { "Bot management — coming soon" } },
-                    ConductorTab::Resources => rsx! { div { "Resource configuration — coming soon" } },
+                    ConductorTab::Resources => rsx! { ResourceView {} },
+                    ConductorTab::Graph     => rsx! { DependencyGraph {} },
                     ConductorTab::Logs      => rsx! {
                         LogViewer {
                             service: selected_service.read().clone().unwrap_or_default()
