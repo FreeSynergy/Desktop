@@ -1,10 +1,11 @@
 /// Conductor — main app component for container/service/bot management.
 use dioxus::prelude::*;
 
-use crate::service_list::ServiceList;
-use crate::resource_view::ResourceView;
+use crate::bot_management::BotManagement;
 use crate::dep_graph::DependencyGraph;
 use crate::log_viewer::LogViewer;
+use crate::resource_view::ResourceView;
+use crate::service_list::ServiceList;
 
 /// Active tab in the Conductor.
 #[derive(Clone, PartialEq, Debug)]
@@ -46,7 +47,7 @@ pub fn ConductorApp() -> Element {
 
                 match *active_tab.read() {
                     ConductorTab::Services  => rsx! { ServiceList { selected: selected_service } },
-                    ConductorTab::Bots      => rsx! { div { "Bot management — coming soon" } },
+                    ConductorTab::Bots      => rsx! { BotManagement {} },
                     ConductorTab::Resources => rsx! { ResourceView {} },
                     ConductorTab::Graph     => rsx! { DependencyGraph {} },
                     ConductorTab::Logs      => rsx! {

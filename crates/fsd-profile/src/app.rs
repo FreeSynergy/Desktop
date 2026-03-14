@@ -1,8 +1,19 @@
-/// Profile — user profile, avatar, SSH keys, and display preferences.
+/// Profile — user profile, avatar, SSH keys, and linked OIDC accounts.
 use std::path::PathBuf;
 
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+
+/// A linked OIDC identity from an external provider.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LinkedAccount {
+    /// Provider display name (e.g. "Kanidm").
+    pub provider: String,
+    /// OIDC subject identifier (`sub` claim).
+    pub subject: String,
+    /// Username or email on the remote provider.
+    pub username: String,
+}
 
 /// User profile data.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -13,6 +24,8 @@ pub struct UserProfile {
     pub bio: String,
     pub ssh_keys: Vec<SshKey>,
     pub timezone: String,
+    #[serde(default)]
+    pub linked_accounts: Vec<LinkedAccount>,
 }
 
 /// An SSH public key entry.
@@ -55,6 +68,12 @@ pub fn ProfileApp() -> Element {
     let mut new_key_label  = use_signal(String::new);
     let mut new_key_value  = use_signal(String::new);
     let mut show_add_key   = use_signal(|| false);
+
+    // Linked account form state
+    let mut show_link    = use_signal(|| false);
+    let mut link_provider = use_signal(String::new);
+    let mut link_subject  = use_signal(String::new);
+    let mut link_username = use_signal(String::new);
 
     rsx! {
         div {
@@ -208,6 +227,120 @@ pub fn ProfileApp() -> Element {
                         button {
                             style: "color: var(--fsn-color-error); background: none; border: none; cursor: pointer; font-size: 16px;",
                             onclick: move |_| { profile.write().ssh_keys.remove(idx); },
+                            "✕"
+                        }
+                    }
+                }
+            }
+
+            // ── Linked OIDC Accounts ───────────────────────────────────────────────
+            div { style: "margin-bottom: 24px;",
+                div { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;",
+                    div {
+                        label { style: "font-weight: 500; display: block;", "Linked Accounts" }
+                        p { style: "margin: 2px 0 0; font-size: 12px; color: var(--fsn-color-text-muted);",
+                            "OIDC identities linked to this profile."
+                        }
+                    }
+                    button {
+                        style: "padding: 4px 10px; background: var(--fsn-color-primary); color: white; \
+                                border: none; border-radius: 4px; cursor: pointer; font-size: 13px;",
+                        onclick: move |_| {
+                            let cur = *show_link.read();
+                            *show_link.write() = !cur;
+                            *link_provider.write() = String::new();
+                            *link_subject.write() = String::new();
+                            *link_username.write() = String::new();
+                        },
+                        if *show_link.read() { "Cancel" } else { "+ Link Account" }
+                    }
+                }
+
+                if *show_link.read() {
+                    div {
+                        style: "padding: 12px; background: var(--fsn-color-bg-surface); \
+                                border-radius: var(--fsn-radius-md); margin-bottom: 8px; \
+                                border: 1px solid var(--fsn-color-border-default);",
+                        div { style: "display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;",
+                            div {
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Provider" }
+                                input {
+                                    r#type: "text", placeholder: "e.g. Kanidm",
+                                    value: "{link_provider.read()}",
+                                    style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); font-size: 13px;",
+                                    oninput: move |e| *link_provider.write() = e.value(),
+                                }
+                            }
+                            div {
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Username" }
+                                input {
+                                    r#type: "text", placeholder: "e.g. alice",
+                                    value: "{link_username.read()}",
+                                    style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); font-size: 13px;",
+                                    oninput: move |e| *link_username.write() = e.value(),
+                                }
+                            }
+                            div {
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Subject (sub)" }
+                                input {
+                                    r#type: "text", placeholder: "OIDC sub claim",
+                                    value: "{link_subject.read()}",
+                                    style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); font-size: 13px;",
+                                    oninput: move |e| *link_subject.write() = e.value(),
+                                }
+                            }
+                        }
+                        button {
+                            disabled: link_provider.read().trim().is_empty() || link_username.read().trim().is_empty(),
+                            style: "padding: 6px 14px; background: var(--fsn-color-primary); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer; font-size: 13px;",
+                            onclick: move |_| {
+                                let provider = link_provider.read().trim().to_string();
+                                let username = link_username.read().trim().to_string();
+                                let subject  = link_subject.read().trim().to_string();
+                                if !provider.is_empty() && !username.is_empty() {
+                                    profile.write().linked_accounts.push(LinkedAccount {
+                                        provider, username, subject,
+                                    });
+                                    *show_link.write() = false;
+                                }
+                            },
+                            "Link"
+                        }
+                    }
+                }
+
+                if profile.read().linked_accounts.is_empty() {
+                    div {
+                        style: "padding: 12px; background: var(--fsn-color-bg-surface); border-radius: var(--fsn-radius-md); color: var(--fsn-color-text-muted); font-size: 13px;",
+                        "No accounts linked yet."
+                    }
+                }
+
+                for (idx, acct) in profile.read().linked_accounts.iter().enumerate() {
+                    div {
+                        key: "{idx}",
+                        style: "display: flex; align-items: center; gap: 8px; padding: 10px 12px; \
+                                background: var(--fsn-color-bg-surface); border-radius: var(--fsn-radius-md); \
+                                margin-bottom: 4px; border: 1px solid var(--fsn-color-border-default);",
+                        div {
+                            style: "width: 28px; height: 28px; border-radius: 50%; background: var(--fsn-color-bg-overlay); \
+                                    display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;",
+                            "🔐"
+                        }
+                        div { style: "flex: 1;",
+                            div { style: "font-size: 13px; font-weight: 500;",
+                                "{acct.provider}  ·  {acct.username}"
+                            }
+                            if !acct.subject.is_empty() {
+                                div { style: "font-family: var(--fsn-font-mono); font-size: 11px; color: var(--fsn-color-text-muted);",
+                                    "sub: {acct.subject}"
+                                }
+                            }
+                        }
+                        button {
+                            style: "color: var(--fsn-color-error); background: none; border: none; cursor: pointer; font-size: 16px;",
+                            title: "Unlink",
+                            onclick: move |_| { profile.write().linked_accounts.remove(idx); },
                             "✕"
                         }
                     }
