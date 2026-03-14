@@ -135,8 +135,7 @@ fn AppTile(app: AppEntry, on_click: EventHandler<MouseEvent>) -> Element {
                     padding: 16px 8px; border-radius: 8px; border: 1px solid transparent; \
                     background: var(--fsn-color-bg-panel, rgba(30,41,59,0.8)); \
                     cursor: pointer; color: var(--fsn-color-text-primary, #e2e8f0); \
-                    transition: background 0.15s, border-color 0.15s;
-                    &:hover { background: var(--fsn-color-bg-active); border-color: var(--fsn-color-primary); }",
+                    transition: background 0.15s, border-color 0.15s;",
             onclick: on_click,
 
             span {

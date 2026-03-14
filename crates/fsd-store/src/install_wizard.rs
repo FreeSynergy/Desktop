@@ -40,7 +40,7 @@ impl WizardStep {
 /// Install wizard — guides the user through pre-install configuration.
 #[component]
 pub fn InstallWizard(package: PackageEntry, on_cancel: EventHandler<()>) -> Element {
-    let step = use_signal(|| WizardStep::Overview);
+    let mut step = use_signal(|| WizardStep::Overview);
 
     let steps = [
         WizardStep::Overview,
@@ -58,19 +58,11 @@ pub fn InstallWizard(package: PackageEntry, on_cancel: EventHandler<()>) -> Elem
             div {
                 style: "display: flex; align-items: center; padding: 16px; border-bottom: 1px solid var(--fsn-color-border-default);",
                 for (i, s) in steps.iter().enumerate() {
-                    div {
-                        style: "display: flex; align-items: center; gap: 4px;",
-                        div {
-                            style: "width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: {if *step.read() == *s { \"var(--fsn-color-primary)\" } else { \"var(--fsn-color-bg-overlay)\" }}; color: {if *step.read() == *s { \"white\" } else { \"var(--fsn-color-text-muted)\" }};",
-                            "{i + 1}"
-                        }
-                        span {
-                            style: "font-size: 13px; color: {if *step.read() == *s { \"var(--fsn-color-text-primary)\" } else { \"var(--fsn-color-text-muted)\" }};",
-                            "{s.label()}"
-                        }
-                        if i < steps.len() - 1 {
-                            span { style: "margin: 0 8px; color: var(--fsn-color-text-muted);", "›" }
-                        }
+                    WizardStepDot {
+                        index: i,
+                        label: s.label().to_string(),
+                        active: *step.read() == *s,
+                        last: i >= steps.len() - 1,
                     }
                 }
             }
@@ -126,12 +118,37 @@ pub fn InstallWizard(package: PackageEntry, on_cancel: EventHandler<()>) -> Elem
                 button {
                     style: "padding: 8px 16px; background: var(--fsn-color-primary); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer;",
                     onclick: move |_| {
-                        if let Some(next) = step.read().next() {
-                            *step.write() = next;
+                        let next = step.read().next();
+                        if let Some(n) = next {
+                            *step.write() = n;
                         }
                     },
-                    if *step.read() == WizardStep::Confirm { "Install" } else { "Next →" }
+                    { if *step.read() == WizardStep::Confirm { "Install" } else { "Next →" } }
                 }
+            }
+        }
+    }
+}
+
+#[component]
+fn WizardStepDot(index: usize, label: String, active: bool, last: bool) -> Element {
+    let bg    = if active { "var(--fsn-color-primary)" } else { "var(--fsn-color-bg-overlay)" };
+    let color = if active { "white" } else { "var(--fsn-color-text-muted)" };
+    let text  = if active { "var(--fsn-color-text-primary)" } else { "var(--fsn-color-text-muted)" };
+    let num   = index + 1;
+    rsx! {
+        div {
+            style: "display: flex; align-items: center; gap: 4px;",
+            div {
+                style: "width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: {bg}; color: {color};",
+                "{num}"
+            }
+            span {
+                style: "font-size: 13px; color: {text};",
+                "{label}"
+            }
+            if !last {
+                span { style: "margin: 0 8px; color: var(--fsn-color-text-muted);", "›" }
             }
         }
     }

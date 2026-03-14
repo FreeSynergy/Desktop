@@ -88,9 +88,12 @@ pub fn SettingsApp() -> Element {
 #[component]
 fn SettingsNavItem(section: SettingsSection, mut active: Signal<SettingsSection>) -> Element {
     let is_active = *active.read() == section;
+    let bg      = if is_active { "var(--fsn-color-bg-overlay)" } else { "transparent" };
+    let color   = if is_active { "var(--fsn-color-primary)" } else { "var(--fsn-color-text-primary)" };
+    let weight  = if is_active { "600" } else { "400" };
     rsx! {
         button {
-            style: "display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: var(--fsn-radius-md); cursor: pointer; font-size: 14px; text-align: left; background: {if is_active { \"var(--fsn-color-bg-overlay)\" } else { \"transparent\" }}; color: {if is_active { \"var(--fsn-color-primary)\" } else { \"var(--fsn-color-text-primary)\" }}; font-weight: {if is_active { \"600\" } else { \"400\" }};",
+            style: "display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: var(--fsn-radius-md); cursor: pointer; font-size: 14px; text-align: left; background: {bg}; color: {color}; font-weight: {weight};",
             onclick: {
                 let section = section.clone();
                 move |_| *active.write() = section.clone()

@@ -55,9 +55,11 @@ pub fn StudioApp() -> Element {
 #[component]
 fn StudioTabBtn(label: &'static str, tab: StudioTab, mut active: Signal<StudioTab>) -> Element {
     let is_active = *active.read() == tab;
+    let bg     = if is_active { "var(--fsn-color-bg-base)" } else { "transparent" };
+    let border = if is_active { "var(--fsn-color-primary)" } else { "transparent" };
     rsx! {
         button {
-            style: "padding: 10px 20px; border: none; cursor: pointer; font-size: 14px; background: {if is_active { \"var(--fsn-color-bg-base)\" } else { \"transparent\" }}; border-bottom: 2px solid {if is_active { \"var(--fsn-color-primary)\" } else { \"transparent\" }};",
+            style: "padding: 10px 20px; border: none; cursor: pointer; font-size: 14px; background: {bg}; border-bottom: 2px solid {border};",
             onclick: move |_| *active.write() = tab.clone(),
             "{label}"
         }

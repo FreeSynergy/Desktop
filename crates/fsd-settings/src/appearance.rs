@@ -4,9 +4,9 @@ use dioxus::prelude::*;
 /// Appearance settings component.
 #[component]
 pub fn AppearanceSettings() -> Element {
-    let wallpaper_url = use_signal(String::new);
-    let css_url = use_signal(String::new);
-    let dark_mode = use_signal(|| false);
+    let mut wallpaper_url = use_signal(String::new);
+    let mut css_url = use_signal(String::new);
+    let mut dark_mode = use_signal(|| false);
 
     rsx! {
         div {
@@ -19,15 +19,21 @@ pub fn AppearanceSettings() -> Element {
             div { style: "margin-bottom: 24px;",
                 label { style: "display: block; font-weight: 500; margin-bottom: 8px;", "Color Scheme" }
                 div { style: "display: flex; gap: 8px;",
-                    button {
-                        style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {if !*dark_mode.read() { \"var(--fsn-color-primary)\" } else { \"var(--fsn-color-border-default)\" }}; cursor: pointer; background: #f8fafc;",
-                        onclick: move |_| *dark_mode.write() = false,
-                        "☀ Light"
-                    }
-                    button {
-                        style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {if *dark_mode.read() { \"var(--fsn-color-primary)\" } else { \"var(--fsn-color-border-default)\" }}; cursor: pointer; background: #1e293b; color: white;",
-                        onclick: move |_| *dark_mode.write() = true,
-                        "☾ Dark"
+                    {
+                        let light_border = if !*dark_mode.read() { "var(--fsn-color-primary)" } else { "var(--fsn-color-border-default)" };
+                        let dark_border  = if *dark_mode.read()  { "var(--fsn-color-primary)" } else { "var(--fsn-color-border-default)" };
+                        rsx! {
+                            button {
+                                style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {light_border}; cursor: pointer; background: #f8fafc;",
+                                onclick: move |_| *dark_mode.write() = false,
+                                "☀ Light"
+                            }
+                            button {
+                                style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {dark_border}; cursor: pointer; background: #1e293b; color: white;",
+                                onclick: move |_| *dark_mode.write() = true,
+                                "☾ Dark"
+                            }
+                        }
                     }
                 }
             }

@@ -4,8 +4,8 @@ use dioxus::prelude::*;
 /// Plugin builder component.
 #[component]
 pub fn PluginBuilder() -> Element {
-    let plugin_name = use_signal(String::new);
-    let plugin_type = use_signal(|| "bridge".to_string());
+    let mut plugin_name = use_signal(String::new);
+    let mut plugin_type = use_signal(|| "bridge".to_string());
 
     rsx! {
         div {

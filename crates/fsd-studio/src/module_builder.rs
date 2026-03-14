@@ -12,9 +12,9 @@ pub enum BuilderStep {
 /// Module builder component.
 #[component]
 pub fn ModuleBuilder() -> Element {
-    let step = use_signal(BuilderStep::default);
-    let yaml_input = use_signal(String::new);
-    let module_name = use_signal(String::new);
+    let mut step = use_signal(BuilderStep::default);
+    let mut yaml_input = use_signal(String::new);
+    let mut module_name = use_signal(String::new);
 
     rsx! {
         div {

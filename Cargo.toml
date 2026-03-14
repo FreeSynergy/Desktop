@@ -43,7 +43,7 @@ fsn-auth           = { path = "../FreeSynergy.Lib/fsn-auth" }
 fsn-core           = { path = "../FreeSynergy.Lib/fsn-core" }
 
 # UI — Dioxus (Desktop + Web + TUI via single codebase)
-dioxus = { version = "0.6", default-features = false }
+dioxus = { version = "0.6", default-features = false, features = ["macro", "html", "signals", "hooks", "launch", "mounted", "document"] }
 
 # Serialization
 serde      = { version = "1",   features = ["derive"] }

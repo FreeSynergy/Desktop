@@ -14,7 +14,7 @@ pub const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
 /// Language settings component.
 #[component]
 pub fn LanguageSettings() -> Element {
-    let selected = use_signal(|| "de".to_string());
+    let mut selected = use_signal(|| "de".to_string());
 
     rsx! {
         div {

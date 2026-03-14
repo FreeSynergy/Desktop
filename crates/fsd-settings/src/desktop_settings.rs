@@ -26,8 +26,8 @@ impl TaskbarPosition {
 /// Desktop behavior settings component.
 #[component]
 pub fn DesktopSettings() -> Element {
-    let taskbar_pos = use_signal(TaskbarPosition::default);
-    let autostart: Signal<Vec<String>> = use_signal(Vec::new);
+    let mut taskbar_pos = use_signal(TaskbarPosition::default);
+    let _autostart: Signal<Vec<String>> = use_signal(Vec::new);
 
     rsx! {
         div {
@@ -39,16 +39,10 @@ pub fn DesktopSettings() -> Element {
             div { style: "margin-bottom: 24px;",
                 label { style: "display: block; font-weight: 500; margin-bottom: 8px;", "Taskbar Position" }
                 div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 8px;",
-                    for pos in [TaskbarPosition::Bottom, TaskbarPosition::Top, TaskbarPosition::Left, TaskbarPosition::Right] {
-                        button {
-                            style: "padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {if *taskbar_pos.read() == pos { \"var(--fsn-color-primary)\" } else { \"var(--fsn-color-border-default)\" }}; cursor: pointer; background: var(--fsn-color-bg-surface);",
-                            onclick: {
-                                let pos = pos.clone();
-                                move |_| *taskbar_pos.write() = pos.clone()
-                            },
-                            "{pos.label()}"
-                        }
-                    }
+                    TaskbarPosBtn { pos: TaskbarPosition::Bottom, current: taskbar_pos }
+                    TaskbarPosBtn { pos: TaskbarPosition::Top,    current: taskbar_pos }
+                    TaskbarPosBtn { pos: TaskbarPosition::Left,   current: taskbar_pos }
+                    TaskbarPosBtn { pos: TaskbarPosition::Right,  current: taskbar_pos }
                 }
             }
 
@@ -64,6 +58,20 @@ pub fn DesktopSettings() -> Element {
                 style: "padding: 8px 24px; background: var(--fsn-color-primary); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer;",
                 "Save"
             }
+        }
+    }
+}
+
+#[component]
+fn TaskbarPosBtn(pos: TaskbarPosition, mut current: Signal<TaskbarPosition>) -> Element {
+    let is_active = *current.read() == pos;
+    let border = if is_active { "var(--fsn-color-primary)" } else { "var(--fsn-color-border-default)" };
+    let label  = pos.label();
+    rsx! {
+        button {
+            style: "padding: 10px; border-radius: var(--fsn-radius-md); border: 2px solid {border}; cursor: pointer; background: var(--fsn-color-bg-surface);",
+            onclick: move |_| *current.write() = pos.clone(),
+            "{label}"
         }
     }
 }

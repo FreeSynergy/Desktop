@@ -51,7 +51,7 @@ pub trait WindowContent: Send + Sync + 'static {
 }
 
 /// An open window in the desktop environment.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Window {
     pub id: WindowId,
     pub title_key: String,

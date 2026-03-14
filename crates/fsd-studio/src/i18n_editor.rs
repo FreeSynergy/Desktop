@@ -14,7 +14,7 @@ pub struct I18nEntry {
 pub fn I18nEditor() -> Element {
     let entries = use_signal(Vec::<I18nEntry>::new);
     let selected_lang = use_signal(|| "de".to_string());
-    let selected_category = use_signal(|| "actions".to_string());
+    let mut selected_category = use_signal(|| "actions".to_string());
 
     rsx! {
         div {
@@ -38,13 +38,9 @@ pub fn I18nEditor() -> Element {
                 div {
                     label { style: "display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--fsn-color-text-muted);", "CATEGORY" }
                     for cat in &["actions", "nouns", "status", "errors", "phrases", "time", "validation", "help"] {
-                        button {
-                            style: "display: block; width: 100%; text-align: left; padding: 6px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; background: {if *selected_category.read() == *cat { \"var(--fsn-color-bg-overlay)\" } else { \"transparent\" }};",
-                            onclick: {
-                                let cat = cat.to_string();
-                                move |_| *selected_category.write() = cat.clone()
-                            },
-                            "{cat}"
+                        CategoryBtn {
+                            cat: cat.to_string(),
+                            selected: selected_category,
                         }
                     }
                 }
@@ -97,6 +93,19 @@ pub fn I18nEditor() -> Element {
                     }
                 }
             }
+        }
+    }
+}
+
+#[component]
+fn CategoryBtn(cat: String, mut selected: Signal<String>) -> Element {
+    let is_active = *selected.read() == cat;
+    let bg = if is_active { "var(--fsn-color-bg-overlay)" } else { "transparent" };
+    rsx! {
+        button {
+            style: "display: block; width: 100%; text-align: left; padding: 6px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; background: {bg};",
+            onclick: move |_| *selected.write() = cat.clone(),
+            "{cat}"
         }
     }
 }
