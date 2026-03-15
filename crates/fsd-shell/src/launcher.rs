@@ -9,6 +9,9 @@ use dioxus::prelude::*;
 
 use crate::taskbar::AppEntry;
 
+/// How many app groups to show per page in the launcher.
+const GROUPS_PER_PAGE: usize = 3;
+
 /// State exposed to the desktop for open/close.
 #[derive(Clone, Default, PartialEq)]
 pub struct LauncherState {
@@ -80,6 +83,7 @@ pub struct AppLauncherProps {
 #[component]
 pub fn AppLauncher(props: AppLauncherProps) -> Element {
     let query = props.query.to_lowercase();
+    let mut page: Signal<usize> = use_signal(|| 0);
 
     // Filter apps and rebuild groups for display
     let filtered: Vec<AppEntry> = props
@@ -94,6 +98,16 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
         .collect();
 
     let groups = AppGroup::from_entries(&filtered);
+    let total_pages = groups.len().div_ceil(GROUPS_PER_PAGE).max(1);
+
+    // Clamp page to valid range when query changes and group count shrinks
+    let cur_page = (*page.read()).min(total_pages - 1);
+
+    let page_groups: Vec<AppGroup> = groups
+        .into_iter()
+        .skip(cur_page * GROUPS_PER_PAGE)
+        .take(GROUPS_PER_PAGE)
+        .collect();
 
     rsx! {
         // Backdrop
@@ -136,7 +150,10 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                     placeholder: "Search apps…",
                     value: props.query.clone(),
                     autofocus: true,
-                    oninput: move |evt| props.on_query_change.call(evt.value()),
+                    oninput: move |evt| {
+                        *page.write() = 0; // reset to first page on new query
+                        props.on_query_change.call(evt.value());
+                    },
                     onkeydown: move |evt: KeyboardEvent| {
                         if evt.key() == Key::Escape {
                             props.on_close.call(());
@@ -144,7 +161,7 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                     },
                 }
 
-                // ── App groups ────────────────────────────────────────────
+                // ── App groups (current page) ──────────────────────────────
                 div {
                     style: "flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; \
                             padding-bottom: 8px;",
@@ -154,7 +171,7 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                             "No apps found for \"{props.query}\""
                         }
                     } else {
-                        for group in &groups {
+                        for group in &page_groups {
                             AppGroupSection {
                                 key: "{group.id}",
                                 group: group.clone(),
@@ -163,6 +180,79 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                         }
                     }
                 }
+
+                // ── Pagination bar ─────────────────────────────────────────
+                if total_pages > 1 {
+                    LauncherPagination {
+                        current: cur_page,
+                        total: total_pages,
+                        on_prev: move |_| {
+                            let p = *page.read();
+                            if p > 0 { *page.write() = p - 1; }
+                        },
+                        on_next: move |_| {
+                            let p = *page.read();
+                            if p + 1 < total_pages { *page.write() = p + 1; }
+                        },
+                        on_goto: move |idx| *page.write() = idx,
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Pagination bar ────────────────────────────────────────────────────────────
+
+#[component]
+fn LauncherPagination(
+    current: usize,
+    total: usize,
+    on_prev: EventHandler<()>,
+    on_next: EventHandler<()>,
+    on_goto: EventHandler<usize>,
+) -> Element {
+    rsx! {
+        div {
+            style: "display: flex; align-items: center; justify-content: center; \
+                    gap: 8px; padding: 8px 0 4px; flex-shrink: 0;",
+
+            // Previous button
+            button {
+                style: "background: none; border: 1px solid var(--fsn-border); \
+                        border-radius: var(--fsn-radius-sm); color: var(--fsn-text-secondary); \
+                        font-size: 13px; cursor: pointer; padding: 2px 10px; \
+                        opacity: {if current == 0 { \"0.3\" } else { \"1\" }};",
+                disabled: current == 0,
+                onclick: move |_| on_prev.call(()),
+                "◄"
+            }
+
+            // Page label + dot indicators
+            span {
+                style: "font-size: 12px; color: var(--fsn-text-muted); min-width: 60px; text-align: center;",
+                "Page {current + 1} / {total}"
+            }
+            for i in 0..total {
+                button {
+                    key: "{i}",
+                    style: "background: none; border: none; cursor: pointer; padding: 0 2px; \
+                            font-size: 14px; line-height: 1; \
+                            color: {if i == current { \"var(--fsn-primary)\" } else { \"var(--fsn-text-muted)\" }};",
+                    onclick: move |_| on_goto.call(i),
+                    if i == current { "●" } else { "○" }
+                }
+            }
+
+            // Next button
+            button {
+                style: "background: none; border: 1px solid var(--fsn-border); \
+                        border-radius: var(--fsn-radius-sm); color: var(--fsn-text-secondary); \
+                        font-size: 13px; cursor: pointer; padding: 2px 10px; \
+                        opacity: {if current + 1 >= total { \"0.3\" } else { \"1\" }};",
+                disabled: current + 1 >= total,
+                onclick: move |_| on_next.call(()),
+                "►"
             }
         }
     }

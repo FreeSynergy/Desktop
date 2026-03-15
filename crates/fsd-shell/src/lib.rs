@@ -10,6 +10,7 @@ pub mod sidebar;
 pub mod split_view;
 pub mod taskbar;
 pub mod wallpaper;
+pub mod web_desktop;
 pub mod window;
 pub mod window_frame;
 
@@ -24,5 +25,6 @@ pub use notification::{Notification, NotificationKind, NotificationManager, Noti
 pub use sidebar::{ShellSidebar, SidebarSection, SidebarNavItem};
 pub use split_view::{SplitState, SplitView};
 pub use taskbar::Taskbar;
+pub use web_desktop::{WebDesktop, WebTaskbarState};
 pub use window::{Window, WindowButton, WindowContent, WindowId, WindowManager, WindowSize};
 pub use window_frame::WindowFrame;

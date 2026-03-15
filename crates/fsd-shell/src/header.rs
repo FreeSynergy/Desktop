@@ -21,10 +21,18 @@ pub struct MenuItem {
     pub items: Vec<MenuAction>,
 }
 
+/// A single action in a submenu (leaf item only).
+#[derive(Clone, PartialEq, Debug)]
+pub struct SubAction {
+    pub label: &'static str,
+    pub id: &'static str,
+}
+
 /// A single action in a menu dropdown.
 #[derive(Clone, PartialEq, Debug)]
 pub enum MenuAction {
     Action { label: &'static str, shortcut: Option<&'static str>, id: &'static str },
+    SubMenu { label: &'static str, items: Vec<SubAction> },
     Separator,
 }
 
@@ -54,6 +62,31 @@ fn default_menu() -> Vec<MenuItem> {
             items: vec![
                 MenuAction::Action { label: "Toggle Sidebar",  shortcut: Some("Ctrl+B"), id: "toggle-sidebar" },
                 MenuAction::Action { label: "Fullscreen",      shortcut: Some("F11"),    id: "fullscreen" },
+                MenuAction::Separator,
+                MenuAction::SubMenu {
+                    label: "Sidebar Position ▸",
+                    items: vec![
+                        SubAction { label: "Left",   id: "sidebar-left" },
+                        SubAction { label: "Right",  id: "sidebar-right" },
+                        SubAction { label: "Top",    id: "sidebar-top" },
+                        SubAction { label: "Bottom", id: "sidebar-bottom" },
+                    ],
+                },
+                MenuAction::SubMenu {
+                    label: "Theme ▸",
+                    items: vec![
+                        SubAction { label: "Midnight Blue", id: "theme-midnight-blue" },
+                        SubAction { label: "Light",         id: "theme-light" },
+                    ],
+                },
+                MenuAction::SubMenu {
+                    label: "Rendering Mode ▸",
+                    items: vec![
+                        SubAction { label: "Desktop", id: "render-desktop" },
+                        SubAction { label: "Native",  id: "render-native" },
+                        SubAction { label: "Web",     id: "render-web" },
+                    ],
+                },
             ],
         },
         MenuItem {
@@ -69,10 +102,11 @@ fn default_menu() -> Vec<MenuItem> {
         MenuItem {
             label: "Help",
             items: vec![
-                MenuAction::Action { label: "Help",            shortcut: Some("F1"), id: "help" },
-                MenuAction::Action { label: "Keyboard Shortcuts", shortcut: None,   id: "shortcuts" },
+                MenuAction::Action { label: "Help",               shortcut: Some("F1"), id: "help" },
+                MenuAction::Action { label: "Keyboard Shortcuts", shortcut: None,       id: "shortcuts" },
+                MenuAction::Action { label: "Documentation",      shortcut: None,       id: "documentation" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Report a Bug…",  shortcut: None,       id: "report-bug" },
+                MenuAction::Action { label: "Report a Bug…",     shortcut: None,       id: "report-bug" },
             ],
         },
     ]
@@ -232,6 +266,75 @@ fn MenuDropdown(
                                     }
                                 }
                             }
+                        }
+                    }
+                    MenuAction::SubMenu { label, items } => {
+                        let sub_items = items.clone();
+                        rsx! {
+                            SubMenuRow {
+                                label,
+                                items: sub_items,
+                                on_action: on_action.clone(),
+                                on_close: on_close.clone(),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A menu row that reveals a flyout submenu on hover.
+#[component]
+fn SubMenuRow(
+    label: &'static str,
+    items: Vec<SubAction>,
+    on_action: EventHandler<String>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut hovered = use_signal(|| false);
+
+    rsx! {
+        div {
+            style: "position: relative;",
+            onmouseenter: move |_| *hovered.write() = true,
+            onmouseleave: move |_| *hovered.write() = false,
+
+            // Row button (no onclick — opens on hover)
+            button {
+                style: "display: flex; align-items: center; justify-content: space-between; \
+                        width: 100%; padding: 6px 16px; background: none; border: none; \
+                        cursor: default; font-size: 13px; text-align: left; \
+                        color: var(--fsn-text-primary); gap: 24px;",
+                span { "{label}" }
+                span {
+                    style: "font-size: 11px; color: var(--fsn-text-muted); flex-shrink: 0;",
+                    "▶"
+                }
+            }
+
+            // Flyout submenu (shown when hovered)
+            if *hovered.read() {
+                div {
+                    style: "position: absolute; top: 0; left: 100%; \
+                            background: var(--fsn-bg-elevated); \
+                            border: 1px solid var(--fsn-border); border-radius: var(--fsn-radius-md); \
+                            min-width: 160px; z-index: 600; padding: 4px 0; \
+                            box-shadow: var(--fsn-shadow);",
+                    for sub in &items {
+                        let id_owned = sub.id.to_string();
+                        button {
+                            key: "{sub.id}",
+                            style: "display: flex; align-items: center; width: 100%; \
+                                    padding: 6px 16px; background: none; border: none; \
+                                    cursor: pointer; font-size: 13px; text-align: left; \
+                                    color: var(--fsn-text-primary);",
+                            onclick: move |_| {
+                                on_action.call(id_owned.clone());
+                                on_close.call(());
+                            },
+                            "{sub.label}"
                         }
                     }
                 }

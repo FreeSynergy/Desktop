@@ -38,5 +38,5 @@ fn main() {
     }
 
     #[cfg(feature = "web")]
-    dioxus::launch(fsd_shell::Desktop);
+    dioxus::launch(fsd_shell::WebDesktop);
 }
