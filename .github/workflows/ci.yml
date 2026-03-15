@@ -46,3 +46,6 @@ jobs:
 
       - name: Test
         run: cargo test --all
+
+      - name: cargo-deny (licenses + advisories)
+        uses: EmbarkStudios/cargo-deny-action@v2
