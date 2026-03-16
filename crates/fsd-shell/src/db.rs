@@ -58,7 +58,7 @@ pub fn save_widgets_to_db(slots: Vec<WidgetSlot>) {
         if let Ok(db) = DesktopDb::open().await {
             let db_slots: Vec<DbWidgetSlot> = slots.iter().enumerate().map(|(i, s)| DbWidgetSlot {
                 id:         s.id,
-                kind:       s.kind.as_str().to_string(),
+                kind:       s.kind.as_str(),
                 x:          s.x,
                 y:          s.y,
                 w:          s.w,

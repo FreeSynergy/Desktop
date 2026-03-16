@@ -1,5 +1,6 @@
 /// Language settings — choose UI language, load language packs from store.
 use dioxus::prelude::*;
+use fsd_db::package_registry::PackageRegistry;
 
 /// Built-in (always installed) languages.
 pub const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
@@ -11,35 +12,43 @@ pub const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
     ("pt", "Português"),
 ];
 
-/// A language entry (code + native name).
+/// A language entry (code + native name) with owned strings so store packs can be added.
 #[derive(Clone, PartialEq)]
 struct LangEntry {
-    code: &'static str,
-    name: &'static str,
+    code: String,
+    name: String,
 }
 
 /// Language settings component.
 ///
-/// Shows only installed languages. Built-in languages are always considered
-/// installed. Additional packs installed from the Store appear in the list too.
-/// When 8+ entries are shown a scrollbar appears. The "Install more…" hint
-/// opens the Store filtered to Language packages.
+/// Built-in languages are always present. Language packs installed from the
+/// Store are loaded from `PackageRegistry` and appended to the list.
+/// When 8+ entries are shown a scrollbar appears.
 #[component]
 pub fn LanguageSettings() -> Element {
-    // Currently "installed" languages (built-ins are always present).
-    // In a real system this would be loaded from fsn-config / installed packs.
     let installed: Signal<Vec<LangEntry>> = use_signal(|| {
-        BUILTIN_LANGUAGES
+        let mut entries: Vec<LangEntry> = BUILTIN_LANGUAGES
             .iter()
-            .map(|(code, name)| LangEntry { code, name })
-            .collect()
+            .map(|(code, name)| LangEntry {
+                code: code.to_string(),
+                name: name.to_string(),
+            })
+            .collect();
+
+        // Append store-installed language packs (skip if id already in builtins)
+        let builtin_codes: Vec<&str> = BUILTIN_LANGUAGES.iter().map(|(c, _)| *c).collect();
+        for pkg in PackageRegistry::by_kind("language") {
+            if !builtin_codes.contains(&pkg.id.as_str()) {
+                entries.push(LangEntry { code: pkg.id, name: pkg.name });
+            }
+        }
+        entries
     });
 
     let mut selected = use_signal(|| "de".to_string());
     let mut install_hint = use_signal(|| false);
 
     let count = installed.read().len();
-    // Show scrollbar once there are 8 or more installed languages.
     let list_style = if count >= 8 {
         "max-height: 240px; overflow-y: auto; border: 1px solid var(--fsn-color-border-default); \
          border-radius: var(--fsn-radius-md); scrollbar-width: thin;"
@@ -69,11 +78,11 @@ pub fn LanguageSettings() -> Element {
                     for entry in installed.read().clone() {
                         LangRow {
                             key: "{entry.code}",
-                            code: entry.code,
-                            name: entry.name,
+                            code: entry.code.clone(),
+                            name: entry.name.clone(),
                             selected: *selected.read() == entry.code,
                             on_select: {
-                                let code = entry.code.to_string();
+                                let code = entry.code.clone();
                                 move |_| *selected.write() = code.clone()
                             },
                         }
@@ -126,8 +135,8 @@ pub fn LanguageSettings() -> Element {
 
 #[component]
 fn LangRow(
-    code: &'static str,
-    name: &'static str,
+    code: String,
+    name: String,
     selected: bool,
     on_select: EventHandler<MouseEvent>,
 ) -> Element {
@@ -142,7 +151,6 @@ fn LangRow(
             style: "display: flex; align-items: center; gap: 12px; padding: 10px 14px; \
                     cursor: pointer; transition: background 0.1s; {bg}",
             onclick: on_select,
-            // Radio indicator
             span {
                 style: "font-size: 16px;",
                 if selected { "◉" } else { "○" }

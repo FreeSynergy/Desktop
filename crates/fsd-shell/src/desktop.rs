@@ -399,7 +399,7 @@ pub fn Desktop() -> Element {
                                                 z-index: 70; \
                                                 box-shadow: 0 8px 24px rgba(0,0,0,0.4);",
 
-                                        for kind in WidgetKind::all() {
+                                        for kind in WidgetKind::all_with_custom() {
                                             WidgetPickerRow {
                                                 kind: kind.clone(),
                                                 on_add: move |k: WidgetKind| {

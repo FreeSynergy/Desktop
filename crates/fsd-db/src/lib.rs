@@ -16,6 +16,7 @@
 pub mod desktop;
 pub mod entities;
 pub mod migration;
+pub mod package_registry;
 pub mod schemas;
 pub mod shared;
 

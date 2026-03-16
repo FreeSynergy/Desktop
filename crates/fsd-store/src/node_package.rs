@@ -51,6 +51,19 @@ impl PackageKind {
             PackageKind::Task       => "⚡",
         }
     }
+
+    /// Lowercase string key for registry storage.
+    pub fn kind_str(&self) -> String {
+        match self {
+            PackageKind::Plugin     => "plugin".into(),
+            PackageKind::Language   => "language".into(),
+            PackageKind::Theme      => "theme".into(),
+            PackageKind::Widget     => "widget".into(),
+            PackageKind::BotCommand => "bot".into(),
+            PackageKind::Bridge     => "bridge".into(),
+            PackageKind::Task       => "task".into(),
+        }
+    }
 }
 
 /// A package entry in the `Node/catalog.toml`.

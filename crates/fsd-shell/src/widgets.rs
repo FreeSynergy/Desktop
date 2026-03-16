@@ -22,46 +22,51 @@ pub enum WidgetKind {
     MyTasks,
     QuickNotes,
     Weather,
+    /// A widget installed from the Store, identified by its package ID.
+    Custom(String),
 }
 
 impl WidgetKind {
     /// Human-readable label shown in the widget picker.
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            WidgetKind::Clock      => "Clock",
-            WidgetKind::SystemInfo => "System Info",
-            WidgetKind::Messages   => "Messages",
-            WidgetKind::MyTasks    => "My Tasks",
-            WidgetKind::QuickNotes => "Quick Notes",
-            WidgetKind::Weather    => "Weather",
+            WidgetKind::Clock         => "Clock".to_string(),
+            WidgetKind::SystemInfo    => "System Info".to_string(),
+            WidgetKind::Messages      => "Messages".to_string(),
+            WidgetKind::MyTasks       => "My Tasks".to_string(),
+            WidgetKind::QuickNotes    => "Quick Notes".to_string(),
+            WidgetKind::Weather       => "Weather".to_string(),
+            WidgetKind::Custom(id)    => id.clone(),
         }
     }
 
     /// Default (width, height) in pixels for a newly placed widget.
     pub fn default_size(&self) -> (f64, f64) {
         match self {
-            WidgetKind::Clock      => (220.0, 140.0),
-            WidgetKind::SystemInfo => (280.0, 190.0),
-            WidgetKind::QuickNotes => (300.0, 230.0),
-            WidgetKind::Messages   => (320.0, 220.0),
-            WidgetKind::MyTasks    => (320.0, 220.0),
-            WidgetKind::Weather    => (260.0, 160.0),
+            WidgetKind::Clock         => (220.0, 140.0),
+            WidgetKind::SystemInfo    => (280.0, 190.0),
+            WidgetKind::QuickNotes    => (300.0, 230.0),
+            WidgetKind::Messages      => (320.0, 220.0),
+            WidgetKind::MyTasks       => (320.0, 220.0),
+            WidgetKind::Weather       => (260.0, 160.0),
+            WidgetKind::Custom(_)     => (280.0, 180.0),
         }
     }
 
     /// Emoji icon used in the widget picker panel.
     pub fn icon(&self) -> &'static str {
         match self {
-            WidgetKind::Clock      => "🕐",
-            WidgetKind::SystemInfo => "🖥",
-            WidgetKind::Messages   => "📬",
-            WidgetKind::MyTasks    => "✅",
-            WidgetKind::QuickNotes => "📝",
-            WidgetKind::Weather    => "🌤",
+            WidgetKind::Clock         => "🕐",
+            WidgetKind::SystemInfo    => "🖥",
+            WidgetKind::Messages      => "📬",
+            WidgetKind::MyTasks       => "✅",
+            WidgetKind::QuickNotes    => "📝",
+            WidgetKind::Weather       => "🌤",
+            WidgetKind::Custom(_)     => "🧩",
         }
     }
 
-    /// All available widget kinds, in picker order.
+    /// Built-in widget kinds, in picker order. Does not include Custom variants.
     pub fn all() -> Vec<WidgetKind> {
         vec![
             WidgetKind::Clock,
@@ -73,19 +78,30 @@ impl WidgetKind {
         ]
     }
 
-    /// TOML key used for persistence.
-    pub fn as_str(&self) -> &'static str {
+    /// All widget kinds including store-installed Custom widgets.
+    pub fn all_with_custom() -> Vec<WidgetKind> {
+        use fsd_db::package_registry::PackageRegistry;
+        let mut kinds = Self::all();
+        for pkg in PackageRegistry::by_kind("widget") {
+            kinds.push(WidgetKind::Custom(pkg.id));
+        }
+        kinds
+    }
+
+    /// Persistence key string.
+    pub fn as_str(&self) -> String {
         match self {
-            WidgetKind::Clock      => "Clock",
-            WidgetKind::SystemInfo => "SystemInfo",
-            WidgetKind::Messages   => "Messages",
-            WidgetKind::MyTasks    => "MyTasks",
-            WidgetKind::QuickNotes => "QuickNotes",
-            WidgetKind::Weather    => "Weather",
+            WidgetKind::Clock         => "Clock".to_string(),
+            WidgetKind::SystemInfo    => "SystemInfo".to_string(),
+            WidgetKind::Messages      => "Messages".to_string(),
+            WidgetKind::MyTasks       => "MyTasks".to_string(),
+            WidgetKind::QuickNotes    => "QuickNotes".to_string(),
+            WidgetKind::Weather       => "Weather".to_string(),
+            WidgetKind::Custom(id)    => format!("custom:{id}"),
         }
     }
 
-    /// Parse from TOML key string.
+    /// Parse from persistence key string.
     pub fn from_str(s: &str) -> Option<WidgetKind> {
         match s {
             "Clock"      => Some(WidgetKind::Clock),
@@ -94,7 +110,10 @@ impl WidgetKind {
             "MyTasks"    => Some(WidgetKind::MyTasks),
             "QuickNotes" => Some(WidgetKind::QuickNotes),
             "Weather"    => Some(WidgetKind::Weather),
-            _            => None,
+            s if s.starts_with("custom:") => {
+                Some(WidgetKind::Custom(s["custom:".len()..].to_string()))
+            }
+            _ => None,
         }
     }
 }
@@ -164,6 +183,11 @@ pub fn render_widget(kind: &WidgetKind, w: f64, h: f64) -> Element {
         WidgetKind::QuickNotes => rsx! { QuickNotesWidget { w, h } },
         other => rsx! { PlaceholderWidget { kind: other.clone() } },
     }
+}
+
+/// Returns all widgets for use in the picker (built-in + store-installed).
+pub fn all_picker_widgets() -> Vec<WidgetKind> {
+    WidgetKind::all_with_custom()
 }
 
 // ── Scaling helper ─────────────────────────────────────────────────────────
@@ -395,7 +419,7 @@ pub fn QuickNotesWidget(w: f64, h: f64) -> Element {
 #[component]
 pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
     let label = kind.label();
-    let icon  = kind.icon();
+    let icon  = kind.icon().to_string();
 
     rsx! {
         div {

@@ -14,7 +14,10 @@ pub struct PackageEntry {
     pub category: String,
     pub kind: PackageKind,
     pub capabilities: Vec<String>,
+    pub tags: Vec<String>,
     pub icon: Option<String>,
+    /// Store-relative path to the package directory (used for file downloads).
+    pub store_path: Option<String>,
     pub installed: bool,
     pub update_available: bool,
 }
@@ -38,12 +41,19 @@ pub fn PackageCard(package: PackageEntry, on_details: EventHandler<MouseEvent>) 
                     if let Some(icon) = &package.icon {
                         img { src: "{icon}", width: "32", height: "32" }
                     } else {
-                        "📦"
+                        "{package.kind.icon()}"
                     }
                 }
                 div {
                     strong { style: "display: block; font-size: 15px;", "{package.name}" }
                     span { style: "font-size: 12px; color: var(--fsn-color-text-muted);", "v{package.version} · {package.category}" }
+                }
+                if package.installed {
+                    span {
+                        style: "margin-left: auto; font-size: 11px; color: var(--fsn-color-success, #22c55e); \
+                                background: rgba(34,197,94,0.12); padding: 2px 8px; border-radius: 999px;",
+                        "Installed"
+                    }
                 }
             }
 
@@ -53,7 +63,24 @@ pub fn PackageCard(package: PackageEntry, on_details: EventHandler<MouseEvent>) 
                 "{package.description}"
             }
 
-            // Install button
+            // Tags
+            if !package.tags.is_empty() {
+                div {
+                    style: "display: flex; flex-wrap: wrap; gap: 4px;",
+                    for tag in package.tags.iter().take(5) {
+                        span {
+                            key: "{tag}",
+                            style: "font-size: 10px; padding: 2px 6px; border-radius: 999px; \
+                                    background: var(--fsn-color-bg-overlay); \
+                                    color: var(--fsn-color-text-muted); \
+                                    border: 1px solid var(--fsn-color-border-default);",
+                            "{tag}"
+                        }
+                    }
+                }
+            }
+
+            // Install / installed button
             div { style: "margin-top: auto;",
                 if package.installed {
                     if package.update_available {
@@ -71,7 +98,6 @@ pub fn PackageCard(package: PackageEntry, on_details: EventHandler<MouseEvent>) 
                 } else {
                     button {
                         style: "width: 100%; padding: 8px; background: var(--fsn-color-primary); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer; font-size: 13px;",
-                        // TODO: open install wizard
                         "Install"
                     }
                 }

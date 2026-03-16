@@ -1,5 +1,6 @@
 /// Package browser — fetches the live catalog and renders a filtered package grid.
 use dioxus::prelude::*;
+use fsd_db::package_registry::PackageRegistry;
 use fsn_components::{LoadingOverlay, SpinnerSize};
 use fsn_store::{Catalog, StoreClient};
 
@@ -37,14 +38,22 @@ pub fn PackageBrowser(
     }
 
     let query = search.to_lowercase();
+    // Split query into individual words — all must match (AND logic)
+    let query_words: Vec<String> = query
+        .split_whitespace()
+        .map(|w| w.to_string())
+        .collect();
+
     let filtered: Vec<PackageEntry> = packages
         .read()
         .iter()
         .filter(|p| {
-            let matches_search = query.is_empty()
-                || p.name.to_lowercase().contains(&query)
-                || p.description.to_lowercase().contains(&query)
-                || p.category.to_lowercase().contains(&query);
+            let matches_search = query_words.is_empty() || query_words.iter().all(|word| {
+                p.name.to_lowercase().contains(word.as_str())
+                    || p.description.to_lowercase().contains(word.as_str())
+                    || p.category.to_lowercase().contains(word.as_str())
+                    || p.tags.iter().any(|t| t.to_lowercase().contains(word.as_str()))
+            });
             let matches_kind = kind.as_ref().map_or(true, |k| &p.kind == k);
             matches_search && matches_kind
         })
@@ -94,20 +103,30 @@ pub fn PackageBrowser(
 }
 
 fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
+    let installed_ids: std::collections::HashSet<String> = PackageRegistry::load()
+        .into_iter()
+        .map(|p| p.id)
+        .collect();
+
     catalog
         .packages
         .into_iter()
-        .map(|p| PackageEntry {
-            id:               p.id.clone(),
-            name:             p.name.clone(),
-            description:      p.description.clone(),
-            version:          p.version.clone(),
-            category:         p.category.clone(),
-            kind:             p.kind.clone(),
-            capabilities:     p.capabilities.clone(),
-            icon:             p.icon.clone(),
-            installed:        false,
-            update_available: false,
+        .map(|p| {
+            let installed = installed_ids.contains(&p.id);
+            PackageEntry {
+                id:               p.id.clone(),
+                name:             p.name.clone(),
+                description:      p.description.clone(),
+                version:          p.version.clone(),
+                category:         p.category.clone(),
+                kind:             p.kind.clone(),
+                capabilities:     p.capabilities.clone(),
+                tags:             p.tags.clone(),
+                icon:             p.icon.clone(),
+                store_path:       p.path.clone(),
+                installed,
+                update_available: false,
+            }
         })
         .collect()
 }

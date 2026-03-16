@@ -1,8 +1,9 @@
 /// Package detail panel — shown when the user clicks a package card.
 ///
-/// Displays icon, name, description, capability badges, metadata, and an
-/// Install button that opens the InstallWizard.
+/// Displays icon, name, description, tags, capability badges, metadata, and an
+/// Install/Remove button. Opens the InstallWizard for uninstalled packages.
 use dioxus::prelude::*;
+use fsd_db::package_registry::PackageRegistry;
 
 use crate::install_wizard::InstallWizard;
 use crate::package_card::PackageEntry;
@@ -12,13 +13,18 @@ use crate::package_card::PackageEntry;
 /// Full-page or side-panel detail view for a single package.
 #[component]
 pub fn PackageDetail(package: PackageEntry, on_back: EventHandler<()>) -> Element {
-    let mut show_wizard = use_signal(|| false);
+    let mut show_wizard   = use_signal(|| false);
+    let mut installed     = use_signal(|| package.installed);
+    let mut remove_confirm = use_signal(|| false);
 
     if *show_wizard.read() {
         return rsx! {
             InstallWizard {
                 package: package.clone(),
-                on_cancel: move |_| show_wizard.set(false),
+                on_cancel: move |_| {
+                    show_wizard.set(false);
+                    installed.set(PackageRegistry::is_installed(&package.id));
+                },
             }
         };
     }
@@ -28,6 +34,49 @@ pub fn PackageDetail(package: PackageEntry, on_back: EventHandler<()>) -> Elemen
             class: "fsd-package-detail fsd-page-fade",
             style: "display: flex; flex-direction: column; height: 100%; \
                     background: var(--fsn-color-bg-base);",
+
+            // Remove confirm dialog
+            if *remove_confirm.read() {
+                div {
+                    style: "position: fixed; inset: 0; background: rgba(0,0,0,0.5); \
+                            display: flex; align-items: center; justify-content: center; z-index: 1000;",
+                    div {
+                        style: "background: var(--fsn-color-bg-surface); \
+                                border: 1px solid var(--fsn-color-border-default); \
+                                border-radius: var(--fsn-radius-lg); padding: 24px; \
+                                max-width: 400px; width: 100%;",
+                        h3 { style: "margin: 0 0 12px 0;", "Remove {package.name}?" }
+                        p {
+                            style: "color: var(--fsn-color-text-muted); font-size: 14px; margin-bottom: 20px;",
+                            "This will unregister the package and delete any downloaded files."
+                        }
+                        div {
+                            style: "display: flex; gap: 8px; justify-content: flex-end;",
+                            button {
+                                style: "padding: 8px 16px; background: var(--fsn-color-bg-surface); \
+                                        border: 1px solid var(--fsn-color-border-default); \
+                                        border-radius: var(--fsn-radius-md); cursor: pointer;",
+                                onclick: move |_| remove_confirm.set(false),
+                                "Cancel"
+                            }
+                            button {
+                                style: "padding: 8px 16px; background: var(--fsn-color-error, #ef4444); \
+                                        color: white; border: none; \
+                                        border-radius: var(--fsn-radius-md); cursor: pointer;",
+                                onclick: {
+                                    let pkg_id = package.id.clone();
+                                    move |_| {
+                                        let _ = PackageRegistry::remove(&pkg_id);
+                                        installed.set(false);
+                                        remove_confirm.set(false);
+                                    }
+                                },
+                                "Remove"
+                            }
+                        }
+                    }
+                }
+            }
 
             // ── Top bar ──────────────────────────────────────────────────────
             div {
@@ -88,21 +137,30 @@ pub fn PackageDetail(package: PackageEntry, on_back: EventHandler<()>) -> Elemen
                                     color: var(--fsn-color-text-muted);",
                             "v{package.version} · {package.category}"
                         }
-                        // Tags / kind badge
+                        // Kind badge + tags
                         div {
                             style: "display: flex; flex-wrap: wrap; gap: 6px;",
                             span {
                                 style: "padding: 2px 10px; border-radius: 999px; font-size: 12px; \
-                                        background: var(--fsn-color-bg-surface); \
-                                        border: 1px solid var(--fsn-color-border-default);",
+                                        background: var(--fsn-color-primary); color: white;",
                                 "{package.kind.label()}"
+                            }
+                            for tag in &package.tags {
+                                span {
+                                    key: "{tag}",
+                                    style: "padding: 2px 10px; border-radius: 999px; font-size: 12px; \
+                                            background: var(--fsn-color-bg-surface); \
+                                            border: 1px solid var(--fsn-color-border-default); \
+                                            color: var(--fsn-color-text-muted);",
+                                    "{tag}"
+                                }
                             }
                         }
                     }
 
-                    // Install button (top-right)
-                    div {
-                        if package.installed {
+                    // Install / Remove button (top-right)
+                    div { style: "display: flex; flex-direction: column; gap: 8px; align-items: flex-end;",
+                        if *installed.read() {
                             button {
                                 style: "padding: 10px 24px; background: var(--fsn-color-bg-overlay); \
                                         border: 1px solid var(--fsn-color-border-default); \
@@ -110,6 +168,15 @@ pub fn PackageDetail(package: PackageEntry, on_back: EventHandler<()>) -> Elemen
                                         font-size: 14px;",
                                 disabled: true,
                                 "Installed ✓"
+                            }
+                            button {
+                                style: "padding: 6px 16px; background: transparent; \
+                                        border: 1px solid var(--fsn-color-error, #ef4444); \
+                                        color: var(--fsn-color-error, #ef4444); \
+                                        border-radius: var(--fsn-radius-md); cursor: pointer; \
+                                        font-size: 12px;",
+                                onclick: move |_| remove_confirm.set(true),
+                                "Remove"
                             }
                         } else {
                             button {

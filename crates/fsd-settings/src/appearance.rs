@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 /// Falls back to a local signal when running standalone.
 #[component]
 pub fn AppearanceSettings() -> Element {
+    use fsd_db::package_registry::PackageRegistry;
     let theme_ctx: Option<Signal<String>> = try_use_context();
     let wallpaper_ctx: Option<Signal<String>> = try_use_context();
     let mut local_theme = use_signal(|| "midnight-blue".to_string());
@@ -17,6 +18,10 @@ pub fn AppearanceSettings() -> Element {
     let mut custom_css    = use_signal(String::new);
     let mut editor_error  = use_signal(|| Option::<String>::None);
     let mut editor_saved  = use_signal(|| false);
+
+    // Store-installed themes
+    let mut store_themes = use_signal(|| PackageRegistry::by_kind("theme"));
+    let mut theme_remove_confirm: Signal<Option<String>> = use_signal(|| None);
 
     // Animation + Window-Chrome toggles (B5)
     let anim_ctx: Option<Signal<bool>> = try_use_context();
@@ -126,6 +131,108 @@ pub fn AppearanceSettings() -> Element {
                                             white-space: nowrap; overflow: hidden; \
                                             text-overflow: ellipsis; width: 100%;",
                                     "{name}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Section: Store Themes ──────────────────────────────────────
+            if !store_themes.read().is_empty() {
+                h3 { style: "margin-bottom: 12px; font-size: 16px;", "Installed Themes" }
+
+                // Remove confirm dialog
+                if let Some(ref theme_id) = theme_remove_confirm.read().clone() {
+                    div {
+                        style: "position: fixed; inset: 0; background: rgba(0,0,0,0.5); \
+                                display: flex; align-items: center; justify-content: center; z-index: 1000;",
+                        div {
+                            style: "background: var(--fsn-color-bg-surface); \
+                                    border: 1px solid var(--fsn-color-border-default); \
+                                    border-radius: var(--fsn-radius-lg); padding: 24px; \
+                                    max-width: 380px; width: 100%;",
+                            h3 { style: "margin: 0 0 12px 0;", "Remove theme?" }
+                            p {
+                                style: "color: var(--fsn-color-text-muted); font-size: 14px; margin-bottom: 20px;",
+                                "This will delete the theme CSS file from disk."
+                            }
+                            div { style: "display: flex; gap: 8px; justify-content: flex-end;",
+                                button {
+                                    style: "padding: 8px 16px; background: var(--fsn-color-bg-surface); \
+                                            border: 1px solid var(--fsn-color-border-default); \
+                                            border-radius: var(--fsn-radius-md); cursor: pointer;",
+                                    onclick: move |_| *theme_remove_confirm.write() = None,
+                                    "Cancel"
+                                }
+                                button {
+                                    style: "padding: 8px 16px; background: var(--fsn-color-error, #ef4444); \
+                                            color: white; border: none; \
+                                            border-radius: var(--fsn-radius-md); cursor: pointer;",
+                                    onclick: {
+                                        let id = theme_id.clone();
+                                        move |_| {
+                                            let _ = PackageRegistry::remove(&id);
+                                            store_themes.set(PackageRegistry::by_kind("theme"));
+                                            *theme_remove_confirm.write() = None;
+                                        }
+                                    },
+                                    "Remove"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                div { style: "margin-bottom: 28px;",
+                    for pkg in store_themes.read().iter().cloned().collect::<Vec<_>>() {
+                        {
+                            let pkg_id   = pkg.id.clone();
+                            let pkg_name = pkg.name.clone();
+                            let file_css = pkg.file_path.as_ref().map(|p| {
+                                format!(
+                                    "background-image: none; --fsn-theme-file: url('file://{}');",
+                                    p
+                                )
+                            });
+                            let mut set_theme = set_theme.clone();
+                            rsx! {
+                                div {
+                                    key: "{pkg_id}",
+                                    style: "display: flex; align-items: center; gap: 12px; \
+                                            padding: 10px 14px; margin-bottom: 6px; \
+                                            background: var(--fsn-color-bg-surface); \
+                                            border: 1px solid var(--fsn-color-border-default); \
+                                            border-radius: var(--fsn-radius-md);",
+                                    div {
+                                        style: "flex: 1; font-size: 14px; font-weight: 500;",
+                                        "{pkg_name}"
+                                    }
+                                    if let Some(css) = file_css {
+                                        button {
+                                            style: "padding: 6px 14px; background: var(--fsn-color-primary); \
+                                                    color: white; border: none; \
+                                                    border-radius: var(--fsn-radius-md); cursor: pointer; \
+                                                    font-size: 12px;",
+                                            onclick: {
+                                                let css = css.clone();
+                                                move |_| set_theme(format!("__custom__{}", css))
+                                            },
+                                            "Apply"
+                                        }
+                                    }
+                                    button {
+                                        style: "padding: 6px 12px; background: transparent; \
+                                                border: 1px solid var(--fsn-color-error, #ef4444); \
+                                                color: var(--fsn-color-error, #ef4444); \
+                                                border-radius: var(--fsn-radius-md); cursor: pointer; \
+                                                font-size: 12px;",
+                                        onclick: {
+                                            let id = pkg_id.clone();
+                                            move |_| *theme_remove_confirm.write() = Some(id.clone())
+                                        },
+                                        "Remove"
+                                    }
                                 }
                             }
                         }

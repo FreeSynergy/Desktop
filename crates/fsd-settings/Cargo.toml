@@ -19,6 +19,7 @@ desktop  = ["dioxus/desktop", "fsn-components/desktop"]
 web      = ["dioxus/web",     "fsn-components/web"]
 
 [dependencies]
+fsd-db         = { workspace = true }
 fsn-components = { workspace = true }
 fsn-theme      = { workspace = true }
 fsn-i18n   = { workspace = true }
