@@ -58,6 +58,7 @@ pub fn ShellSidebar(
 
             // Navigation sections
             div {
+                class: "fsn-scrollable",
                 style: "flex: 1; overflow-y: auto; padding: 8px 0;",
                 for section in &sections {
                     SidebarSectionGroup {

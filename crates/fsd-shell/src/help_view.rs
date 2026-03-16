@@ -110,7 +110,7 @@ fn TopicsView() -> Element {
                 }
             }
             div {
-                style: "flex: 1; overflow-y: auto; padding: 0 24px 16px;",
+                class: "fsn-scrollable", style: "flex: 1; overflow-y: auto; padding: 0 24px 16px;",
                 if filtered.is_empty() {
                     p { style: "color: var(--fsn-color-text-muted); font-size: 14px;",
                         "No topics found."
@@ -139,7 +139,7 @@ fn ShortcutsReference() -> Element {
 
     rsx! {
         div {
-            style: "overflow-y: auto; padding: 16px 24px; height: 100%;",
+            class: "fsn-scrollable", style: "overflow-y: auto; padding: 16px 24px; height: 100%;",
             p {
                 style: "font-size: 12px; color: var(--fsn-text-muted); margin-bottom: 16px;",
                 "Shortcuts can be customized in Settings → Shortcuts."

@@ -163,6 +163,7 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
 
                 // ── App groups (current page) ──────────────────────────────
                 div {
+                    class: "fsn-scrollable",
                     style: "flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; \
                             padding-bottom: 8px;",
                     if filtered.is_empty() {

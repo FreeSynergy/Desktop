@@ -536,7 +536,7 @@ pub fn LayoutB(props: LayoutBProps) -> Element {
                 {props.master}
             }
             div {
-                class: "fsd-layout-b__detail",
+                class: "fsd-layout-b__detail fsn-scrollable",
                 style: "flex: 1; overflow: auto;",
                 {props.children}
             }

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/fsd-db",
     "crates/fsd-shell",
     "crates/fsd-conductor",
     "crates/fsd-store",
@@ -24,6 +25,7 @@ repository = "https://github.com/FreeSynergy/Desktop"
 [workspace.dependencies]
 
 # Internal Desktop crates
+fsd-db        = { path = "crates/fsd-db" }
 fsd-shell     = { path = "crates/fsd-shell", default-features = false }
 fsd-conductor = { path = "crates/fsd-conductor" }
 fsd-store     = { path = "crates/fsd-store" }
@@ -65,6 +67,9 @@ tokio = { version = "1", features = ["full"] }
 # Error handling
 anyhow    = { version = "1" }
 thiserror = { version = "2" }
+
+# Database
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"], default-features = false }
 
 # HTTP
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }

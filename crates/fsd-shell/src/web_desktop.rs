@@ -101,7 +101,7 @@ pub fn WebDesktop(props: WebDesktopProps) -> Element {
 
             // ── Content area ───────────────────────────────────────────────
             div {
-                class: "fsd-web-desktop__content",
+                class: "fsd-web-desktop__content fsn-scrollable",
                 style: "flex: 1; overflow-y: auto; overflow-x: hidden; \
                         padding-bottom: 56px; /* leave room for taskbar */",
                 {props.children}

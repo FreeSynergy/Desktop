@@ -22,7 +22,7 @@ use crate::taskbar::{AppEntry, default_apps};
 use crate::wallpaper::Wallpaper;
 use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
 use crate::window::{Window, WindowId, WindowManager};
-use crate::window_frame::WindowFrame;
+use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
 
 /// Root desktop component.
 #[component]
@@ -36,7 +36,7 @@ pub fn Desktop() -> Element {
     let mut notif_history   = use_signal(NotificationHistory::default);
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
-    let mut theme: Signal<String> = use_context_provider(|| Signal::new("midnight-blue".to_string()));
+    let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db()));
 
     // ── Widget layer state ─────────────────────────────────────────────────
     let mut widget_layout   = use_signal(load_widget_layout);
@@ -53,11 +53,11 @@ pub fn Desktop() -> Element {
     // ── Theme + menu action handler ────────────────────────────────────────
     let menu_action_handler = move |id: String| {
         match id.as_str() {
-            "theme-midnight-blue" => theme.set("midnight-blue".to_string()),
-            "theme-cloud-white"   => theme.set("cloud-white".to_string()),
-            "theme-cupertino"     => theme.set("cupertino".to_string()),
-            "theme-nordic"        => theme.set("nordic".to_string()),
-            "theme-rose-pine"     => theme.set("rose-pine".to_string()),
+            "theme-midnight-blue" => { theme.set("midnight-blue".to_string()); crate::db::save_theme_to_db("midnight-blue".to_string()); }
+            "theme-cloud-white"   => { theme.set("cloud-white".to_string());   crate::db::save_theme_to_db("cloud-white".to_string()); }
+            "theme-cupertino"     => { theme.set("cupertino".to_string());     crate::db::save_theme_to_db("cupertino".to_string()); }
+            "theme-nordic"        => { theme.set("nordic".to_string());        crate::db::save_theme_to_db("nordic".to_string()); }
+            "theme-rose-pine"     => { theme.set("rose-pine".to_string());     crate::db::save_theme_to_db("rose-pine".to_string()); }
             "launcher"            => launcher.write().toggle(),
             "open-tasks"          => open_app(&mut wm, &mut apps, "tasks"),
             "open-bots"           => open_app(&mut wm, &mut apps, "bots"),
@@ -169,6 +169,7 @@ pub fn Desktop() -> Element {
 
     rsx! {
         style { "{GLOBAL_CSS}" }
+        style { "{FSNOBJ_CSS}" }
 
         div {
             id: "fsd-desktop",
@@ -235,6 +236,8 @@ pub fn Desktop() -> Element {
                 div {
                     id: "fsd-window-area",
                     style: "position: absolute; inset: 0; overflow: hidden;",
+
+                    // Render visible (non-minimized) windows
                     for window in wm.read().windows().iter().filter(|w| !w.minimized).cloned().collect::<Vec<_>>() {
                         WindowFrame {
                             key: "{window.id.0}",
@@ -244,6 +247,17 @@ pub fn Desktop() -> Element {
                             on_minimize: on_minimize_window,
                             on_maximize: on_maximize_window,
                             AppWindowContent { title_key: window.title_key.clone() }
+                        }
+                    }
+
+                    // Render minimized windows as icons on the desktop
+                    for (i, window) in wm.read().windows().iter().filter(|w| w.minimized).cloned().collect::<Vec<_>>().iter().enumerate() {
+                        MinimizedWindowIcon {
+                            key: "min-{window.id.0}",
+                            window: window.clone(),
+                            pos_x: 20.0 + (i as f64) * 90.0,
+                            pos_y: 20.0,
+                            on_restore: on_focus_window,
                         }
                     }
                 }

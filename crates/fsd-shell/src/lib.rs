@@ -1,6 +1,7 @@
 pub mod ai_view;
 pub mod app_shell;
 pub mod context_menu;
+pub mod db;
 pub mod spinner;
 pub mod widgets;
 pub mod desktop;

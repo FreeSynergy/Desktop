@@ -205,7 +205,7 @@ pub fn NotificationBell(
                         }
                     }
 
-                    div { style: "overflow-y: auto; flex: 1;",
+                    div { class: "fsn-scrollable", style: "overflow-y: auto; flex: 1;",
                         if entries.is_empty() {
                             div {
                                 style: "padding: 24px; text-align: center; \
