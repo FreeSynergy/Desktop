@@ -3,8 +3,166 @@
 ///
 /// - `ClockWidget` — analog/digital clock with second-accurate updates.
 /// - `SystemInfoWidget` — hostname, uptime, memory and disk at a glance.
+/// - `QuickNotesWidget` — simple in-memory textarea for quick notes.
+/// - `PlaceholderWidget` — "coming soon" card for unimplemented widgets.
+/// - `WidgetKind` — enum of all supported widget types.
+/// - `WidgetSlot` — a widget instance in a layout (id + kind).
+/// - `render_widget` — dispatches a `WidgetKind` to its component.
 use chrono::Local;
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
+
+// ── WidgetKind ─────────────────────────────────────────────────────────────
+
+/// All widget types that can appear on the home layer.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum WidgetKind {
+    Clock,
+    SystemInfo,
+    Messages,
+    MyTasks,
+    QuickNotes,
+    Weather,
+}
+
+impl WidgetKind {
+    /// Human-readable label shown in the widget picker.
+    pub fn label(&self) -> &'static str {
+        match self {
+            WidgetKind::Clock      => "Clock",
+            WidgetKind::SystemInfo => "System Info",
+            WidgetKind::Messages   => "Messages",
+            WidgetKind::MyTasks    => "My Tasks",
+            WidgetKind::QuickNotes => "Quick Notes",
+            WidgetKind::Weather    => "Weather",
+        }
+    }
+
+    /// Emoji icon used in the widget picker panel.
+    pub fn icon(&self) -> &'static str {
+        match self {
+            WidgetKind::Clock      => "🕐",
+            WidgetKind::SystemInfo => "🖥",
+            WidgetKind::Messages   => "📬",
+            WidgetKind::MyTasks    => "✅",
+            WidgetKind::QuickNotes => "📝",
+            WidgetKind::Weather    => "🌤",
+        }
+    }
+
+    /// All available widget kinds, in picker order.
+    pub fn all() -> Vec<WidgetKind> {
+        vec![
+            WidgetKind::Clock,
+            WidgetKind::SystemInfo,
+            WidgetKind::Messages,
+            WidgetKind::MyTasks,
+            WidgetKind::QuickNotes,
+            WidgetKind::Weather,
+        ]
+    }
+
+    /// TOML key used for persistence.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WidgetKind::Clock      => "Clock",
+            WidgetKind::SystemInfo => "SystemInfo",
+            WidgetKind::Messages   => "Messages",
+            WidgetKind::MyTasks    => "MyTasks",
+            WidgetKind::QuickNotes => "QuickNotes",
+            WidgetKind::Weather    => "Weather",
+        }
+    }
+
+    /// Parse from TOML key string.
+    pub fn from_str(s: &str) -> Option<WidgetKind> {
+        match s {
+            "Clock"      => Some(WidgetKind::Clock),
+            "SystemInfo" => Some(WidgetKind::SystemInfo),
+            "Messages"   => Some(WidgetKind::Messages),
+            "MyTasks"    => Some(WidgetKind::MyTasks),
+            "QuickNotes" => Some(WidgetKind::QuickNotes),
+            "Weather"    => Some(WidgetKind::Weather),
+            _            => None,
+        }
+    }
+}
+
+// ── WidgetSlot ─────────────────────────────────────────────────────────────
+
+/// A widget instance placed in the home layer layout.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WidgetSlot {
+    /// Unique ID within this layout session.
+    pub id: u32,
+    /// Which widget to render.
+    pub kind: WidgetKind,
+}
+
+// ── Layout persistence ─────────────────────────────────────────────────────
+
+/// Path to the widget layout config file.
+fn layout_path() -> std::path::PathBuf {
+    let base = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+    std::path::PathBuf::from(base).join(".config/fsn/widget_layout.toml")
+}
+
+/// Load widget layout from `~/.config/fsn/widget_layout.toml`.
+/// Falls back to `[Clock, SystemInfo]` on any error.
+pub fn load_widget_layout() -> Vec<WidgetSlot> {
+    let path = layout_path();
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            if let Some(toml::Value::Array(arr)) = table.get("widgets") {
+                let slots: Vec<WidgetSlot> = arr
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, v)| {
+                        v.as_str()
+                            .and_then(WidgetKind::from_str)
+                            .map(|kind| WidgetSlot { id: i as u32, kind })
+                    })
+                    .collect();
+                if !slots.is_empty() {
+                    return slots;
+                }
+            }
+        }
+    }
+    // Default layout
+    vec![
+        WidgetSlot { id: 0, kind: WidgetKind::Clock },
+        WidgetSlot { id: 1, kind: WidgetKind::SystemInfo },
+    ]
+}
+
+/// Persist the current widget layout to `~/.config/fsn/widget_layout.toml`.
+pub fn save_widget_layout(slots: &[WidgetSlot]) {
+    let path = layout_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let list: Vec<toml::Value> = slots
+        .iter()
+        .map(|s| toml::Value::String(s.kind.as_str().to_string()))
+        .collect();
+    let mut table = toml::Table::new();
+    table.insert("widgets".to_string(), toml::Value::Array(list));
+    let content = toml::to_string(&table).unwrap_or_default();
+    let _ = std::fs::write(&path, content);
+}
+
+// ── render_widget dispatch ─────────────────────────────────────────────────
+
+/// Dispatches a `WidgetKind` to its concrete Dioxus component.
+pub fn render_widget(kind: &WidgetKind) -> Element {
+    match kind {
+        WidgetKind::Clock      => rsx! { ClockWidget {} },
+        WidgetKind::SystemInfo => rsx! { SystemInfoWidget {} },
+        WidgetKind::QuickNotes => rsx! { QuickNotesWidget {} },
+        other => rsx! { PlaceholderWidget { kind: other.clone() } },
+    }
+}
 
 // ── ClockWidget ───────────────────────────────────────────────────────────────
 
@@ -121,6 +279,84 @@ fn SysRow(icon: String, label: String, value: String) -> Element {
                 style: "color: var(--fsn-color-text-primary); font-weight: 500; \
                         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
                 if value.is_empty() { "—" } else { "{value}" }
+            }
+        }
+    }
+}
+
+// ── QuickNotesWidget ──────────────────────────────────────────────────────────
+
+/// A simple in-memory text area for quick notes.
+///
+/// No persistence — notes are cleared on restart. Use the clipboard.
+#[component]
+pub fn QuickNotesWidget() -> Element {
+    let mut text = use_signal(|| String::new());
+
+    rsx! {
+        div {
+            class: "fsn-widget fsn-widget--notes",
+            style: "background: var(--fsn-color-bg-surface); \
+                    border: 1px solid var(--fsn-color-border-default); \
+                    border-radius: var(--fsn-radius-lg); \
+                    padding: 16px 20px; \
+                    display: flex; flex-direction: column; gap: 10px; \
+                    min-width: 240px; width: 280px;",
+
+            div {
+                style: "font-size: 12px; font-weight: 600; text-transform: uppercase; \
+                        letter-spacing: 0.08em; color: var(--fsn-color-text-muted); \
+                        border-bottom: 1px solid var(--fsn-color-border-default); \
+                        padding-bottom: 8px;",
+                "Quick Notes"
+            }
+
+            textarea {
+                style: "background: var(--fsn-color-bg-base, #0f172a); \
+                        color: var(--fsn-color-text-primary); \
+                        border: 1px solid var(--fsn-color-border-default); \
+                        border-radius: 6px; \
+                        padding: 8px 10px; \
+                        font-size: 13px; font-family: inherit; \
+                        resize: none; \
+                        height: 120px; width: 100%; \
+                        outline: none; box-sizing: border-box;",
+                placeholder: "Type your notes here…",
+                value: "{text}",
+                oninput: move |e| text.set(e.value()),
+            }
+        }
+    }
+}
+
+// ── PlaceholderWidget ─────────────────────────────────────────────────────────
+
+/// Shows a "coming soon" card for widget kinds not yet implemented.
+#[component]
+pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
+    let label = kind.label();
+    let icon  = kind.icon();
+
+    rsx! {
+        div {
+            class: "fsn-widget fsn-widget--placeholder",
+            style: "background: var(--fsn-color-bg-surface); \
+                    border: 1px solid var(--fsn-color-border-default); \
+                    border-radius: var(--fsn-radius-lg); \
+                    padding: 20px 24px; \
+                    display: flex; flex-direction: column; align-items: center; \
+                    justify-content: center; gap: 8px; \
+                    min-width: 180px; opacity: 0.7;",
+
+            span { style: "font-size: 28px;", "{icon}" }
+            span {
+                style: "font-size: 13px; font-weight: 600; \
+                        color: var(--fsn-color-text-primary);",
+                "{label}"
+            }
+            span {
+                style: "font-size: 11px; color: var(--fsn-color-text-muted);",
+                "coming soon"
             }
         }
     }

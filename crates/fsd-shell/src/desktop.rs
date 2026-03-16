@@ -17,6 +17,7 @@ use crate::notification::{NotificationManager, NotificationStack};
 use crate::sidebar::{ShellSidebar, SidebarSection, default_sidebar_sections};
 use crate::taskbar::{AppEntry, default_apps};
 use crate::wallpaper::Wallpaper;
+use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
 use crate::window::{Window, WindowId, WindowManager};
 use crate::window_frame::WindowFrame;
 
@@ -30,6 +31,12 @@ pub fn Desktop() -> Element {
     let mut notifs          = use_signal(NotificationManager::default);
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
     let mut theme: Signal<String> = use_context_provider(|| Signal::new("midnight-blue".to_string()));
+
+    // ── Widget layer state ─────────────────────────────────────────────────
+    let mut widget_layout   = use_signal(load_widget_layout);
+    let mut edit_mode       = use_signal(|| false);
+    let mut next_widget_id  = use_signal(|| 100u32);
+    let mut picker_open     = use_signal(|| false);
 
     // Sidebar auto-hide: visible = shown (translateX(0)), hidden = off-screen (translateX(-240px))
     let mut sidebar_visible  = use_signal(|| true);
@@ -100,12 +107,41 @@ pub fn Desktop() -> Element {
     // ── Notification dismiss ────────────────────────────────────────────────
     let on_dismiss_notif = move |id: u64| { notifs.write().dismiss(id); };
 
+    // ── Widget edit mode callbacks ──────────────────────────────────────────
+
+    // Enter edit mode.
+    let on_edit_desktop = move |_: MouseEvent| {
+        edit_mode.set(true);
+        picker_open.set(false);
+    };
+
+    // Exit edit mode and persist the current layout.
+    let on_done_editing = move |_: MouseEvent| {
+        edit_mode.set(false);
+        picker_open.set(false);
+        save_widget_layout(&widget_layout.read());
+    };
+
+    // Clear all widgets.
+    let on_clear_all = move |_: MouseEvent| {
+        widget_layout.write().clear();
+        picker_open.set(false);
+    };
+
+    // Toggle the widget picker panel.
+    let on_toggle_picker = move |_: MouseEvent| {
+        let open = *picker_open.read();
+        picker_open.set(!open);
+    };
+
     // ── Derived state ───────────────────────────────────────────────────────
     let launcher_state = launcher.read().clone();
     let notif_items    = notifs.read().items().to_vec();
     let app_list       = apps.read().clone();
     let visible        = *sidebar_visible.read();
     let sidebar_transform = if visible { "translateX(0)" } else { "translateX(-240px)" };
+    let in_edit_mode   = *edit_mode.read();
+    let is_picker_open = *picker_open.read();
 
     let active_app_id = wm.read()
         .windows()
@@ -159,11 +195,31 @@ pub fn Desktop() -> Element {
                 }
             }
 
-            // ── Content area (sidebar overlay + window area) ────────────────
+            // ── Content area (home layer + window area + sidebar) ───────────
             div {
                 style: "flex: 1; position: relative; overflow: hidden;",
 
-                // Window area (full size — sidebar overlays on top)
+                // ── Home layer — widgets sit on the desktop background ──────
+                div {
+                    id: "fsd-home-layer",
+                    style: "position: absolute; inset: 0; padding: 24px; \
+                            display: flex; flex-wrap: wrap; \
+                            gap: 16px; align-items: flex-start; align-content: flex-start; \
+                            overflow: hidden; pointer-events: none;",
+
+                    for slot in widget_layout.read().clone().into_iter() {
+                        HomeWidgetCard {
+                            key: "{slot.id}",
+                            slot: slot.clone(),
+                            edit_mode: in_edit_mode,
+                            on_remove: move |id: u32| {
+                                widget_layout.write().retain(|s| s.id != id);
+                            },
+                        }
+                    }
+                }
+
+                // ── Window area (full size — sidebar overlays on top) ───────
                 div {
                     id: "fsd-window-area",
                     style: "position: absolute; inset: 0; overflow: hidden;",
@@ -180,7 +236,7 @@ pub fn Desktop() -> Element {
                     }
                 }
 
-                // Sidebar — absolute overlay with auto-hide animation
+                // ── Sidebar — absolute overlay with auto-hide animation ──────
                 div {
                     style: "position: absolute; top: 0; left: 0; height: 100%; z-index: 50; \
                             width: 240px; \
@@ -220,7 +276,182 @@ pub fn Desktop() -> Element {
                     notifications: notif_items,
                     on_dismiss: on_dismiss_notif,
                 }
+
+                // ── Edit Desktop button (bottom-right, outside edit mode) ────
+                if !in_edit_mode {
+                    div {
+                        style: "position: absolute; bottom: 16px; right: 16px; z-index: 60;",
+                        button {
+                            onclick: on_edit_desktop,
+                            style: "background: var(--fsn-color-bg-surface); \
+                                    border: 1px solid var(--fsn-color-border-default); \
+                                    border-radius: 8px; \
+                                    padding: 6px 14px; \
+                                    font-size: 12px; font-family: inherit; \
+                                    color: var(--fsn-color-text-muted); \
+                                    cursor: pointer; opacity: 0.75; \
+                                    transition: opacity 150ms;",
+                            "✏ Edit Desktop"
+                        }
+                    }
+                }
+
+                // ── Edit Mode toolbar (bottom bar) ───────────────────────────
+                if in_edit_mode {
+                    div {
+                        id: "fsd-edit-toolbar",
+                        style: "position: absolute; bottom: 0; left: 0; right: 0; z-index: 60; \
+                                background: var(--fsn-color-bg-surface); \
+                                border-top: 1px solid var(--fsn-color-border-default); \
+                                padding: 10px 20px; \
+                                display: flex; align-items: center; gap: 10px;",
+
+                        // "+ Add Widget" with picker panel
+                        div { style: "position: relative;",
+                            button {
+                                onclick: on_toggle_picker,
+                                style: "background: var(--fsn-color-primary, #06b6d4); \
+                                        color: #fff; \
+                                        border: none; border-radius: 6px; \
+                                        padding: 7px 14px; \
+                                        font-size: 13px; font-family: inherit; \
+                                        cursor: pointer;",
+                                if is_picker_open { "▲ Add Widget" } else { "▼ Add Widget" }
+                            }
+
+                            // Widget picker panel (floats above toolbar)
+                            if is_picker_open {
+                                div {
+                                    id: "fsd-widget-picker",
+                                    style: "position: absolute; bottom: calc(100% + 8px); left: 0; \
+                                            background: var(--fsn-color-bg-surface); \
+                                            border: 1px solid var(--fsn-color-border-default); \
+                                            border-radius: 10px; \
+                                            padding: 6px 0; \
+                                            min-width: 220px; \
+                                            z-index: 70; \
+                                            box-shadow: 0 8px 24px rgba(0,0,0,0.4);",
+
+                                    for kind in WidgetKind::all() {
+                                        WidgetPickerRow {
+                                            kind: kind.clone(),
+                                            on_add: move |k: WidgetKind| {
+                                                let id = *next_widget_id.read();
+                                                next_widget_id.set(id + 1);
+                                                widget_layout.write().push(WidgetSlot { id, kind: k });
+                                                picker_open.set(false);
+                                            },
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // "Clear All" button
+                        button {
+                            onclick: on_clear_all,
+                            style: "background: transparent; \
+                                    border: 1px solid var(--fsn-color-border-default); \
+                                    border-radius: 6px; \
+                                    padding: 7px 14px; \
+                                    font-size: 13px; font-family: inherit; \
+                                    color: var(--fsn-color-text-muted); \
+                                    cursor: pointer;",
+                            "Clear All"
+                        }
+
+                        // Spacer
+                        div { style: "flex: 1;" }
+
+                        // "Done" button
+                        button {
+                            onclick: on_done_editing,
+                            style: "background: var(--fsn-color-primary, #06b6d4); \
+                                    color: #fff; \
+                                    border: none; border-radius: 6px; \
+                                    padding: 7px 18px; \
+                                    font-size: 13px; font-family: inherit; \
+                                    font-weight: 600; \
+                                    cursor: pointer;",
+                            "✓ Done"
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+// ── HomeWidgetCard ────────────────────────────────────────────────────────────
+
+/// Wraps a widget in a card shell. In edit mode shows a remove button and
+/// a "move" cursor as a drag hint.
+#[component]
+fn HomeWidgetCard(
+    slot: WidgetSlot,
+    edit_mode: bool,
+    on_remove: EventHandler<u32>,
+) -> Element {
+    let id    = slot.id;
+    let kind  = slot.kind.clone();
+
+    let card_style = if edit_mode {
+        "position: relative; pointer-events: all; cursor: move;"
+    } else {
+        "position: relative; pointer-events: all;"
+    };
+
+    rsx! {
+        div {
+            style: "{card_style}",
+
+            // The actual widget
+            { render_widget(&kind) }
+
+            // Remove button — only visible in edit mode
+            if edit_mode {
+                button {
+                    onclick: move |_| on_remove.call(id),
+                    style: "position: absolute; top: 6px; right: 6px; \
+                            width: 22px; height: 22px; \
+                            background: rgba(239, 68, 68, 0.85); \
+                            color: #fff; \
+                            border: none; border-radius: 50%; \
+                            font-size: 13px; line-height: 1; \
+                            display: flex; align-items: center; justify-content: center; \
+                            cursor: pointer; z-index: 10; \
+                            padding: 0;",
+                    "✕"
+                }
+            }
+        }
+    }
+}
+
+// ── WidgetPickerRow ───────────────────────────────────────────────────────────
+
+/// A single row in the widget picker panel.
+#[component]
+fn WidgetPickerRow(kind: WidgetKind, on_add: EventHandler<WidgetKind>) -> Element {
+    let icon  = kind.icon();
+    let label = kind.label();
+    let k     = kind.clone();
+
+    rsx! {
+        div {
+            onclick: move |_| on_add.call(k.clone()),
+            style: "display: flex; align-items: center; gap: 12px; \
+                    padding: 9px 16px; \
+                    cursor: pointer; \
+                    font-size: 13px; \
+                    color: var(--fsn-color-text-primary); \
+                    transition: background 100ms;",
+            onmouseenter: |e: MouseEvent| {
+                // Simple hover via JS-less approach — opacity handled by CSS on hover
+                let _ = e;
+            },
+            span { style: "font-size: 18px; min-width: 24px; text-align: center;", "{icon}" }
+            span { "{label}" }
         }
     }
 }
