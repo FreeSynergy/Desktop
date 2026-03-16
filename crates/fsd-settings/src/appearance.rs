@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 /// `Desktop`. Falls back to a local signal when running standalone.
 #[component]
 pub fn AppearanceSettings() -> Element {
-    let theme_ctx: Option<Signal<String>> = use_context();
+    let theme_ctx: Option<Signal<String>> = try_use_context();
     let mut local_theme = use_signal(|| "midnight-blue".to_string());
 
     let mut wallpaper_url = use_signal(String::new);
