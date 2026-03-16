@@ -211,10 +211,7 @@ pub fn Desktop() -> Element {
                 // ── Home layer — widgets sit on the desktop background ──────
                 div {
                     id: "fsd-home-layer",
-                    style: "position: absolute; inset: 0; padding: 24px; \
-                            display: flex; flex-wrap: wrap; \
-                            gap: 16px; align-items: flex-start; align-content: flex-start; \
-                            overflow: hidden; pointer-events: none;",
+                    style: "position: absolute; inset: 0; overflow: hidden; pointer-events: none;",
 
                     for slot in widget_layout.read().clone().into_iter() {
                         HomeWidgetCard {
@@ -223,6 +220,11 @@ pub fn Desktop() -> Element {
                             edit_mode: in_edit_mode,
                             on_remove: move |id: u32| {
                                 widget_layout.write().retain(|s| s.id != id);
+                            },
+                            on_update: move |updated: WidgetSlot| {
+                                if let Some(s) = widget_layout.write().iter_mut().find(|s| s.id == updated.id) {
+                                    *s = updated;
+                                }
                             },
                         }
                     }
@@ -352,6 +354,8 @@ pub fn Desktop() -> Element {
                                             border-radius: 10px; \
                                             padding: 6px 0; \
                                             min-width: 220px; \
+                                            max-height: 320px; \
+                                            overflow-y: auto; \
                                             z-index: 70; \
                                             box-shadow: 0 8px 24px rgba(0,0,0,0.4);",
 
@@ -361,7 +365,11 @@ pub fn Desktop() -> Element {
                                             on_add: move |k: WidgetKind| {
                                                 let id = *next_widget_id.read();
                                                 next_widget_id.set(id + 1);
-                                                widget_layout.write().push(WidgetSlot { id, kind: k });
+                                                let (w, h) = k.default_size();
+                                                let count = widget_layout.read().len();
+                                                let x = 24.0 + (count as f64 % 3.0) * (w + 16.0);
+                                                let y = 24.0 + (count as f64 / 3.0).floor() * (h + 16.0);
+                                                widget_layout.write().push(WidgetSlot { id, kind: k, x, y, w, h });
                                                 picker_open.set(false);
                                             },
                                         }
@@ -407,45 +415,154 @@ pub fn Desktop() -> Element {
 
 // ── HomeWidgetCard ────────────────────────────────────────────────────────────
 
-/// Wraps a widget in a card shell. In edit mode shows a remove button and
-/// a "move" cursor as a drag hint.
+/// Wraps a widget in a card shell with drag and resize support in edit mode.
 #[component]
 fn HomeWidgetCard(
     slot: WidgetSlot,
     edit_mode: bool,
     on_remove: EventHandler<u32>,
+    on_update: EventHandler<WidgetSlot>,
 ) -> Element {
-    let id    = slot.id;
-    let kind  = slot.kind.clone();
+    let id   = slot.id;
+    let kind = slot.kind.clone();
 
-    let card_style = if edit_mode {
-        "position: relative; pointer-events: all; cursor: move;"
-    } else {
-        "position: relative; pointer-events: all;"
-    };
+    // Local position / size — initialised from slot on mount, updated on drag/resize
+    let mut pos_x  = use_signal(|| slot.x);
+    let mut pos_y  = use_signal(|| slot.y);
+    let mut width  = use_signal(|| slot.w);
+    let mut height = use_signal(|| slot.h);
+
+    // Drag state
+    let mut dragging = use_signal(|| false);
+    let mut drag_ox  = use_signal(|| 0.0f64);
+    let mut drag_oy  = use_signal(|| 0.0f64);
+
+    // Resize state
+    let mut resizing  = use_signal(|| false);
+    let mut resize_sx = use_signal(|| 0.0f64);
+    let mut resize_sy = use_signal(|| 0.0f64);
+    let mut resize_sw = use_signal(|| 0.0f64);
+    let mut resize_sh = use_signal(|| 0.0f64);
+
+    let x = *pos_x.read();
+    let y = *pos_y.read();
+    let w = *width.read();
+    let is_dragging  = *dragging.read();
+    let is_resizing  = *resizing.read();
+
+    // Clones for closures
+    let kind_render   = kind.clone();
+    let kind_label    = kind.label();
+    let kind_drag_up  = kind.clone();
+    let kind_resize_up = kind.clone();
+
+    let card_style = format!(
+        "position: absolute; left: {x}px; top: {y}px; width: {w}px; \
+         pointer-events: all; user-select: none;"
+    );
 
     rsx! {
-        div {
-            style: "{card_style}",
+        div { style: "{card_style}",
 
-            // The actual widget
-            { render_widget(&kind) }
-
-            // Remove button — only visible in edit mode
+            // Drag handle — only in edit mode
             if edit_mode {
-                button {
-                    onclick: move |_| on_remove.call(id),
-                    style: "position: absolute; top: 6px; right: 6px; \
-                            width: 22px; height: 22px; \
-                            background: rgba(239, 68, 68, 0.85); \
-                            color: #fff; \
-                            border: none; border-radius: 50%; \
-                            font-size: 13px; line-height: 1; \
-                            display: flex; align-items: center; justify-content: center; \
-                            cursor: pointer; z-index: 10; \
-                            padding: 0;",
-                    "✕"
+                div {
+                    style: "height: 26px; \
+                            background: var(--fsn-color-bg-elevated, #1e2d45); \
+                            border-radius: 8px 8px 0 0; \
+                            display: flex; align-items: center; \
+                            padding: 0 8px; gap: 6px; \
+                            cursor: grab; border-bottom: 1px solid var(--fsn-color-border-default);",
+                    onmousedown: move |e: MouseEvent| {
+                        let coords = e.client_coordinates();
+                        drag_ox.set(coords.x - *pos_x.read());
+                        drag_oy.set(coords.y - *pos_y.read());
+                        dragging.set(true);
+                    },
+                    span {
+                        style: "font-size: 11px; color: var(--fsn-color-text-muted); \
+                                flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+                        "⠿ {kind_label}"
+                    }
+                    button {
+                        style: "width: 18px; height: 18px; flex-shrink: 0; \
+                                background: rgba(239,68,68,0.85); color: #fff; \
+                                border: none; border-radius: 50%; font-size: 11px; line-height: 1; \
+                                display: flex; align-items: center; justify-content: center; \
+                                cursor: pointer; padding: 0;",
+                        onmousedown: move |e: MouseEvent| e.stop_propagation(),
+                        onclick:     move |_| on_remove.call(id),
+                        "✕"
+                    }
                 }
+            }
+
+            // Widget content
+            { render_widget(&kind_render) }
+
+            // Resize handle (bottom-right corner) — only in edit mode
+            if edit_mode {
+                div {
+                    style: "position: absolute; bottom: 0; right: 0; \
+                            width: 20px; height: 20px; cursor: nwse-resize; \
+                            display: flex; align-items: center; justify-content: center; \
+                            font-size: 11px; color: var(--fsn-color-text-muted); \
+                            opacity: 0.7;",
+                    onmousedown: move |e: MouseEvent| {
+                        e.stop_propagation();
+                        let coords = e.client_coordinates();
+                        resize_sx.set(coords.x);
+                        resize_sy.set(coords.y);
+                        resize_sw.set(*width.read());
+                        resize_sh.set(*height.read());
+                        resizing.set(true);
+                    },
+                    "◢"
+                }
+            }
+        }
+
+        // Full-screen overlay that captures mouse events while dragging
+        if is_dragging {
+            div {
+                style: "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; \
+                        z-index: 9999; cursor: grabbing;",
+                onmousemove: move |e: MouseEvent| {
+                    let coords = e.client_coordinates();
+                    pos_x.set(coords.x - *drag_ox.read());
+                    pos_y.set(coords.y - *drag_oy.read());
+                },
+                onmouseup: move |_| {
+                    dragging.set(false);
+                    on_update.call(WidgetSlot {
+                        id, kind: kind_drag_up.clone(),
+                        x: *pos_x.read(), y: *pos_y.read(),
+                        w: *width.read(),  h: *height.read(),
+                    });
+                },
+            }
+        }
+
+        // Full-screen overlay that captures mouse events while resizing
+        if is_resizing {
+            div {
+                style: "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; \
+                        z-index: 9999; cursor: nwse-resize;",
+                onmousemove: move |e: MouseEvent| {
+                    let coords = e.client_coordinates();
+                    let dx = coords.x - *resize_sx.read();
+                    let dy = coords.y - *resize_sy.read();
+                    width.set((*resize_sw.read() + dx).max(150.0));
+                    height.set((*resize_sh.read() + dy).max(80.0));
+                },
+                onmouseup: move |_| {
+                    resizing.set(false);
+                    on_update.call(WidgetSlot {
+                        id, kind: kind_resize_up.clone(),
+                        x: *pos_x.read(), y: *pos_y.read(),
+                        w: *width.read(),  h: *height.read(),
+                    });
+                },
             }
         }
     }

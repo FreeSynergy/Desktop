@@ -38,6 +38,18 @@ impl WidgetKind {
         }
     }
 
+    /// Default (width, height) in pixels for a newly placed widget.
+    pub fn default_size(&self) -> (f64, f64) {
+        match self {
+            WidgetKind::Clock      => (220.0, 140.0),
+            WidgetKind::SystemInfo => (280.0, 190.0),
+            WidgetKind::QuickNotes => (300.0, 230.0),
+            WidgetKind::Messages   => (320.0, 220.0),
+            WidgetKind::MyTasks    => (320.0, 220.0),
+            WidgetKind::Weather    => (260.0, 160.0),
+        }
+    }
+
     /// Emoji icon used in the widget picker panel.
     pub fn icon(&self) -> &'static str {
         match self {
@@ -97,9 +109,27 @@ pub struct WidgetSlot {
     pub id: u32,
     /// Which widget to render.
     pub kind: WidgetKind,
+    /// X position on the desktop (pixels from left edge).
+    #[serde(default)]
+    pub x: f64,
+    /// Y position on the desktop (pixels from top edge).
+    #[serde(default)]
+    pub y: f64,
+    /// Width of the widget card in pixels.
+    #[serde(default)]
+    pub w: f64,
+    /// Height of the widget card in pixels.
+    #[serde(default)]
+    pub h: f64,
 }
 
 // ── Layout persistence ─────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Default)]
+struct WidgetLayoutFile {
+    #[serde(default)]
+    widgets: Vec<WidgetSlot>,
+}
 
 /// Path to the widget layout config file.
 fn layout_path() -> std::path::PathBuf {
@@ -107,20 +137,69 @@ fn layout_path() -> std::path::PathBuf {
     std::path::PathBuf::from(base).join(".config/fsn/widget_layout.toml")
 }
 
+/// Default positions for the first few widgets: two columns, 24px margin, 16px gap.
+fn default_layout() -> Vec<WidgetSlot> {
+    let kinds = [WidgetKind::Clock, WidgetKind::SystemInfo];
+    kinds.iter().enumerate().map(|(i, kind)| {
+        let (w, h) = kind.default_size();
+        let col_w = 296.0; // max widget width + gap
+        WidgetSlot {
+            id: i as u32,
+            kind: kind.clone(),
+            x: 24.0 + (i as f64) * (col_w),
+            y: 24.0,
+            w,
+            h,
+        }
+    }).collect()
+}
+
 /// Load widget layout from `~/.config/fsn/widget_layout.toml`.
-/// Falls back to `[Clock, SystemInfo]` on any error.
+/// Supports the new format (array of full WidgetSlot objects) and
+/// the legacy format (array of kind strings) for backwards compatibility.
+/// Falls back to a default layout on any error.
 pub fn load_widget_layout() -> Vec<WidgetSlot> {
     let path = layout_path();
     if let Ok(content) = std::fs::read_to_string(&path) {
+        // Try new format first (array of objects with kind, x, y, w, h)
+        if let Ok(layout) = toml::from_str::<WidgetLayoutFile>(&content) {
+            let mut slots = layout.widgets;
+            // Fix up slots that have default (zero) positions — legacy migration
+            let col_w = 296.0;
+            for (i, slot) in slots.iter_mut().enumerate() {
+                if slot.w == 0.0 {
+                    let (w, h) = slot.kind.default_size();
+                    slot.w = w;
+                    slot.h = h;
+                }
+                if slot.x == 0.0 && slot.y == 0.0 && i > 0 {
+                    slot.x = 24.0 + (i as f64) * col_w;
+                    slot.y = 24.0;
+                }
+            }
+            if !slots.is_empty() {
+                return slots;
+            }
+        }
+        // Legacy format: widgets = ["Clock", "SystemInfo"]
         if let Ok(table) = content.parse::<toml::Table>() {
             if let Some(toml::Value::Array(arr)) = table.get("widgets") {
+                let col_w = 296.0;
                 let slots: Vec<WidgetSlot> = arr
                     .iter()
                     .enumerate()
                     .filter_map(|(i, v)| {
-                        v.as_str()
-                            .and_then(WidgetKind::from_str)
-                            .map(|kind| WidgetSlot { id: i as u32, kind })
+                        v.as_str().and_then(WidgetKind::from_str).map(|kind| {
+                            let (w, h) = kind.default_size();
+                            WidgetSlot {
+                                id: i as u32,
+                                kind,
+                                x: 24.0 + (i as f64) * col_w,
+                                y: 24.0,
+                                w,
+                                h,
+                            }
+                        })
                     })
                     .collect();
                 if !slots.is_empty() {
@@ -129,11 +208,7 @@ pub fn load_widget_layout() -> Vec<WidgetSlot> {
             }
         }
     }
-    // Default layout
-    vec![
-        WidgetSlot { id: 0, kind: WidgetKind::Clock },
-        WidgetSlot { id: 1, kind: WidgetKind::SystemInfo },
-    ]
+    default_layout()
 }
 
 /// Persist the current widget layout to `~/.config/fsn/widget_layout.toml`.
@@ -142,14 +217,10 @@ pub fn save_widget_layout(slots: &[WidgetSlot]) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let list: Vec<toml::Value> = slots
-        .iter()
-        .map(|s| toml::Value::String(s.kind.as_str().to_string()))
-        .collect();
-    let mut table = toml::Table::new();
-    table.insert("widgets".to_string(), toml::Value::Array(list));
-    let content = toml::to_string(&table).unwrap_or_default();
-    let _ = std::fs::write(&path, content);
+    let layout = WidgetLayoutFile { widgets: slots.to_vec() };
+    if let Ok(content) = toml::to_string(&layout) {
+        let _ = std::fs::write(&path, content);
+    }
 }
 
 // ── render_widget dispatch ─────────────────────────────────────────────────
