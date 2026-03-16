@@ -2,18 +2,21 @@
 use std::time::Duration;
 use dioxus::prelude::*;
 
+use fsd_bots::BotManagerApp;
 use fsd_conductor::ConductorApp;
 use fsd_profile::ProfileApp;
 use fsd_settings::SettingsApp;
 use fsd_store::StoreApp;
 use fsd_studio::StudioApp;
+use fsd_tasks::TasksApp;
 
 use crate::ai_view::AiApp;
 use crate::app_shell::{AppMode, AppShell, GLOBAL_CSS, LayoutA, LayoutC};
+use crate::context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
 use crate::help_view::HelpApp;
 use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
-use crate::notification::{NotificationManager, NotificationStack};
+use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
 use crate::sidebar::{ShellSidebar, SidebarSection, default_sidebar_sections};
 use crate::taskbar::{AppEntry, default_apps};
 use crate::wallpaper::Wallpaper;
@@ -29,6 +32,8 @@ pub fn Desktop() -> Element {
     let mut apps            = use_signal(default_apps);
     let mut launcher        = use_signal(LauncherState::default);
     let mut notifs          = use_signal(NotificationManager::default);
+    let mut notif_history   = use_signal(NotificationHistory::default);
+    let mut ctx_menu        = use_signal(|| ContextMenuState::default());
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
     let mut theme: Signal<String> = use_context_provider(|| Signal::new("midnight-blue".to_string()));
 
@@ -53,6 +58,8 @@ pub fn Desktop() -> Element {
             "theme-nordic"        => theme.set("nordic".to_string()),
             "theme-rose-pine"     => theme.set("rose-pine".to_string()),
             "launcher"            => launcher.write().toggle(),
+            "open-tasks"          => open_app(&mut wm, &mut apps, "tasks"),
+            "open-bots"           => open_app(&mut wm, &mut apps, "bots"),
             _ => {}
         }
     };
@@ -159,6 +166,8 @@ pub fn Desktop() -> Element {
         .map(|w| {
             let label = w.title_key.trim_start_matches("app-");
             let label = match label {
+                "tasks"     => "Tasks",
+                "bots"      => "Bots",
                 "conductor" => "Conductor",
                 "store"     => "Store",
                 "studio"    => "Studio",
@@ -192,12 +201,27 @@ pub fn Desktop() -> Element {
                     user_name: "Admin".to_string(),
                     user_avatar: None,
                     on_menu_action: Some(EventHandler::new(menu_action_handler)),
+                    history: notif_history.read().clone(),
+                    on_mark_read: Some(EventHandler::new(move |_| notif_history.write().mark_all_read())),
                 }
             }
 
             // ── Content area (home layer + window area + sidebar) ───────────
             div {
                 style: "flex: 1; position: relative; overflow: hidden;",
+                oncontextmenu: move |e: MouseEvent| {
+                    e.prevent_default();
+                    let coords = e.client_coordinates();
+                    ctx_menu.set(ContextMenuState::open_at(
+                        coords.x,
+                        coords.y,
+                        vec![
+                            ContextMenuItem::new("edit-desktop", "Edit Desktop").with_icon("✏"),
+                            ContextMenuItem::new("add-widget",   "Add Widget").with_icon("＋"),
+                            ContextMenuItem::new("settings",     "Settings").with_icon("⚙"),
+                        ],
+                    ));
+                },
 
                 // ── Home layer — widgets sit on the desktop background ──────
                 div {
@@ -275,6 +299,20 @@ pub fn Desktop() -> Element {
                 NotificationStack {
                     notifications: notif_items,
                     on_dismiss: on_dismiss_notif,
+                }
+
+                // Context menu
+                ContextMenu {
+                    state: ctx_menu.read().clone(),
+                    on_action: move |id: String| {
+                        match id.as_str() {
+                            "edit-desktop" => edit_mode.set(true),
+                            "settings"     => open_app(&mut wm, &mut apps, "settings"),
+                            _ => {}
+                        }
+                        ctx_menu.set(ContextMenuState::default());
+                    },
+                    on_close: move |_| ctx_menu.set(ContextMenuState::default()),
                 }
 
                 // ── Edit Desktop button (bottom-right, outside edit mode) ────
@@ -485,6 +523,16 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
 #[component]
 fn AppWindowContent(title_key: String) -> Element {
     match title_key.as_str() {
+        "app-tasks" => rsx! {
+            AppShell { mode: AppMode::Window,
+                LayoutA { TasksApp {} }
+            }
+        },
+        "app-bots" => rsx! {
+            AppShell { mode: AppMode::Window,
+                BotManagerApp {}
+            }
+        },
         "app-conductor" => rsx! {
             AppShell { mode: AppMode::Window,
                 ConductorApp {}

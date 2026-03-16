@@ -22,6 +22,8 @@ pub fn default_sidebar_sections() -> Vec<SidebarSection> {
         SidebarSection {
             label: "Apps",
             items: vec![
+                SidebarNavItem { id: "tasks".into(),     label: "Tasks".into(),     icon: "📋".into() },
+                SidebarNavItem { id: "bots".into(),      label: "Bots".into(),      icon: "🤖".into() },
                 SidebarNavItem { id: "conductor".into(), label: "Conductor".into(), icon: "🎛".into() },
                 SidebarNavItem { id: "store".into(),     label: "Store".into(),     icon: "📦".into() },
                 SidebarNavItem { id: "studio".into(),    label: "Studio".into(),    icon: "🔧".into() },

@@ -98,6 +98,164 @@ pub fn NotificationStack(props: NotificationStackProps) -> Element {
     }
 }
 
+// ── NotificationHistory + NotificationBell ────────────────────────────────────
+
+/// A persistent notification history entry.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HistoryEntry {
+    pub id: u64,
+    pub kind: NotificationKind,
+    pub title: String,
+    pub body: Option<String>,
+    pub read: bool,
+}
+
+/// Manages the notification history (bell panel).
+#[derive(Clone, Default, PartialEq)]
+pub struct NotificationHistory {
+    next_id: u64,
+    entries: Vec<HistoryEntry>,
+}
+
+impl NotificationHistory {
+    pub fn push(&mut self, kind: NotificationKind, title: impl Into<String>, body: Option<String>) {
+        let id = self.next_id;
+        self.next_id += 1;
+        self.entries.insert(0, HistoryEntry { id, kind, title: title.into(), body, read: false });
+        if self.entries.len() > 50 {
+            self.entries.truncate(50);
+        }
+    }
+
+    pub fn mark_all_read(&mut self) {
+        for e in &mut self.entries {
+            e.read = true;
+        }
+    }
+
+    pub fn unread_count(&self) -> usize {
+        self.entries.iter().filter(|e| !e.read).count()
+    }
+
+    pub fn entries(&self) -> &[HistoryEntry] {
+        &self.entries
+    }
+}
+
+/// Top-bar bell icon + dropdown panel.
+#[component]
+pub fn NotificationBell(
+    history: NotificationHistory,
+    on_mark_read: EventHandler<()>,
+) -> Element {
+    let mut open = use_signal(|| false);
+    let unread   = history.unread_count();
+    let entries  = history.entries().to_vec();
+
+    rsx! {
+        div { style: "position: relative; flex-shrink: 0;",
+            button {
+                onclick: move |_| {
+                    let v = *open.read();
+                    open.set(!v);
+                    if !v { on_mark_read.call(()); }
+                },
+                style: "position: relative; background: none; border: none; cursor: pointer; \
+                        padding: 6px 8px; border-radius: 6px; font-size: 18px; \
+                        color: var(--fsn-color-text-muted); display: flex; align-items: center;",
+                "🔔"
+                if unread > 0 {
+                    span {
+                        style: "position: absolute; top: 2px; right: 2px; \
+                                background: #ef4444; color: #fff; \
+                                font-size: 9px; font-weight: 700; \
+                                border-radius: 999px; min-width: 14px; height: 14px; \
+                                display: flex; align-items: center; justify-content: center; \
+                                padding: 0 3px;",
+                        "{unread}"
+                    }
+                }
+            }
+
+            if *open.read() {
+                div {
+                    style: "position: fixed; inset: 0; z-index: 299;",
+                    onclick: move |_| open.set(false),
+                }
+                div {
+                    style: "position: absolute; top: calc(100% + 8px); right: 0; \
+                            width: 340px; max-height: 440px; \
+                            background: var(--fsn-color-bg-surface, #0f172a); \
+                            border: 1px solid var(--fsn-color-border-default); \
+                            border-radius: var(--fsn-radius-md); \
+                            box-shadow: 0 8px 32px rgba(0,0,0,0.5); \
+                            z-index: 300; display: flex; flex-direction: column; overflow: hidden;",
+
+                    div {
+                        style: "padding: 12px 16px; \
+                                border-bottom: 1px solid var(--fsn-color-border-default); \
+                                display: flex; align-items: center; justify-content: space-between;",
+                        span { style: "font-size: 14px; font-weight: 600; color: var(--fsn-color-text-primary);",
+                            "Notifications"
+                        }
+                        if !entries.is_empty() {
+                            span { style: "font-size: 11px; color: var(--fsn-color-text-muted);",
+                                "{entries.len()} total"
+                            }
+                        }
+                    }
+
+                    div { style: "overflow-y: auto; flex: 1;",
+                        if entries.is_empty() {
+                            div {
+                                style: "padding: 24px; text-align: center; \
+                                        color: var(--fsn-color-text-muted); font-size: 13px;",
+                                "No notifications"
+                            }
+                        }
+                        for entry in &entries {
+                            BellEntry { key: "{entry.id}", entry: entry.clone() }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn BellEntry(entry: HistoryEntry) -> Element {
+    let accent = entry.kind.accent_color();
+    let icon   = entry.kind.icon();
+    let bg     = if entry.read { "transparent" } else { "rgba(6,182,212,0.05)" };
+
+    rsx! {
+        div {
+            style: "display: flex; gap: 10px; padding: 10px 16px; background: {bg}; \
+                    border-bottom: 1px solid var(--fsn-color-border-default);",
+            span { style: "font-size: 14px; color: {accent}; flex-shrink: 0; padding-top: 1px;",
+                "{icon}"
+            }
+            div { style: "flex: 1; min-width: 0;",
+                div {
+                    style: "font-size: 12px; font-weight: 600; color: var(--fsn-color-text-primary); \
+                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+                    "{entry.title}"
+                }
+                if let Some(body) = &entry.body {
+                    div {
+                        style: "font-size: 11px; color: var(--fsn-color-text-muted); \
+                                margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+                        "{body}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
 /// A single toast notification.
 #[component]
 fn Toast(notification: Notification, on_dismiss: EventHandler<u64>) -> Element {

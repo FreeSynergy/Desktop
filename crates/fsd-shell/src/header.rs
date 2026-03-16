@@ -1,5 +1,6 @@
 /// ShellHeader — 60px fixed header with menu bar, breadcrumbs and user avatar menu.
 use dioxus::prelude::*;
+use crate::notification::{NotificationBell, NotificationHistory};
 
 /// A single breadcrumb entry.
 #[derive(Clone, PartialEq, Debug)]
@@ -113,6 +114,10 @@ pub fn ShellHeader(
     user_avatar: Option<String>,
     #[props(default)]
     on_menu_action: Option<EventHandler<String>>,
+    #[props(default)]
+    history: NotificationHistory,
+    #[props(default)]
+    on_mark_read: Option<EventHandler<()>>,
 ) -> Element {
     rsx! {
         header {
@@ -150,6 +155,16 @@ pub fn ShellHeader(
             Breadcrumbs { items: breadcrumbs }
 
             div { style: "flex: 1;" }
+
+            // Notification bell
+            NotificationBell {
+                history,
+                on_mark_read: move |_| {
+                    if let Some(h) = &on_mark_read {
+                        h.call(());
+                    }
+                },
+            }
 
             // User avatar menu
             AvatarMenu { user_name, user_avatar }

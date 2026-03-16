@@ -24,6 +24,8 @@ fsd-store     = { workspace = true }
 fsd-studio    = { workspace = true }
 fsd-settings  = { workspace = true }
 fsd-profile   = { workspace = true }
+fsd-bots      = { workspace = true }
+fsd-tasks     = { workspace = true }
 fsn-components = { workspace = true }
 fsn-i18n       = { workspace = true }
 fsn-theme      = { workspace = true }

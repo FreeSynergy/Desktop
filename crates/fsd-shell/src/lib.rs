@@ -1,5 +1,6 @@
 pub mod ai_view;
 pub mod app_shell;
+pub mod context_menu;
 pub mod spinner;
 pub mod widgets;
 pub mod desktop;
@@ -23,7 +24,8 @@ pub use header::{Breadcrumb, ShellHeader};
 pub use help_view::HelpApp;
 pub use launcher::{AppLauncher, LauncherState};
 pub use multiwindow::{MultiwindowHandle, use_multiwindow};
-pub use notification::{Notification, NotificationKind, NotificationManager, NotificationStack};
+pub use context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
+pub use notification::{Notification, NotificationHistory, NotificationKind, NotificationManager, NotificationStack};
 pub use sidebar::{ShellSidebar, SidebarSection, SidebarNavItem};
 pub use split_view::{SplitState, SplitView};
 pub use taskbar::Taskbar;
