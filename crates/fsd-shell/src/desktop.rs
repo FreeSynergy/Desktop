@@ -30,8 +30,18 @@ pub fn Desktop() -> Element {
     let mut notifs          = use_signal(NotificationManager::default);
     let mut sidebar_collapsed = use_signal(|| cfg.read().sidebar.default_collapsed);
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
+    let mut theme           = use_signal(|| "dark".to_string());
 
     let bg = wallpaper.read().to_css_background();
+
+    // ── Theme switching ──────────────────────────────────────────────────────
+    let menu_action_handler = move |id: String| {
+        match id.as_str() {
+            "theme-midnight-blue" => *theme.write() = "dark".to_string(),
+            "theme-light"         => *theme.write() = "light".to_string(),
+            _ => {}
+        }
+    };
 
     // ── Sidebar collapsed toggle ─────────────────────────────────────────────
     let on_sidebar_toggle = move |_: ()| {
@@ -148,6 +158,7 @@ pub fn Desktop() -> Element {
 
         div {
             id: "fsd-desktop",
+            "data-theme": "{theme}",
             style: "
                 width: 100vw; height: 100vh; overflow: hidden;
                 display: grid;
@@ -164,6 +175,7 @@ pub fn Desktop() -> Element {
                     breadcrumbs,
                     user_name: "Admin".to_string(),
                     user_avatar: None,
+                    on_menu_action: Some(EventHandler::new(menu_action_handler)),
                 }
             }
 

@@ -84,6 +84,11 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-font-mono: 'JetBrains Mono', monospace;
     --fsn-font-size: 15px;
 
+    /* ── Window frame (glassmorphism) ─────────────────────────────── */
+    --fsn-window-bg:     rgba(15, 23, 42, 0.80);
+    --fsn-window-border: rgba(255, 255, 255, 0.10);
+    --fsn-window-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+
     /* ── Compat aliases for existing --fsn-color-* usage ─────────── */
     --fsn-color-primary:       var(--fsn-primary);
     --fsn-color-bg-base:       var(--fsn-bg-base);
@@ -103,6 +108,67 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-color-warning:       var(--fsn-warning);
     --fsn-color-error:         var(--fsn-error);
     --fsn-color-info:          var(--fsn-info);
+}
+
+/* ── Cloud White — Light Theme ────────────────────────────────────── */
+[data-theme="light"] {
+    /* backgrounds */
+    --fsn-bg-base:     #f8fafc;
+    --fsn-bg-surface:  #ffffff;
+    --fsn-bg-elevated: #f1f5f9;
+    --fsn-bg-sidebar:  #1e293b;
+    --fsn-bg-card:     #ffffff;
+    --fsn-bg-input:    #f1f5f9;
+    --fsn-bg-hover:    #e2e8f0;
+
+    /* text */
+    --fsn-text-primary:   #0f172a;
+    --fsn-text-secondary: #475569;
+    --fsn-text-muted:     #94a3b8;
+    --fsn-text-bright:    #0f172a;
+
+    /* primary */
+    --fsn-primary:       #2563eb;
+    --fsn-primary-hover: #1d4ed8;
+    --fsn-primary-text:  #ffffff;
+    --fsn-primary-glow:  rgba(37, 99, 235, 0.2);
+
+    /* accent */
+    --fsn-accent:       #0891b2;
+    --fsn-accent-hover: #0e7490;
+
+    /* status */
+    --fsn-success:    #16a34a;
+    --fsn-success-bg: rgba(22, 163, 74, 0.12);
+    --fsn-warning:    #d97706;
+    --fsn-warning-bg: rgba(217, 119, 6, 0.12);
+    --fsn-error:      #dc2626;
+    --fsn-error-bg:   rgba(220, 38, 38, 0.12);
+    --fsn-info:       #2563eb;
+
+    /* borders */
+    --fsn-border:       #e2e8f0;
+    --fsn-border-focus: #2563eb;
+    --fsn-border-hover: #cbd5e1;
+
+    /* sidebar */
+    --fsn-sidebar-text:      #cbd5e1;
+    --fsn-sidebar-active:    #60a5fa;
+    --fsn-sidebar-active-bg: rgba(96, 165, 250, 0.15);
+    --fsn-sidebar-hover-bg:  rgba(255, 255, 255, 0.08);
+
+    /* glassmorphism */
+    --fsn-glass-bg:     rgba(255, 255, 255, 0.85);
+    --fsn-glass-border: rgba(0, 0, 0, 0.08);
+
+    /* shadows */
+    --fsn-shadow:      0 1px 8px rgba(0, 0, 0, 0.08);
+    --fsn-shadow-glow: 0 0 24px rgba(37, 99, 235, 0.12);
+
+    /* window frame */
+    --fsn-window-bg:     rgba(255, 255, 255, 0.90);
+    --fsn-window-border: rgba(0, 0, 0, 0.08);
+    --fsn-window-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

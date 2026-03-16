@@ -35,24 +35,22 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let (left, top) = *position.read();
 
     let frame_style = if win.maximized {
-        format!(
-            "position: absolute; left: 0; top: 0; width: 100%; height: 100%; \
-             display: flex; flex-direction: column; \
-             background: rgba(15, 23, 42, 0.80); \
-             backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); \
-             border: 1px solid rgba(255, 255, 255, 0.10); \
-             box-shadow: 0 8px 32px rgba(0,0,0,0.6); \
-             z-index: 9999;"
-        )
+        "position: absolute; left: 0; top: 0; width: 100%; height: 100%; \
+         display: flex; flex-direction: column; \
+         background: var(--fsn-window-bg); \
+         backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); \
+         border: 1px solid var(--fsn-window-border); \
+         box-shadow: var(--fsn-window-shadow); \
+         z-index: 9999;".to_string()
     } else {
         format!(
             "position: absolute; left: {}px; top: {}px; width: {}; min-height: {}; \
              display: flex; flex-direction: column; \
-             background: rgba(15, 23, 42, 0.80); \
+             background: var(--fsn-window-bg); \
              backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); \
-             border: 1px solid rgba(255, 255, 255, 0.10); \
+             border: 1px solid var(--fsn-window-border); \
              border-radius: 8px; \
-             box-shadow: 0 8px 32px rgba(0,0,0,0.6); \
+             box-shadow: var(--fsn-window-shadow); \
              z-index: {};",
             left, top, w_css, h_css, win.z_index
         )
