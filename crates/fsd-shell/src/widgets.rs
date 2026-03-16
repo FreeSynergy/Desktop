@@ -1,13 +1,10 @@
 /// Desktop widgets — standalone UI cards that can be placed on the desktop
 /// or embedded in any layout.
 ///
-/// - `ClockWidget` — analog/digital clock with second-accurate updates.
-/// - `SystemInfoWidget` — hostname, uptime, memory and disk at a glance.
-/// - `QuickNotesWidget` — simple in-memory textarea for quick notes.
-/// - `PlaceholderWidget` — "coming soon" card for unimplemented widgets.
-/// - `WidgetKind` — enum of all supported widget types.
-/// - `WidgetSlot` — a widget instance in a layout (id + kind).
-/// - `render_widget` — dispatches a `WidgetKind` to its component.
+/// Every widget receives `w` and `h` (current slot size in pixels) so it can
+/// scale its content proportionally. At the default size (scale = 1.0) the
+/// layout is identical to the original design. Enlarging the slot increases
+/// the scale factor; content stops growing when it reaches a max-scale cap.
 ///
 /// Persistence: widget layout is stored in `fsn-desktop.db` via `crate::db`.
 use chrono::Local;
@@ -125,7 +122,7 @@ pub struct WidgetSlot {
     pub h: f64,
 }
 
-// ── Layout persistence (SQLite via fsd-db) ────────────────────────────────
+// ── Layout persistence ─────────────────────────────────────────────────────
 
 /// Default widget layout: Clock + SystemInfo side by side.
 pub fn default_widget_layout() -> Vec<WidgetSlot> {
@@ -157,13 +154,26 @@ pub fn save_widget_layout(slots: &[WidgetSlot]) {
 // ── render_widget dispatch ─────────────────────────────────────────────────
 
 /// Dispatches a `WidgetKind` to its concrete Dioxus component.
-pub fn render_widget(kind: &WidgetKind) -> Element {
+///
+/// `w` / `h` are the current slot dimensions in pixels — widgets use them
+/// to scale their content proportionally (font size, gap, etc.).
+pub fn render_widget(kind: &WidgetKind, w: f64, h: f64) -> Element {
     match kind {
-        WidgetKind::Clock      => rsx! { ClockWidget {} },
-        WidgetKind::SystemInfo => rsx! { SystemInfoWidget {} },
-        WidgetKind::QuickNotes => rsx! { QuickNotesWidget {} },
+        WidgetKind::Clock      => rsx! { ClockWidget { w, h } },
+        WidgetKind::SystemInfo => rsx! { SystemInfoWidget { w, h } },
+        WidgetKind::QuickNotes => rsx! { QuickNotesWidget { w, h } },
         other => rsx! { PlaceholderWidget { kind: other.clone() } },
     }
+}
+
+// ── Scaling helper ─────────────────────────────────────────────────────────
+
+/// Computes a scale factor relative to `(default_w, default_h)`.
+///
+/// - Scale is always ≥ 1.0 (never shrink below the default design).
+/// - Capped at `max_scale` so fonts don't grow infinitely.
+fn content_scale(w: f64, h: f64, default_w: f64, default_h: f64, max_scale: f64) -> f64 {
+    (w / default_w).min(h / default_h).clamp(1.0, max_scale)
 }
 
 // ── ClockWidget ───────────────────────────────────────────────────────────────
@@ -171,8 +181,9 @@ pub fn render_widget(kind: &WidgetKind) -> Element {
 /// A clock widget that updates every second.
 ///
 /// Displays the current time (HH:MM:SS) and date (Weekday, DD Month YYYY).
+/// Fonts scale proportionally when the slot is enlarged beyond the default size.
 #[component]
-pub fn ClockWidget() -> Element {
+pub fn ClockWidget(w: f64, h: f64) -> Element {
     let mut time_str = use_signal(|| Local::now().format("%H:%M:%S").to_string());
     let mut date_str = use_signal(|| Local::now().format("%A, %d %B %Y").to_string());
 
@@ -184,24 +195,33 @@ pub fn ClockWidget() -> Element {
         }
     });
 
+    // Scale fonts proportionally; only grow, never shrink below the default.
+    let scale      = content_scale(w, h, 220.0, 140.0, 4.0);
+    let time_font  = 36.0 * scale;
+    let date_font  = 13.0 * scale;
+
     rsx! {
         div {
             class: "fsn-widget fsn-widget--clock",
-            style: "background: var(--fsn-color-bg-surface); \
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
                     border: 1px solid var(--fsn-color-border-default); \
                     border-radius: var(--fsn-radius-lg); \
                     padding: 20px 24px; \
-                    display: flex; flex-direction: column; align-items: center; gap: 6px; \
-                    min-width: 200px;",
+                    display: flex; flex-direction: column; \
+                    align-items: center; justify-content: center; gap: 6px; \
+                    overflow: hidden;",
 
             span {
-                style: "font-size: 36px; font-weight: 700; letter-spacing: 2px; \
-                        font-variant-numeric: tabular-nums; \
-                        color: var(--fsn-color-primary);",
+                style: "font-size: {time_font}px; font-weight: 700; \
+                        letter-spacing: 2px; font-variant-numeric: tabular-nums; \
+                        color: var(--fsn-color-primary); white-space: nowrap;",
                 "{time_str}"
             }
             span {
-                style: "font-size: 13px; color: var(--fsn-color-text-muted);",
+                style: "font-size: {date_font}px; color: var(--fsn-color-text-muted); \
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \
+                        max-width: 100%;",
                 "{date_str}"
             }
         }
@@ -213,11 +233,11 @@ pub fn ClockWidget() -> Element {
 /// Snapshot of system information.
 #[derive(Clone, Default)]
 struct SysInfo {
-    hostname: String,
-    uptime:   String,
-    mem_used: String,
-    mem_total: String,
-    disk_used: String,
+    hostname:   String,
+    uptime:     String,
+    mem_used:   String,
+    mem_total:  String,
+    disk_used:  String,
     disk_total: String,
 }
 
@@ -225,8 +245,9 @@ struct SysInfo {
 ///
 /// Reads `/etc/hostname`, `/proc/uptime`, `/proc/meminfo` and uses `df -h /`
 /// for disk information. Refreshes every 10 seconds.
+/// Content scales with slot size; rows fill the full widget width.
 #[component]
-pub fn SystemInfoWidget() -> Element {
+pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
     let mut info = use_signal(SysInfo::default);
 
     use_future(move || async move {
@@ -238,29 +259,43 @@ pub fn SystemInfoWidget() -> Element {
     });
 
     let i = info.read();
+
+    let scale      = content_scale(w, h, 280.0, 190.0, 3.0);
+    let font_size  = (13.0 * scale).clamp(10.0, 32.0);
+    let title_size = (12.0 * scale).clamp(9.0, 28.0);
+    let gap        = (10.0 * scale).clamp(4.0, 24.0);
+    let icon_size  = (16.0 * scale).clamp(12.0, 40.0);
+
     rsx! {
         div {
             class: "fsn-widget fsn-widget--sysinfo",
-            style: "background: var(--fsn-color-bg-surface); \
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
                     border: 1px solid var(--fsn-color-border-default); \
                     border-radius: var(--fsn-radius-lg); \
                     padding: 16px 20px; \
-                    display: flex; flex-direction: column; gap: 10px; \
-                    min-width: 240px;",
+                    display: flex; flex-direction: column; justify-content: center; \
+                    gap: {gap}px; overflow: hidden;",
 
-            // Widget title
             div {
-                style: "font-size: 12px; font-weight: 600; text-transform: uppercase; \
-                        letter-spacing: 0.08em; color: var(--fsn-color-text-muted); \
+                style: "font-size: {title_size}px; font-weight: 600; \
+                        text-transform: uppercase; letter-spacing: 0.08em; \
+                        color: var(--fsn-color-text-muted); \
                         border-bottom: 1px solid var(--fsn-color-border-default); \
-                        padding-bottom: 8px;",
+                        padding-bottom: 8px; flex-shrink: 0;",
                 "System Info"
             }
 
-            SysRow { icon: "🖥",  label: "Host",   value: i.hostname.clone() }
-            SysRow { icon: "⏱",  label: "Uptime", value: i.uptime.clone() }
-            SysRow { icon: "🧠",  label: "Memory", value: format!("{} / {}", i.mem_used, i.mem_total) }
-            SysRow { icon: "💾",  label: "Disk",   value: format!("{} / {}", i.disk_used, i.disk_total) }
+            SysRow { icon: "🖥",  label: "Host",   value: i.hostname.clone(),
+                     font_size, icon_size }
+            SysRow { icon: "⏱",  label: "Uptime", value: i.uptime.clone(),
+                     font_size, icon_size }
+            SysRow { icon: "🧠",  label: "Memory",
+                     value: format!("{} / {}", i.mem_used, i.mem_total),
+                     font_size, icon_size }
+            SysRow { icon: "💾",  label: "Disk",
+                     value: format!("{} / {}", i.disk_used, i.disk_total),
+                     font_size, icon_size }
         }
     }
 }
@@ -268,17 +303,32 @@ pub fn SystemInfoWidget() -> Element {
 // ── SysRow ────────────────────────────────────────────────────────────────────
 
 #[component]
-fn SysRow(icon: String, label: String, value: String) -> Element {
+fn SysRow(
+    icon:      String,
+    label:     String,
+    value:     String,
+    font_size: f64,
+    icon_size: f64,
+) -> Element {
+    let label_min_w = font_size * 4.5; // ~4.5 chars wide at current font size
+
     rsx! {
         div {
-            style: "display: flex; align-items: center; gap: 10px; font-size: 13px;",
-            span { style: "font-size: 16px; min-width: 20px;", "{icon}" }
+            style: "display: flex; align-items: center; gap: {font_size * 0.7}px; \
+                    font-size: {font_size}px; width: 100%; min-width: 0;",
             span {
-                style: "color: var(--fsn-color-text-muted); min-width: 56px;",
+                style: "font-size: {icon_size}px; min-width: {icon_size}px; \
+                        text-align: center; flex-shrink: 0;",
+                "{icon}"
+            }
+            span {
+                style: "color: var(--fsn-color-text-muted); \
+                        min-width: {label_min_w}px; flex-shrink: 0;",
                 "{label}"
             }
             span {
                 style: "color: var(--fsn-color-text-primary); font-weight: 500; \
+                        flex: 1; min-width: 0; \
                         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
                 if value.is_empty() { "—" } else { "{value}" }
             }
@@ -290,26 +340,33 @@ fn SysRow(icon: String, label: String, value: String) -> Element {
 
 /// A simple in-memory text area for quick notes.
 ///
-/// No persistence — notes are cleared on restart. Use the clipboard.
+/// No persistence — notes are cleared on restart. Textarea fills the slot.
 #[component]
-pub fn QuickNotesWidget() -> Element {
+pub fn QuickNotesWidget(w: f64, h: f64) -> Element {
     let mut text = use_signal(|| String::new());
+
+    let scale     = content_scale(w, h, 300.0, 230.0, 3.0);
+    let font_size = (13.0 * scale).clamp(11.0, 32.0);
+    // Header + padding ≈ 60px scaled, remainder goes to the textarea.
+    let textarea_h = (h - 60.0 * scale).max(60.0);
 
     rsx! {
         div {
             class: "fsn-widget fsn-widget--notes",
-            style: "background: var(--fsn-color-bg-surface); \
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
                     border: 1px solid var(--fsn-color-border-default); \
                     border-radius: var(--fsn-radius-lg); \
                     padding: 16px 20px; \
                     display: flex; flex-direction: column; gap: 10px; \
-                    min-width: 240px; width: 280px;",
+                    overflow: hidden;",
 
             div {
-                style: "font-size: 12px; font-weight: 600; text-transform: uppercase; \
-                        letter-spacing: 0.08em; color: var(--fsn-color-text-muted); \
+                style: "font-size: {font_size * 0.9}px; font-weight: 600; \
+                        text-transform: uppercase; letter-spacing: 0.08em; \
+                        color: var(--fsn-color-text-muted); \
                         border-bottom: 1px solid var(--fsn-color-border-default); \
-                        padding-bottom: 8px;",
+                        padding-bottom: 8px; flex-shrink: 0;",
                 "Quick Notes"
             }
 
@@ -319,10 +376,10 @@ pub fn QuickNotesWidget() -> Element {
                         border: 1px solid var(--fsn-color-border-default); \
                         border-radius: 6px; \
                         padding: 8px 10px; \
-                        font-size: 13px; font-family: inherit; \
+                        font-size: {font_size}px; font-family: inherit; \
                         resize: none; \
-                        height: 120px; width: 100%; \
-                        outline: none; box-sizing: border-box;",
+                        height: {textarea_h}px; width: 100%; \
+                        outline: none; box-sizing: border-box; flex-shrink: 0;",
                 placeholder: "Type your notes here…",
                 value: "{text}",
                 oninput: move |e| text.set(e.value()),
@@ -342,13 +399,14 @@ pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
     rsx! {
         div {
             class: "fsn-widget fsn-widget--placeholder",
-            style: "background: var(--fsn-color-bg-surface); \
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
                     border: 1px solid var(--fsn-color-border-default); \
                     border-radius: var(--fsn-radius-lg); \
                     padding: 20px 24px; \
                     display: flex; flex-direction: column; align-items: center; \
                     justify-content: center; gap: 8px; \
-                    min-width: 180px; opacity: 0.7;",
+                    overflow: hidden; opacity: 0.7;",
 
             span { style: "font-size: 28px;", "{icon}" }
             span {
@@ -448,7 +506,6 @@ fn disk_stat(used: bool) -> String {
         .output();
     let Ok(out) = out else { return "?".into() };
     let text = String::from_utf8_lossy(&out.stdout);
-    // second line: "used size"
     let mut lines = text.lines();
     let _ = lines.next(); // header
     let data = lines.next().unwrap_or("");

@@ -254,11 +254,13 @@ pub fn Desktop() -> Element {
 
                         // Render minimized windows as desktop icons.
                         // Key pattern "min-{id}" avoids collisions with visible-window keys.
-                        for window in wm.read().windows().iter().filter(|w| w.minimized).cloned().collect::<Vec<_>>() {
+                        // Enumerate provides a fallback cascade position (88px apart) for
+                        // newly minimized windows that have no stored position yet.
+                        for (i, window) in wm.read().windows().iter().filter(|w| w.minimized).cloned().collect::<Vec<_>>().into_iter().enumerate() {
                             MinimizedWindowIcon {
                                 key: "min-{window.id.0}",
                                 window: window.clone(),
-                                pos_x: icon_positions.read().get(&window.id.0).map(|p| p.0).unwrap_or(20.0),
+                                pos_x: icon_positions.read().get(&window.id.0).map(|p| p.0).unwrap_or(20.0 + i as f64 * 88.0),
                                 pos_y: icon_positions.read().get(&window.id.0).map(|p| p.1).unwrap_or(600.0),
                                 on_restore: on_focus_window,
                                 on_move: {
@@ -448,6 +450,7 @@ fn HomeWidgetCard(
     let x = *pos_x.read();
     let y = *pos_y.read();
     let w = *width.read();
+    let h = *height.read();
     let is_dragging  = *dragging.read();
     let is_resizing  = *resizing.read();
 
@@ -458,7 +461,8 @@ fn HomeWidgetCard(
     let kind_resize_up = kind.clone();
 
     let card_style = format!(
-        "position: absolute; left: {x}px; top: {y}px; width: {w}px; \
+        "position: absolute; left: {x}px; top: {y}px; width: {w}px; height: {h}px; \
+         display: flex; flex-direction: column; overflow: hidden; \
          pointer-events: all; user-select: none;"
     );
 
@@ -498,8 +502,8 @@ fn HomeWidgetCard(
                 }
             }
 
-            // Widget content
-            { render_widget(&kind_render) }
+            // Widget content — pass slot dimensions so widgets can scale their content.
+            { render_widget(&kind_render, w, h) }
 
             // Resize handle (bottom-right corner) — only in edit mode
             if edit_mode {

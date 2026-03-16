@@ -75,6 +75,7 @@ pub const FSNOBJ_CSS: &str = r#"
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     padding: 8px;
     cursor: pointer;
+    pointer-events: all;
     user-select: none;
     width: 72px;
 }
