@@ -37,6 +37,9 @@ pub fn Desktop() -> Element {
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
     let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db()));
+    // B5: Animation + Window-Chrome opacity contexts
+    let anim_enabled: Signal<bool> = use_context_provider(|| Signal::new(true));
+    let chrome_opacity: Signal<f64> = use_context_provider(|| Signal::new(0.80f64));
 
     // ── Widget layer state ─────────────────────────────────────────────────
     let mut widget_layout   = use_signal(load_widget_layout);
@@ -49,6 +52,13 @@ pub fn Desktop() -> Element {
     let mut sidebar_hide_gen = use_signal(|| 0u32);
 
     let bg = wallpaper_bg.read().clone();
+
+    // B5: Build dynamic CSS overrides for animation + chrome opacity.
+    let anim_dur = if *anim_enabled.read() { "180ms" } else { "0ms" };
+    let win_opacity = *chrome_opacity.read();
+    let dynamic_css = format!(
+        ":root {{ --fsn-anim-duration: {anim_dur}; --fsn-window-bg: rgba(15,23,42,{win_opacity:.2}); }}"
+    );
 
     // ── Theme + menu action handler ────────────────────────────────────────
     let menu_action_handler = move |id: String| {
@@ -170,6 +180,7 @@ pub fn Desktop() -> Element {
     rsx! {
         style { "{GLOBAL_CSS}" }
         style { "{FSNOBJ_CSS}" }
+        style { "{dynamic_css}" }
 
         div {
             id: "fsd-desktop",

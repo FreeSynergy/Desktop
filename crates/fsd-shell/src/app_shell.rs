@@ -71,8 +71,9 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-shadow:      0 4px 16px rgba(0, 0, 0, 0.4);
     --fsn-shadow-glow: 0 0 24px rgba(77, 139, 245, 0.2);
 
-    /* ── Motion ───────────────────────────────────────────────────── */
-    --fsn-transition: all 180ms ease;
+    /* ── Motion (--fsn-anim-duration: 0ms disables all animations) ─── */
+    --fsn-anim-duration: 180ms;
+    --fsn-transition: all var(--fsn-anim-duration) ease;
 
     /* ── Geometry ─────────────────────────────────────────────────── */
     --fsn-radius-sm: 6px;
@@ -121,10 +122,10 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-bg-input:    #f1f5f9;
     --fsn-bg-hover:    #e2e8f0;
 
-    /* text */
+    /* text — muted darkened to #626d79 for WCAG AA 4.5:1 on #f8fafc */
     --fsn-text-primary:   #0f172a;
-    --fsn-text-secondary: #475569;
-    --fsn-text-muted:     #94a3b8;
+    --fsn-text-secondary: #334155;
+    --fsn-text-muted:     #626d79;
     --fsn-text-bright:    #0f172a;
 
     /* primary */
@@ -169,6 +170,26 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-window-bg:     rgba(255, 255, 255, 0.90);
     --fsn-window-border: rgba(0, 0, 0, 0.08);
     --fsn-window-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    /* compat aliases */
+    --fsn-color-primary:        var(--fsn-primary);
+    --fsn-color-bg-base:        var(--fsn-bg-base);
+    --fsn-color-bg-surface:     var(--fsn-bg-surface);
+    --fsn-color-bg-sidebar:     var(--fsn-bg-sidebar);
+    --fsn-color-bg-panel:       var(--fsn-bg-card);
+    --fsn-color-bg-card:        var(--fsn-bg-card);
+    --fsn-color-bg-overlay:     var(--fsn-bg-elevated);
+    --fsn-color-bg-active:      var(--fsn-bg-elevated);
+    --fsn-color-bg-input:       var(--fsn-bg-input);
+    --fsn-color-text-primary:   var(--fsn-text-primary);
+    --fsn-color-text-secondary: var(--fsn-text-secondary);
+    --fsn-color-text-muted:     var(--fsn-text-muted);
+    --fsn-color-text-inverse:   var(--fsn-text-primary);
+    --fsn-color-border-default: var(--fsn-border);
+    --fsn-color-success:        var(--fsn-success);
+    --fsn-color-warning:        var(--fsn-warning);
+    --fsn-color-error:          var(--fsn-error);
+    --fsn-color-info:           var(--fsn-info);
 }
 
 /* ── Cupertino — macOS-inspired Light Theme ───────────────────────── */
@@ -180,9 +201,10 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-bg-card:     #ffffff;
     --fsn-bg-input:    #ffffff;
     --fsn-bg-hover:    #e8e8ed;
+    /* text — muted darkened to #686868 for WCAG AA 4.5:1 on #f5f5f7 */
     --fsn-text-primary:   #1d1d1f;
-    --fsn-text-secondary: #6e6e73;
-    --fsn-text-muted:     #aeaeb2;
+    --fsn-text-secondary: #515154;
+    --fsn-text-muted:     #686868;
     --fsn-text-bright:    #1d1d1f;
     --fsn-primary:       #007AFF;
     --fsn-primary-hover: #0071e3;
@@ -241,9 +263,10 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-bg-card:     #3B4252;
     --fsn-bg-input:    #2E3440;
     --fsn-bg-hover:    #4C566A;
+    /* text — muted lightened to #7B8FA6 for WCAG AA 3:1 on #2E3440 */
     --fsn-text-primary:   #ECEFF4;
     --fsn-text-secondary: #D8DEE9;
-    --fsn-text-muted:     #4C566A;
+    --fsn-text-muted:     #7B8FA6;
     --fsn-text-bright:    #ffffff;
     --fsn-primary:       #88C0D0;
     --fsn-primary-hover: #81b9c9;

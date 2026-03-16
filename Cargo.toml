@@ -51,6 +51,10 @@ fsn-auth           = { path = "../FreeSynergy.Lib/fsn-auth" }
 fsn-core           = { path = "../FreeSynergy.Lib/fsn-core" }
 fsn-components     = { path = "../FreeSynergy.Lib/fsn-components" }
 fsn-render         = { path = "../FreeSynergy.Lib/fsn-render" }
+fsn-db             = { path = "../FreeSynergy.Lib/fsn-db" }
+
+# Database (SeaORM)
+sea-orm = { version = "1", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 
 # UI — Dioxus (Desktop + Web + TUI via single codebase)
 dioxus = { version = "0.6", default-features = false, features = ["macro", "html", "signals", "hooks", "launch", "mounted", "document"] }

@@ -1,55 +1,52 @@
-//! `fsn-shared.db` — cross-program shared storage.
-//!
-//! Tables:
-//! - `settings`   — generic key-value store (all program-wide settings)
-//! - `audit_log`  — append-only event log
+// `fsn-shared.db` — cross-program shared storage via SeaORM.
+//
+// Tables: settings (KV), audit_log
 
-use sqlx::{SqlitePool, Row};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, Order, QueryOrder,
+    QuerySelect,
+};
 
-use crate::{DbError, fsn_data_dir};
-
-const MIGRATIONS: &str = r#"
-CREATE TABLE IF NOT EXISTS settings (
-    key        TEXT PRIMARY KEY,
-    value      TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS audit_log (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    actor      TEXT NOT NULL,
-    action     TEXT NOT NULL,
-    target     TEXT,
-    outcome    TEXT NOT NULL DEFAULT 'ok',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-"#;
+use crate::{
+    DbError, db_path,
+    entities::{audit, setting},
+    migration::SharedMigrator,
+};
+use fsn_db::{DbBackend, DbConnection};
 
 /// Database handle for `fsn-shared.db`.
 pub struct SharedDb {
-    pool: SqlitePool,
+    conn: DbConnection,
 }
 
 impl SharedDb {
     /// Open (or create) `~/.local/share/fsn/fsn-shared.db`, running migrations.
     pub async fn open() -> Result<Self, DbError> {
-        let dir = fsn_data_dir();
-        std::fs::create_dir_all(&dir)?;
-        let path = format!("sqlite://{}?mode=rwc", dir.join("fsn-shared.db").display());
-        let pool = SqlitePool::connect(&path).await?;
-        sqlx::query(MIGRATIONS).execute(&pool).await?;
-        Ok(Self { pool })
+        let path = db_path("fsn-shared.db");
+        std::fs::create_dir_all(path.parent().unwrap_or(std::path::Path::new(".")))
+            .map_err(DbError::Io)?;
+        let conn = DbConnection::connect(DbBackend::Sqlite {
+            path: path.to_string_lossy().into_owned(),
+        })
+        .await
+        .map_err(|e| DbError::SeaOrm(e.to_string()))?;
+        SharedMigrator::run(conn.inner()).await?;
+        Ok(Self { conn })
+    }
+
+    fn db(&self) -> &DatabaseConnection {
+        self.conn.inner()
     }
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
     /// Gets a setting value by key. Returns `None` if not set.
     pub async fn get_setting(&self, key: &str) -> Result<Option<String>, DbError> {
-        let row = sqlx::query("SELECT value FROM settings WHERE key = ?")
-            .bind(key)
-            .fetch_optional(&self.pool)
-            .await?;
-        Ok(row.map(|r| r.get::<String, _>("value")))
+        let row = setting::Entity::find_by_id(key.to_string())
+            .one(self.db())
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))?;
+        Ok(row.map(|m| m.value))
     }
 
     /// Gets a setting value, returning `default` if not set.
@@ -59,60 +56,78 @@ impl SharedDb {
 
     /// Upserts a setting.
     pub async fn set_setting(&self, key: &str, value: &str) -> Result<(), DbError> {
-        sqlx::query(
-            "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
-        )
-        .bind(key)
-        .bind(value)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
+        use sea_orm::sea_query::OnConflict;
+        let now = unix_now();
+        let active = setting::ActiveModel {
+            key:        Set(key.to_string()),
+            value:      Set(value.to_string()),
+            updated_at: Set(now),
+        };
+        setting::Entity::insert(active)
+            .on_conflict(
+                OnConflict::column(setting::Column::Key)
+                    .update_columns([setting::Column::Value, setting::Column::UpdatedAt])
+                    .to_owned(),
+            )
+            .exec(self.db())
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 
     /// Deletes a setting (resets to default behavior).
     pub async fn delete_setting(&self, key: &str) -> Result<(), DbError> {
-        sqlx::query("DELETE FROM settings WHERE key = ?")
-            .bind(key)
-            .execute(&self.pool)
-            .await?;
-        Ok(())
+        setting::Entity::delete_by_id(key.to_string())
+            .exec(self.db())
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 
     // ── Audit log ─────────────────────────────────────────────────────────────
 
     /// Appends an audit log entry.
-    pub async fn audit(&self, actor: &str, action: &str, target: Option<&str>, outcome: &str) -> Result<(), DbError> {
-        sqlx::query(
-            "INSERT INTO audit_log (actor, action, target, outcome) VALUES (?, ?, ?, ?)"
-        )
-        .bind(actor)
-        .bind(action)
-        .bind(target)
-        .bind(outcome)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
+    pub async fn audit(
+        &self,
+        actor: &str,
+        action: &str,
+        target: Option<&str>,
+        outcome: &str,
+    ) -> Result<(), DbError> {
+        let active = audit::ActiveModel {
+            actor:      Set(actor.to_string()),
+            action:     Set(action.to_string()),
+            target:     Set(target.map(|s| s.to_string())),
+            outcome:    Set(outcome.to_string()),
+            created_at: Set(unix_now()),
+            ..Default::default()
+        };
+        active
+            .insert(self.db())
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 
     /// Returns the most recent N audit log entries.
     pub async fn recent_audit(&self, limit: u32) -> Result<Vec<AuditEntry>, DbError> {
-        let rows = sqlx::query(
-            "SELECT actor, action, target, outcome, created_at FROM audit_log
-             ORDER BY id DESC LIMIT ?"
-        )
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(rows.into_iter().map(|r| AuditEntry {
-            actor:      r.get("actor"),
-            action:     r.get("action"),
-            target:     r.get("target"),
-            outcome:    r.get("outcome"),
-            created_at: r.get("created_at"),
-        }).collect())
+        let rows = audit::Entity::find()
+            .order_by(audit::Column::CreatedAt, Order::Desc)
+            .limit(limit as u64)
+            .all(self.db())
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))?;
+        Ok(rows.into_iter().map(AuditEntry::from).collect())
     }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 // ── Data types ────────────────────────────────────────────────────────────────
@@ -123,5 +138,17 @@ pub struct AuditEntry {
     pub action:     String,
     pub target:     Option<String>,
     pub outcome:    String,
-    pub created_at: String,
+    pub created_at: i64,
+}
+
+impl From<audit::Model> for AuditEntry {
+    fn from(m: audit::Model) -> Self {
+        Self {
+            actor:      m.actor,
+            action:     m.action,
+            target:     m.target,
+            outcome:    m.outcome,
+            created_at: m.created_at,
+        }
+    }
 }

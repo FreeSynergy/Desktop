@@ -1,11 +1,10 @@
-//! FreeSynergy.Desktop — SQLite storage layer.
+//! FreeSynergy.Desktop — SQLite storage layer (SeaORM-based).
 //!
-//! Manages two databases for the Desktop application:
-//! - `fsn-desktop.db`: widget positions, active theme, shortcuts, profile, layout
+//! Manages two databases:
+//! - `fsn-desktop.db`: widget positions, active theme, shortcuts
 //! - `fsn-shared.db`: cross-program settings, i18n selection, audit log
 //!
-//! Also provides schema definitions for the other program databases:
-//! - `fsn-conductor.db`, `fsn-store.db`, `fsn-core.db`, `fsn-bus.db`
+//! Also holds SQL schema definitions for the other FSN program databases.
 //!
 //! # Usage
 //! ```rust,ignore
@@ -15,8 +14,10 @@
 //! ```
 
 pub mod desktop;
-pub mod shared;
+pub mod entities;
+pub mod migration;
 pub mod schemas;
+pub mod shared;
 
 pub use desktop::DesktopDb;
 pub use shared::SharedDb;
@@ -41,20 +42,18 @@ impl FsdDb {
     pub fn shared(&self)  -> &SharedDb  { &self.shared  }
 }
 
-/// Returns `~/.local/share/fsn/` as the base directory for all FSN databases.
-pub fn fsn_data_dir() -> PathBuf {
+/// Returns `~/.local/share/fsn/<name>` as the path for an FSN database.
+pub fn db_path(filename: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".local/share/fsn")
+    PathBuf::from(home).join(".local/share/fsn").join(filename)
 }
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, thiserror::Error)]
 pub enum DbError {
-    #[error("SQLite error: {0}")]
-    Sqlx(#[from] sqlx::Error),
+    #[error("SeaORM error: {0}")]
+    SeaOrm(String),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("JSON error: {0}")]
-    Json(#[from] serde_json::Error),
 }
