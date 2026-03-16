@@ -1,29 +1,77 @@
-/// Store — root component: package browser, installed list, and updates.
+/// Store — root component with package-type tabs.
 use dioxus::prelude::*;
 use fsn_components::TabBtn;
 use fsn_store::StoreClient;
 
 use crate::browser::PackageBrowser;
 use crate::installed_list::InstalledList;
-use crate::node_package::NodePackage;
+use crate::node_package::{NodePackage, PackageKind};
 use crate::package_card::PackageEntry;
 use crate::package_detail::PackageDetail;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum StoreTab {
-    Browse,
+    All,
+    Plugins,
+    Languages,
+    Themes,
+    Widgets,
+    Bots,
+    Bridges,
+    Tasks,
     Installed,
     Updates,
 }
 
+impl StoreTab {
+    /// Returns the PackageKind filter for this tab (None = show all).
+    pub fn kind_filter(&self) -> Option<PackageKind> {
+        match self {
+            Self::Plugins   => Some(PackageKind::Plugin),
+            Self::Languages => Some(PackageKind::Language),
+            Self::Themes    => Some(PackageKind::Theme),
+            Self::Widgets   => Some(PackageKind::Widget),
+            Self::Bots      => Some(PackageKind::BotCommand),
+            Self::Bridges   => Some(PackageKind::Bridge),
+            Self::Tasks     => Some(PackageKind::Task),
+            Self::All | Self::Installed | Self::Updates => None,
+        }
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::All       => "All",
+            Self::Plugins   => "Plugins",
+            Self::Languages => "Languages",
+            Self::Themes    => "Themes",
+            Self::Widgets   => "Widgets",
+            Self::Bots      => "Bots",
+            Self::Bridges   => "Bridges",
+            Self::Tasks     => "Tasks",
+            Self::Installed => "Installed",
+            Self::Updates   => "Updates",
+        }
+    }
+}
+
+const BROWSE_TABS: &[StoreTab] = &[
+    StoreTab::All,
+    StoreTab::Plugins,
+    StoreTab::Languages,
+    StoreTab::Themes,
+    StoreTab::Widgets,
+    StoreTab::Bots,
+    StoreTab::Bridges,
+    StoreTab::Tasks,
+];
+
 /// Root Store component.
 #[component]
 pub fn StoreApp() -> Element {
-    let mut active_tab = use_signal(|| StoreTab::Browse);
+    let mut active_tab = use_signal(|| StoreTab::All);
     let mut search = use_signal(String::new);
     let mut detail: Signal<Option<PackageEntry>> = use_signal(|| None);
 
-    // Catalog versions for update detection — (id, version) pairs
     let catalog_versions: Signal<Vec<(String, String)>> = use_signal(Vec::new);
     {
         let catalog_versions = catalog_versions.clone();
@@ -44,7 +92,6 @@ pub fn StoreApp() -> Element {
         });
     }
 
-    // Show detail panel when a package is selected
     if let Some(pkg) = detail.read().clone() {
         return rsx! {
             PackageDetail {
@@ -54,49 +101,76 @@ pub fn StoreApp() -> Element {
         };
     }
 
+    let tab = active_tab.read().clone();
+    let kind_filter = tab.kind_filter();
+
     rsx! {
         div {
             class: "fsd-store",
             style: "display: flex; flex-direction: column; height: 100%; background: var(--fsn-color-bg-base);",
 
-            // Header with search
+            // Header
             div {
                 style: "padding: 16px; background: var(--fsn-color-bg-surface); border-bottom: 1px solid var(--fsn-color-border-default);",
                 h2 { style: "margin: 0 0 12px 0; font-size: 20px;", "Store" }
                 input {
                     r#type: "search",
                     placeholder: "Search packages…",
-                    style: "width: 100%; padding: 8px 12px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); font-size: 14px;",
+                    style: "width: 100%; padding: 8px 12px; border: 1px solid var(--fsn-color-border-default); \
+                            border-radius: var(--fsn-radius-md); font-size: 14px; \
+                            background: var(--fsn-bg-input); color: var(--fsn-text-primary);",
                     oninput: move |e| *search.write() = e.value(),
                 }
             }
 
-            // Tab bar
+            // Tab bar (scrollable for small windows)
             div {
-                style: "display: flex; border-bottom: 1px solid var(--fsn-color-border-default);",
-                TabBtn { label: "Browse",    is_active: *active_tab.read() == StoreTab::Browse,    on_click: move |_| active_tab.set(StoreTab::Browse) }
-                TabBtn { label: "Installed", is_active: *active_tab.read() == StoreTab::Installed, on_click: move |_| active_tab.set(StoreTab::Installed) }
-                TabBtn { label: "Updates",   is_active: *active_tab.read() == StoreTab::Updates,   on_click: move |_| active_tab.set(StoreTab::Updates) }
+                style: "display: flex; overflow-x: auto; border-bottom: 1px solid var(--fsn-color-border-default); \
+                        scrollbar-width: none;",
+                for store_tab in BROWSE_TABS {
+                    TabBtn {
+                        key: "{store_tab.label()}",
+                        label: store_tab.label(),
+                        is_active: *active_tab.read() == *store_tab,
+                        on_click: {
+                            let t = (*store_tab).clone();
+                            move |_| active_tab.set(t.clone())
+                        }
+                    }
+                }
+                // Separator
+                div { style: "width: 1px; height: 24px; margin: auto 4px; background: var(--fsn-border);" }
+                TabBtn {
+                    label: "Installed",
+                    is_active: *active_tab.read() == StoreTab::Installed,
+                    on_click: move |_| active_tab.set(StoreTab::Installed)
+                }
+                TabBtn {
+                    label: "Updates",
+                    is_active: *active_tab.read() == StoreTab::Updates,
+                    on_click: move |_| active_tab.set(StoreTab::Updates)
+                }
             }
 
             // Content
             div {
                 style: "flex: 1; overflow: auto; padding: 16px;",
                 match *active_tab.read() {
-                    StoreTab::Browse => rsx! {
-                        PackageBrowser {
-                            search: search.read().clone(),
-                            on_select: move |pkg| detail.set(Some(pkg)),
-                        }
-                    },
                     StoreTab::Installed => rsx! {
                         InstalledList {
                             catalog_versions: catalog_versions.read().clone(),
                         }
                     },
-                    StoreTab::Updates   => rsx! {
+                    StoreTab::Updates => rsx! {
                         UpdatesList {
                             catalog_versions: catalog_versions.read().clone(),
+                        }
+                    },
+                    _ => rsx! {
+                        PackageBrowser {
+                            search: search.read().clone(),
+                            kind: kind_filter,
+                            on_select: move |pkg| detail.set(Some(pkg)),
                         }
                     },
                 }
@@ -105,12 +179,6 @@ pub fn StoreApp() -> Element {
     }
 }
 
-// ── UpdatesList ───────────────────────────────────────────────────────────────
-
-/// Shows available catalog updates.
-///
-/// Installed version detection via container labels requires Podman socket (removed).
-/// Run `fsn deploy` to apply updates for all deployed services.
 #[component]
 fn UpdatesList(catalog_versions: Vec<(String, String)>) -> Element {
     rsx! {
@@ -133,4 +201,3 @@ fn UpdatesList(catalog_versions: Vec<(String, String)>) -> Element {
         }
     }
 }
-

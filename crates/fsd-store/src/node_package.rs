@@ -13,6 +13,7 @@ pub enum PackageKind {
     Widget,
     BotCommand,
     Bridge,
+    Task,
 }
 
 impl PackageKind {
@@ -24,6 +25,7 @@ impl PackageKind {
         PackageKind::Widget,
         PackageKind::BotCommand,
         PackageKind::Bridge,
+        PackageKind::Task,
     ];
 
     pub fn label(&self) -> &'static str {
@@ -34,6 +36,7 @@ impl PackageKind {
             PackageKind::Widget     => "Widget",
             PackageKind::BotCommand => "Bot Command",
             PackageKind::Bridge     => "Bridge",
+            PackageKind::Task       => "Task",
         }
     }
 
@@ -45,6 +48,7 @@ impl PackageKind {
             PackageKind::Widget     => "🧩",
             PackageKind::BotCommand => "🤖",
             PackageKind::Bridge     => "🌉",
+            PackageKind::Task       => "⚡",
         }
     }
 }

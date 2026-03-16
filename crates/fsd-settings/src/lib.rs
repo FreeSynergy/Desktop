@@ -4,10 +4,12 @@ pub mod service_roles;
 pub mod language;
 pub mod accounts;
 pub mod desktop_settings;
+pub mod shortcuts;
 
 pub use app::SettingsApp;
 pub use service_roles::{ServiceRoles, ServiceRole, KNOWN_ROLES};
 pub use desktop_settings::{DesktopConfig, DisplayMode, SidebarConfig, SidebarPosition, TaskbarPosition};
+pub use shortcuts::{ActionDef, ShortcutsConfig, register_actions, resolve_shortcut};
 
 /// Returns the path to a named config file in `~/.config/fsn/`.
 ///

@@ -7,6 +7,7 @@ use crate::language::LanguageSettings;
 use crate::service_roles::ServiceRoles;
 use crate::accounts::AccountSettings;
 use crate::desktop_settings::DesktopSettings;
+use crate::shortcuts::ShortcutsSettings;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum SettingsSection {
@@ -15,6 +16,7 @@ pub enum SettingsSection {
     ServiceRoles,
     Accounts,
     Desktop,
+    Shortcuts,
 }
 
 impl SettingsSection {
@@ -25,6 +27,7 @@ impl SettingsSection {
             Self::ServiceRoles => "Service Roles",
             Self::Accounts     => "Accounts",
             Self::Desktop      => "Desktop",
+            Self::Shortcuts    => "Shortcuts",
         }
     }
 
@@ -35,6 +38,7 @@ impl SettingsSection {
             Self::ServiceRoles => "🔗",
             Self::Accounts     => "👤",
             Self::Desktop      => "🖥",
+            Self::Shortcuts    => "⌨",
         }
     }
 }
@@ -45,6 +49,7 @@ const ALL_SECTIONS: &[SettingsSection] = &[
     SettingsSection::ServiceRoles,
     SettingsSection::Accounts,
     SettingsSection::Desktop,
+    SettingsSection::Shortcuts,
 ];
 
 /// Root Settings component.
@@ -86,6 +91,7 @@ pub fn SettingsApp() -> Element {
                     SettingsSection::ServiceRoles => rsx! { ServiceRoles {} },
                     SettingsSection::Accounts     => rsx! { AccountSettings {} },
                     SettingsSection::Desktop      => rsx! { DesktopSettings {} },
+                    SettingsSection::Shortcuts    => rsx! { ShortcutsSettings {} },
                 }
             }
         }
