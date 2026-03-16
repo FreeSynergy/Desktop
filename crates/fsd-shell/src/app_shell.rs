@@ -16,7 +16,7 @@ pub enum AppMode {
 /// Global CSS: Midnight Blue theme variables + page-transition animations.
 /// Injected at the root and within every AppShell so variables are always available.
 pub const GLOBAL_CSS: &str = r#"
-:root {
+:root, [data-theme="midnight-blue"] {
     /* ── Midnight Blue – backgrounds ──────────────────────────────── */
     --fsn-bg-base:     #0c1222;
     --fsn-bg-surface:  #162032;
@@ -111,7 +111,7 @@ pub const GLOBAL_CSS: &str = r#"
 }
 
 /* ── Cloud White — Light Theme ────────────────────────────────────── */
-[data-theme="light"] {
+[data-theme="light"], [data-theme="cloud-white"] {
     /* backgrounds */
     --fsn-bg-base:     #f8fafc;
     --fsn-bg-surface:  #ffffff;
@@ -169,6 +169,189 @@ pub const GLOBAL_CSS: &str = r#"
     --fsn-window-bg:     rgba(255, 255, 255, 0.90);
     --fsn-window-border: rgba(0, 0, 0, 0.08);
     --fsn-window-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Cupertino — macOS-inspired Light Theme ───────────────────────── */
+[data-theme="cupertino"] {
+    --fsn-bg-base:     #f5f5f7;
+    --fsn-bg-surface:  #ffffff;
+    --fsn-bg-elevated: #f0f0f2;
+    --fsn-bg-sidebar:  #1c1c1e;
+    --fsn-bg-card:     #ffffff;
+    --fsn-bg-input:    #ffffff;
+    --fsn-bg-hover:    #e8e8ed;
+    --fsn-text-primary:   #1d1d1f;
+    --fsn-text-secondary: #6e6e73;
+    --fsn-text-muted:     #aeaeb2;
+    --fsn-text-bright:    #1d1d1f;
+    --fsn-primary:       #007AFF;
+    --fsn-primary-hover: #0071e3;
+    --fsn-primary-text:  #ffffff;
+    --fsn-primary-glow:  rgba(0, 122, 255, 0.2);
+    --fsn-accent:       #30D158;
+    --fsn-accent-hover: #28c44e;
+    --fsn-success:    #34c759;
+    --fsn-success-bg: rgba(52, 199, 89, 0.12);
+    --fsn-warning:    #ff9f0a;
+    --fsn-warning-bg: rgba(255, 159, 10, 0.12);
+    --fsn-error:      #ff3b30;
+    --fsn-error-bg:   rgba(255, 59, 48, 0.12);
+    --fsn-info:       #007AFF;
+    --fsn-border:       rgba(0, 0, 0, 0.1);
+    --fsn-border-focus: #007AFF;
+    --fsn-border-hover: rgba(0, 0, 0, 0.2);
+    --fsn-sidebar-text:      #e5e5ea;
+    --fsn-sidebar-active:    #007AFF;
+    --fsn-sidebar-active-bg: rgba(0, 122, 255, 0.2);
+    --fsn-sidebar-hover-bg:  rgba(255, 255, 255, 0.08);
+    --fsn-glass-bg:     rgba(255, 255, 255, 0.85);
+    --fsn-glass-border: rgba(0, 0, 0, 0.06);
+    --fsn-glass-blur:   12px;
+    --fsn-shadow:      0 1px 8px rgba(0, 0, 0, 0.1);
+    --fsn-shadow-glow: 0 0 24px rgba(0, 122, 255, 0.1);
+    --fsn-window-bg:     rgba(255, 255, 255, 0.92);
+    --fsn-window-border: rgba(0, 0, 0, 0.1);
+    --fsn-window-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    --fsn-color-primary:        var(--fsn-primary);
+    --fsn-color-bg-base:        var(--fsn-bg-base);
+    --fsn-color-bg-surface:     var(--fsn-bg-surface);
+    --fsn-color-bg-sidebar:     var(--fsn-bg-sidebar);
+    --fsn-color-bg-panel:       var(--fsn-bg-card);
+    --fsn-color-bg-card:        var(--fsn-bg-card);
+    --fsn-color-bg-overlay:     var(--fsn-bg-elevated);
+    --fsn-color-bg-active:      var(--fsn-bg-elevated);
+    --fsn-color-bg-input:       var(--fsn-bg-input);
+    --fsn-color-text-primary:   var(--fsn-text-primary);
+    --fsn-color-text-secondary: var(--fsn-text-secondary);
+    --fsn-color-text-muted:     var(--fsn-text-muted);
+    --fsn-color-text-inverse:   var(--fsn-text-primary);
+    --fsn-color-border-default: var(--fsn-border);
+    --fsn-color-success:        var(--fsn-success);
+    --fsn-color-warning:        var(--fsn-warning);
+    --fsn-color-error:          var(--fsn-error);
+    --fsn-color-info:           var(--fsn-info);
+}
+
+/* ── Nordic — Nord color palette Dark Theme ────────────────────────── */
+[data-theme="nordic"] {
+    --fsn-bg-base:     #2E3440;
+    --fsn-bg-surface:  #3B4252;
+    --fsn-bg-elevated: #434C5E;
+    --fsn-bg-sidebar:  #2E3440;
+    --fsn-bg-card:     #3B4252;
+    --fsn-bg-input:    #2E3440;
+    --fsn-bg-hover:    #4C566A;
+    --fsn-text-primary:   #ECEFF4;
+    --fsn-text-secondary: #D8DEE9;
+    --fsn-text-muted:     #4C566A;
+    --fsn-text-bright:    #ffffff;
+    --fsn-primary:       #88C0D0;
+    --fsn-primary-hover: #81b9c9;
+    --fsn-primary-text:  #2E3440;
+    --fsn-primary-glow:  rgba(136, 192, 208, 0.25);
+    --fsn-accent:       #81A1C1;
+    --fsn-accent-hover: #7a9ab8;
+    --fsn-success:    #A3BE8C;
+    --fsn-success-bg: rgba(163, 190, 140, 0.12);
+    --fsn-warning:    #EBCB8B;
+    --fsn-warning-bg: rgba(235, 203, 139, 0.12);
+    --fsn-error:      #BF616A;
+    --fsn-error-bg:   rgba(191, 97, 106, 0.12);
+    --fsn-info:       #5E81AC;
+    --fsn-border:       rgba(76, 86, 106, 0.5);
+    --fsn-border-focus: #88C0D0;
+    --fsn-border-hover: rgba(76, 86, 106, 0.8);
+    --fsn-sidebar-text:      #D8DEE9;
+    --fsn-sidebar-active:    #88C0D0;
+    --fsn-sidebar-active-bg: rgba(136, 192, 208, 0.15);
+    --fsn-sidebar-hover-bg:  rgba(76, 86, 106, 0.3);
+    --fsn-glass-bg:     rgba(59, 66, 82, 0.85);
+    --fsn-glass-border: rgba(76, 86, 106, 0.3);
+    --fsn-glass-blur:   16px;
+    --fsn-shadow:      0 4px 16px rgba(0, 0, 0, 0.35);
+    --fsn-shadow-glow: 0 0 24px rgba(136, 192, 208, 0.15);
+    --fsn-window-bg:     rgba(46, 52, 64, 0.90);
+    --fsn-window-border: rgba(76, 86, 106, 0.5);
+    --fsn-window-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --fsn-color-primary:        var(--fsn-primary);
+    --fsn-color-bg-base:        var(--fsn-bg-base);
+    --fsn-color-bg-surface:     var(--fsn-bg-surface);
+    --fsn-color-bg-sidebar:     var(--fsn-bg-sidebar);
+    --fsn-color-bg-panel:       var(--fsn-bg-card);
+    --fsn-color-bg-card:        var(--fsn-bg-card);
+    --fsn-color-bg-overlay:     var(--fsn-bg-elevated);
+    --fsn-color-bg-active:      var(--fsn-bg-elevated);
+    --fsn-color-bg-input:       var(--fsn-bg-input);
+    --fsn-color-text-primary:   var(--fsn-text-primary);
+    --fsn-color-text-secondary: var(--fsn-text-secondary);
+    --fsn-color-text-muted:     var(--fsn-text-muted);
+    --fsn-color-text-inverse:   var(--fsn-text-primary);
+    --fsn-color-border-default: var(--fsn-border);
+    --fsn-color-success:        var(--fsn-success);
+    --fsn-color-warning:        var(--fsn-warning);
+    --fsn-color-error:          var(--fsn-error);
+    --fsn-color-info:           var(--fsn-info);
+}
+
+/* ── Rosé Pine — Dark Rose Pink Theme ─────────────────────────────── */
+[data-theme="rose-pine"] {
+    --fsn-bg-base:     #191724;
+    --fsn-bg-surface:  #1f1d2e;
+    --fsn-bg-elevated: #26233a;
+    --fsn-bg-sidebar:  #191724;
+    --fsn-bg-card:     #1f1d2e;
+    --fsn-bg-input:    #191724;
+    --fsn-bg-hover:    #26233a;
+    --fsn-text-primary:   #e0def4;
+    --fsn-text-secondary: #908caa;
+    --fsn-text-muted:     #6e6a86;
+    --fsn-text-bright:    #ffffff;
+    --fsn-primary:       #ebbcba;
+    --fsn-primary-hover: #e8b3b1;
+    --fsn-primary-text:  #191724;
+    --fsn-primary-glow:  rgba(235, 188, 186, 0.25);
+    --fsn-accent:       #31748f;
+    --fsn-accent-hover: #286980;
+    --fsn-success:    #9ccfd8;
+    --fsn-success-bg: rgba(156, 207, 216, 0.12);
+    --fsn-warning:    #f6c177;
+    --fsn-warning-bg: rgba(246, 193, 119, 0.12);
+    --fsn-error:      #eb6f92;
+    --fsn-error-bg:   rgba(235, 111, 146, 0.12);
+    --fsn-info:       #c4a7e7;
+    --fsn-border:       rgba(110, 106, 134, 0.25);
+    --fsn-border-focus: #ebbcba;
+    --fsn-border-hover: rgba(110, 106, 134, 0.5);
+    --fsn-sidebar-text:      #908caa;
+    --fsn-sidebar-active:    #ebbcba;
+    --fsn-sidebar-active-bg: rgba(235, 188, 186, 0.12);
+    --fsn-sidebar-hover-bg:  rgba(110, 106, 134, 0.1);
+    --fsn-glass-bg:     rgba(31, 29, 46, 0.85);
+    --fsn-glass-border: rgba(110, 106, 134, 0.15);
+    --fsn-glass-blur:   16px;
+    --fsn-shadow:      0 4px 16px rgba(0, 0, 0, 0.4);
+    --fsn-shadow-glow: 0 0 24px rgba(235, 188, 186, 0.15);
+    --fsn-window-bg:     rgba(25, 23, 36, 0.90);
+    --fsn-window-border: rgba(110, 106, 134, 0.25);
+    --fsn-window-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --fsn-color-primary:        var(--fsn-primary);
+    --fsn-color-bg-base:        var(--fsn-bg-base);
+    --fsn-color-bg-surface:     var(--fsn-bg-surface);
+    --fsn-color-bg-sidebar:     var(--fsn-bg-sidebar);
+    --fsn-color-bg-panel:       var(--fsn-bg-card);
+    --fsn-color-bg-card:        var(--fsn-bg-card);
+    --fsn-color-bg-overlay:     var(--fsn-bg-elevated);
+    --fsn-color-bg-active:      var(--fsn-bg-elevated);
+    --fsn-color-bg-input:       var(--fsn-bg-input);
+    --fsn-color-text-primary:   var(--fsn-text-primary);
+    --fsn-color-text-secondary: var(--fsn-text-secondary);
+    --fsn-color-text-muted:     var(--fsn-text-muted);
+    --fsn-color-text-inverse:   var(--fsn-text-primary);
+    --fsn-color-border-default: var(--fsn-border);
+    --fsn-color-success:        var(--fsn-success);
+    --fsn-color-warning:        var(--fsn-warning);
+    --fsn-color-error:          var(--fsn-error);
+    --fsn-color-info:           var(--fsn-info);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

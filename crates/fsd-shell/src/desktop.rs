@@ -1,9 +1,10 @@
-/// Desktop — root layout with CSS Grid: header · sidebar · window area · taskbar.
+/// Desktop — root layout: header + content area with auto-hide overlay sidebar.
+use std::time::Duration;
 use dioxus::prelude::*;
 
 use fsd_conductor::ConductorApp;
 use fsd_profile::ProfileApp;
-use fsd_settings::{DesktopConfig, SettingsApp, SidebarPosition};
+use fsd_settings::SettingsApp;
 use fsd_store::StoreApp;
 use fsd_studio::StudioApp;
 
@@ -14,7 +15,7 @@ use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationManager, NotificationStack};
 use crate::sidebar::{ShellSidebar, SidebarSection, default_sidebar_sections};
-use crate::taskbar::{default_apps, AppEntry, Taskbar};
+use crate::taskbar::{AppEntry, default_apps};
 use crate::wallpaper::Wallpaper;
 use crate::window::{Window, WindowId, WindowManager};
 use crate::window_frame::WindowFrame;
@@ -22,51 +23,62 @@ use crate::window_frame::WindowFrame;
 /// Root desktop component.
 #[component]
 pub fn Desktop() -> Element {
-    let cfg                 = use_signal(DesktopConfig::load);
     let wallpaper           = use_signal(Wallpaper::default);
     let mut wm              = use_signal(WindowManager::default);
     let mut apps            = use_signal(default_apps);
     let mut launcher        = use_signal(LauncherState::default);
     let mut notifs          = use_signal(NotificationManager::default);
-    let mut sidebar_collapsed = use_signal(|| cfg.read().sidebar.default_collapsed);
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
-    // Theme is provided via Context so that AppearanceSettings can update it.
-    let mut theme: Signal<String> = use_context_provider(|| Signal::new("dark".to_string()));
+    let mut theme: Signal<String> = use_context_provider(|| Signal::new("midnight-blue".to_string()));
+
+    // Sidebar auto-hide: visible = shown (translateX(0)), hidden = off-screen (translateX(-240px))
+    let mut sidebar_visible  = use_signal(|| true);
+    let mut sidebar_hide_gen = use_signal(|| 0u32);
 
     let bg = wallpaper.read().to_css_background();
 
-    // ── Theme switching (menu bar) ───────────────────────────────────────────
+    // ── Theme + menu action handler ────────────────────────────────────────
     let menu_action_handler = move |id: String| {
         match id.as_str() {
-            "theme-midnight-blue" => theme.set("dark".to_string()),
-            "theme-light"         => theme.set("light".to_string()),
+            "theme-midnight-blue" => theme.set("midnight-blue".to_string()),
+            "theme-cloud-white"   => theme.set("cloud-white".to_string()),
+            "theme-cupertino"     => theme.set("cupertino".to_string()),
+            "theme-nordic"        => theme.set("nordic".to_string()),
+            "theme-rose-pine"     => theme.set("rose-pine".to_string()),
+            "launcher"            => launcher.write().toggle(),
             _ => {}
         }
     };
 
-    // ── Sidebar collapsed toggle ─────────────────────────────────────────────
-    let on_sidebar_toggle = move |_: ()| {
-        let v = *sidebar_collapsed.read();
-        *sidebar_collapsed.write() = !v;
+    // ── Sidebar auto-hide logic ────────────────────────────────────────────
+    let on_sidebar_enter = move |_: MouseEvent| {
+        let gen = *sidebar_hide_gen.read() + 1;
+        *sidebar_hide_gen.write() = gen;
+        *sidebar_visible.write() = true;
+    };
+    let on_sidebar_leave = move |_: MouseEvent| {
+        let gen = *sidebar_hide_gen.read() + 1;
+        *sidebar_hide_gen.write() = gen;
+        spawn(async move {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            if *sidebar_hide_gen.read() == gen {
+                *sidebar_visible.write() = false;
+            }
+        });
+    };
+    let on_edge_enter = move |_: MouseEvent| {
+        let gen = *sidebar_hide_gen.read() + 1;
+        *sidebar_hide_gen.write() = gen;
+        *sidebar_visible.write() = true;
     };
 
-    // ── Sidebar app select ───────────────────────────────────────────────────
+    // ── Sidebar app select ─────────────────────────────────────────────────
     let on_sidebar_select = move |app_id: String| {
         open_app(&mut wm, &mut apps, &app_id);
         launcher.write().close();
     };
 
-    // ── Taskbar launch callback ──────────────────────────────────────────────
-    let on_taskbar_launch = move |app_id: String| {
-        if app_id == "launcher" {
-            launcher.write().toggle();
-            return;
-        }
-        open_app(&mut wm, &mut apps, &app_id);
-        launcher.write().close();
-    };
-
-    // ── Launcher callbacks ───────────────────────────────────────────────────
+    // ── Launcher callbacks ──────────────────────────────────────────────────
     let on_launcher_launch = move |app_id: String| {
         open_app(&mut wm, &mut apps, &app_id);
         launcher.write().close();
@@ -74,7 +86,7 @@ pub fn Desktop() -> Element {
     let on_launcher_query = move |q: String| { launcher.write().query = q; };
     let on_launcher_close = move |_: ()| { launcher.write().close(); };
 
-    // ── Window manager callbacks ─────────────────────────────────────────────
+    // ── Window manager callbacks ────────────────────────────────────────────
     let on_close_window = move |id: WindowId| {
         wm.write().close(id);
         for app in apps.write().iter_mut() {
@@ -85,43 +97,16 @@ pub fn Desktop() -> Element {
     let on_minimize_window = move |id: WindowId| { wm.write().minimize(id); };
     let on_maximize_window = move |id: WindowId| { wm.write().maximize(id); };
 
-    // ── Notification dismiss ─────────────────────────────────────────────────
+    // ── Notification dismiss ────────────────────────────────────────────────
     let on_dismiss_notif = move |id: u64| { notifs.write().dismiss(id); };
 
-    // ── Derived state ────────────────────────────────────────────────────────
+    // ── Derived state ───────────────────────────────────────────────────────
     let launcher_state = launcher.read().clone();
     let notif_items    = notifs.read().items().to_vec();
     let app_list       = apps.read().clone();
-    let collapsed      = *sidebar_collapsed.read();
-    let sidebar_cfg    = cfg.read().sidebar.clone();
-    let expanded_width = format!("{}px", sidebar_cfg.width);
-    let col_width      = if collapsed { "48px" } else { expanded_width.as_str() };
+    let visible        = *sidebar_visible.read();
+    let sidebar_transform = if visible { "translateX(0)" } else { "translateX(-240px)" };
 
-    // Grid layout adapts to sidebar position
-    let (grid_areas, grid_cols, grid_rows) = match sidebar_cfg.position {
-        SidebarPosition::Left => (
-            "'header header' 'sidebar main' 'taskbar taskbar'".to_string(),
-            format!("{col_width} 1fr"),
-            "60px 1fr 48px".to_string(),
-        ),
-        SidebarPosition::Right => (
-            "'header header' 'main sidebar' 'taskbar taskbar'".to_string(),
-            format!("1fr {col_width}"),
-            "60px 1fr 48px".to_string(),
-        ),
-        SidebarPosition::Top => (
-            "'header' 'sidebar' 'main' 'taskbar'".to_string(),
-            "1fr".to_string(),
-            format!("60px {col_width} 1fr 48px"),
-        ),
-        SidebarPosition::Bottom => (
-            "'header' 'main' 'sidebar' 'taskbar'".to_string(),
-            "1fr".to_string(),
-            format!("60px 1fr {col_width} 48px"),
-        ),
-    };
-
-    // Active sidebar item from the focused window
     let active_app_id = wm.read()
         .windows()
         .iter()
@@ -130,7 +115,6 @@ pub fn Desktop() -> Element {
         .and_then(|w| w.title_key.strip_prefix("app-").map(String::from))
         .unwrap_or_default();
 
-    // Breadcrumbs from focused window
     let breadcrumbs = wm.read()
         .windows()
         .iter()
@@ -153,8 +137,6 @@ pub fn Desktop() -> Element {
         .unwrap_or_else(|| vec![Breadcrumb::new("Desktop")]);
 
     rsx! {
-        // Inject Midnight Blue theme variables at the root — ensures CSS vars are
-        // available before any component renders (no FOUC for background colour).
         style { "{GLOBAL_CSS}" }
 
         div {
@@ -162,16 +144,13 @@ pub fn Desktop() -> Element {
             "data-theme": "{theme}",
             style: "
                 width: 100vw; height: 100vh; overflow: hidden;
-                display: grid;
-                grid-template-areas: {grid_areas};
-                grid-template-rows: {grid_rows};
-                grid-template-columns: {grid_cols};
+                display: flex; flex-direction: column;
                 background: var(--fsn-bg-base);
                 {bg}
             ",
 
-            // ── Header ───────────────────────────────────────────────────────
-            div { style: "grid-area: header;",
+            // ── Header ─────────────────────────────────────────────────────
+            div { style: "flex-shrink: 0;",
                 ShellHeader {
                     breadcrumbs,
                     user_name: "Admin".to_string(),
@@ -180,58 +159,67 @@ pub fn Desktop() -> Element {
                 }
             }
 
-            // ── Sidebar ───────────────────────────────────────────────────────
-            div { style: "grid-area: sidebar; overflow: hidden;",
-                ShellSidebar {
-                    sections: sidebar_sections.read().clone(),
-                    active_id: active_app_id,
-                    collapsed,
-                    on_select: on_sidebar_select,
-                    on_toggle: on_sidebar_toggle,
-                }
-            }
-
-            // ── Window area ───────────────────────────────────────────────────
+            // ── Content area (sidebar overlay + window area) ────────────────
             div {
-                id: "fsd-window-area",
-                style: "grid-area: main; position: relative; overflow: hidden;",
+                style: "flex: 1; position: relative; overflow: hidden;",
 
-                for window in wm.read().windows().iter().filter(|w| !w.minimized).cloned().collect::<Vec<_>>() {
-                    WindowFrame {
-                        key: "{window.id.0}",
-                        window: window.clone(),
-                        on_close: on_close_window,
-                        on_focus: on_focus_window,
-                        on_minimize: on_minimize_window,
-                        on_maximize: on_maximize_window,
-                        AppWindowContent { title_key: window.title_key.clone() }
+                // Window area (full size — sidebar overlays on top)
+                div {
+                    id: "fsd-window-area",
+                    style: "position: absolute; inset: 0; overflow: hidden;",
+                    for window in wm.read().windows().iter().filter(|w| !w.minimized).cloned().collect::<Vec<_>>() {
+                        WindowFrame {
+                            key: "{window.id.0}",
+                            window: window.clone(),
+                            on_close: on_close_window,
+                            on_focus: on_focus_window,
+                            on_minimize: on_minimize_window,
+                            on_maximize: on_maximize_window,
+                            AppWindowContent { title_key: window.title_key.clone() }
+                        }
                     }
                 }
-            }
 
-            // ── Taskbar ───────────────────────────────────────────────────────
-            div { style: "grid-area: taskbar;",
-                Taskbar {
-                    apps: app_list.clone(),
-                    on_launch: on_taskbar_launch,
+                // Sidebar — absolute overlay with auto-hide animation
+                div {
+                    style: "position: absolute; top: 0; left: 0; height: 100%; z-index: 50; \
+                            width: 240px; \
+                            transform: {sidebar_transform}; \
+                            transition: transform 300ms ease;",
+                    onmouseenter: on_sidebar_enter,
+                    onmouseleave: on_sidebar_leave,
+                    ShellSidebar {
+                        sections: sidebar_sections.read().clone(),
+                        active_id: active_app_id,
+                        on_select: on_sidebar_select,
+                    }
                 }
-            }
 
-            // ── App Launcher overlay ──────────────────────────────────────────
-            if launcher_state.open {
-                AppLauncher {
-                    apps: app_list,
-                    query: launcher_state.query.clone(),
-                    on_query_change: on_launcher_query,
-                    on_launch: on_launcher_launch,
-                    on_close: on_launcher_close,
+                // Edge trigger strip — shows sidebar when mouse approaches the left edge
+                if !visible {
+                    div {
+                        style: "position: absolute; top: 0; left: 0; width: 8px; height: 100%; \
+                                z-index: 49; cursor: default;",
+                        onmouseenter: on_edge_enter,
+                    }
                 }
-            }
 
-            // ── Notification stack ────────────────────────────────────────────
-            NotificationStack {
-                notifications: notif_items,
-                on_dismiss: on_dismiss_notif,
+                // App Launcher overlay
+                if launcher_state.open {
+                    AppLauncher {
+                        apps: app_list,
+                        query: launcher_state.query.clone(),
+                        on_query_change: on_launcher_query,
+                        on_launch: on_launcher_launch,
+                        on_close: on_launcher_close,
+                    }
+                }
+
+                // Notification stack
+                NotificationStack {
+                    notifications: notif_items,
+                    on_dismiss: on_dismiss_notif,
+                }
             }
         }
     }

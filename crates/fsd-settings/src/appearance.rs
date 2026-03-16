@@ -1,36 +1,39 @@
-/// Appearance settings — wallpaper, CSS theme, logo, dark/light mode.
+/// Appearance settings — theme selector, wallpaper, logo.
 use dioxus::prelude::*;
 
 /// Appearance settings component.
 ///
 /// Reads and writes the global `Signal<String>` theme context provided by
-/// `Desktop`. Falls back to a local signal when running standalone (e.g. in
-/// fsd-settings standalone mode without a Desktop context).
+/// `Desktop`. Falls back to a local signal when running standalone.
 #[component]
 pub fn AppearanceSettings() -> Element {
-    // Use the shared theme context when available (provided by Desktop).
     let theme_ctx: Option<Signal<String>> = use_context();
-    let mut local_theme = use_signal(|| "dark".to_string());
+    let mut local_theme = use_signal(|| "midnight-blue".to_string());
 
     let mut wallpaper_url = use_signal(String::new);
     let mut css_url = use_signal(String::new);
 
-    // Determine current theme value from context or local fallback.
     let current_theme = theme_ctx
         .as_ref()
         .map(|s| s.read().clone())
         .unwrap_or_else(|| local_theme.read().clone());
 
-    let mut set_theme = move |value: &'static str| {
+    let set_theme = move |value: String| {
         if let Some(mut ctx) = theme_ctx {
-            ctx.set(value.to_string());
+            ctx.set(value);
         } else {
-            local_theme.set(value.to_string());
+            local_theme.set(value);
         }
     };
 
-    let light_border = if current_theme == "light" { "var(--fsn-color-primary)" } else { "var(--fsn-color-border-default)" };
-    let dark_border  = if current_theme == "dark"  { "var(--fsn-color-primary)" } else { "var(--fsn-color-border-default)" };
+    // (id, display_name, "bg,primary,text")
+    let themes: &[(&str, &str, &str)] = &[
+        ("midnight-blue", "Midnight Blue", "#0c1222,#4d8bf5,#e8edf5"),
+        ("cloud-white",   "Cloud White",   "#f8fafc,#2563eb,#0f172a"),
+        ("cupertino",     "Cupertino",     "#f5f5f7,#007AFF,#1d1d1f"),
+        ("nordic",        "Nordic",        "#2E3440,#88C0D0,#ECEFF4"),
+        ("rose-pine",     "Rose Pine",     "#191724,#ebbcba,#e0def4"),
+    ];
 
     rsx! {
         div {
@@ -39,23 +42,53 @@ pub fn AppearanceSettings() -> Element {
 
             h3 { style: "margin-top: 0;", "Appearance" }
 
-            // Dark / Light mode
+            // Theme selector
             div { style: "margin-bottom: 24px;",
-                label { style: "display: block; font-weight: 500; margin-bottom: 8px;", "Color Scheme" }
-                div { style: "display: flex; gap: 8px;",
-                    button {
-                        style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); \
-                                border: 2px solid {light_border}; cursor: pointer; \
-                                background: #f8fafc; color: #0f172a;",
-                        onclick: move |_| set_theme("light"),
-                        "☀ Light"
-                    }
-                    button {
-                        style: "flex: 1; padding: 10px; border-radius: var(--fsn-radius-md); \
-                                border: 2px solid {dark_border}; cursor: pointer; \
-                                background: #1e293b; color: white;",
-                        onclick: move |_| set_theme("dark"),
-                        "☾ Dark"
+                label { style: "display: block; font-weight: 500; margin-bottom: 8px;", "Color Theme" }
+                div { style: "display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;",
+                    for (id, name, colors) in themes.iter().copied() {
+                        {
+                            let parts: Vec<&str> = colors.split(',').collect();
+                            let (bg, primary, text) = (parts[0], parts[1], parts[2]);
+                            let active = current_theme == id;
+                            let outline = if active {
+                                format!("2px solid {primary}")
+                            } else {
+                                "2px solid transparent".to_string()
+                            };
+                            let id_owned = id.to_string();
+                            let mut set_theme = set_theme.clone();
+                            rsx! {
+                                button {
+                                    key: "{id}",
+                                    style: "padding: 0; border-radius: var(--fsn-radius-md); \
+                                            border: none; outline: {outline}; cursor: pointer; \
+                                            overflow: hidden; display: flex; flex-direction: column;",
+                                    onclick: move |_| set_theme(id_owned.clone()),
+                                    div {
+                                        style: "height: 40px; background: {bg}; \
+                                                display: flex; align-items: center; \
+                                                justify-content: center; gap: 4px;",
+                                        span {
+                                            style: "width: 10px; height: 10px; border-radius: 50%; \
+                                                    background: {primary};"
+                                        }
+                                        span {
+                                            style: "width: 10px; height: 10px; border-radius: 50%; \
+                                                    background: {text}; opacity: 0.6;"
+                                        }
+                                    }
+                                    div {
+                                        style: "padding: 4px 6px; font-size: 10px; text-align: center; \
+                                                background: var(--fsn-bg-surface); \
+                                                color: var(--fsn-text-primary); \
+                                                white-space: nowrap; overflow: hidden; \
+                                                text-overflow: ellipsis; width: 100%;",
+                                        "{name}"
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -78,7 +111,7 @@ pub fn AppearanceSettings() -> Element {
                 label {
                     style: "display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); cursor: pointer;",
                     input { r#type: "file", accept: "image/*", style: "display: none;" }
-                    "📁 Upload from file"
+                    "Upload from file"
                 }
             }
 
@@ -105,7 +138,7 @@ pub fn AppearanceSettings() -> Element {
                 label {
                     style: "display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); cursor: pointer;",
                     input { r#type: "file", accept: ".css,.toml", style: "display: none;" }
-                    "📁 Upload theme file"
+                    "Upload theme file"
                 }
             }
 
@@ -115,7 +148,7 @@ pub fn AppearanceSettings() -> Element {
                 label {
                     style: "display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); cursor: pointer;",
                     input { r#type: "file", accept: "image/*,.svg", style: "display: none;" }
-                    "📁 Upload logo (SVG or PNG)"
+                    "Upload logo (SVG or PNG)"
                 }
             }
 

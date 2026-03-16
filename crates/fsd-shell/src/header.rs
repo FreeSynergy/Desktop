@@ -41,49 +41,32 @@ fn default_menu() -> Vec<MenuItem> {
         MenuItem {
             label: "FreeSynergy",
             items: vec![
-                MenuAction::Action { label: "About FreeSynergy…",    shortcut: None,          id: "about" },
-                MenuAction::Action { label: "Settings",              shortcut: Some("Ctrl+,"), id: "settings" },
+                MenuAction::Action { label: "About FreeSynergy…", shortcut: None,               id: "about" },
+                MenuAction::Action { label: "Settings",           shortcut: Some("Ctrl+,"),     id: "settings" },
+                MenuAction::Action { label: "App Launcher",       shortcut: Some("Ctrl+Space"), id: "launcher" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Quit",                  shortcut: Some("Ctrl+Q"), id: "quit" },
-            ],
-        },
-        MenuItem {
-            label: "File",
-            items: vec![
-                MenuAction::Action { label: "New Project",   shortcut: Some("Ctrl+N"), id: "new-project" },
-                MenuAction::Action { label: "Open Project…", shortcut: None,           id: "open-project" },
-                MenuAction::Separator,
-                MenuAction::Action { label: "Export…", shortcut: None, id: "export" },
-                MenuAction::Action { label: "Import…", shortcut: None, id: "import" },
+                MenuAction::Action { label: "Quit",               shortcut: Some("Ctrl+Q"),     id: "quit" },
             ],
         },
         MenuItem {
             label: "View",
             items: vec![
-                MenuAction::Action { label: "Toggle Sidebar",  shortcut: Some("Ctrl+B"), id: "toggle-sidebar" },
-                MenuAction::Action { label: "Fullscreen",      shortcut: Some("F11"),    id: "fullscreen" },
+                MenuAction::Action { label: "Fullscreen", shortcut: Some("F11"), id: "fullscreen" },
                 MenuAction::Separator,
-                MenuAction::SubMenu {
-                    label: "Sidebar Position ▸",
-                    items: vec![
-                        SubAction { label: "Left",   id: "sidebar-left" },
-                        SubAction { label: "Right",  id: "sidebar-right" },
-                        SubAction { label: "Top",    id: "sidebar-top" },
-                        SubAction { label: "Bottom", id: "sidebar-bottom" },
-                    ],
-                },
                 MenuAction::SubMenu {
                     label: "Theme ▸",
                     items: vec![
                         SubAction { label: "Midnight Blue", id: "theme-midnight-blue" },
-                        SubAction { label: "Light",         id: "theme-light" },
+                        SubAction { label: "Cloud White",   id: "theme-cloud-white" },
+                        SubAction { label: "Cupertino",     id: "theme-cupertino" },
+                        SubAction { label: "Nordic",        id: "theme-nordic" },
+                        SubAction { label: "Rose Pine",     id: "theme-rose-pine" },
                     ],
                 },
                 MenuAction::SubMenu {
                     label: "Rendering Mode ▸",
                     items: vec![
                         SubAction { label: "Desktop", id: "render-desktop" },
-                        SubAction { label: "Native",  id: "render-native" },
                         SubAction { label: "Web",     id: "render-web" },
                     ],
                 },
@@ -92,11 +75,21 @@ fn default_menu() -> Vec<MenuItem> {
         MenuItem {
             label: "Services",
             items: vec![
-                MenuAction::Action { label: "Start All",            shortcut: None,           id: "start-all" },
-                MenuAction::Action { label: "Stop All",             shortcut: None,           id: "stop-all" },
+                MenuAction::Action { label: "Open Conductor", shortcut: None, id: "open-conductor" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Install Service…",     shortcut: Some("Ctrl+I"), id: "install-service" },
-                MenuAction::Action { label: "Open Store",           shortcut: Some("Ctrl+S"), id: "open-store" },
+                MenuAction::Action { label: "Start All", shortcut: None, id: "start-all" },
+                MenuAction::Action { label: "Stop All",  shortcut: None, id: "stop-all" },
+            ],
+        },
+        MenuItem {
+            label: "Tools",
+            items: vec![
+                MenuAction::Action { label: "Open Store",       shortcut: Some("Ctrl+S"), id: "open-store" },
+                MenuAction::Action { label: "Open Studio",      shortcut: None,           id: "open-studio" },
+                MenuAction::Action { label: "Open Tasks",       shortcut: Some("Ctrl+T"), id: "open-tasks" },
+                MenuAction::Action { label: "Open Bots",        shortcut: None,           id: "open-bots" },
+                MenuAction::Separator,
+                MenuAction::Action { label: "Install Package…", shortcut: Some("Ctrl+I"), id: "install-package" },
             ],
         },
         MenuItem {
@@ -106,7 +99,7 @@ fn default_menu() -> Vec<MenuItem> {
                 MenuAction::Action { label: "Keyboard Shortcuts", shortcut: None,       id: "shortcuts" },
                 MenuAction::Action { label: "Documentation",      shortcut: None,       id: "documentation" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Report a Bug…",     shortcut: None,       id: "report-bug" },
+                MenuAction::Action { label: "Report a Bug…", shortcut: None, id: "report-bug" },
             ],
         },
     ]
