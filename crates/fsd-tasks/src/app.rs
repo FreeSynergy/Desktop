@@ -280,8 +280,9 @@ fn TaskDetail(
                         "Field Mapping"
                     }
                     div { style: "display: flex; flex-direction: column; gap: 4px;",
-                        for m in &task.mappings {
+                        for (i, m) in task.mappings.iter().enumerate() {
                             div {
+                                key: "{i}",
                                 style: "display: flex; align-items: center; gap: 8px; \
                                         background: var(--fsn-color-bg-overlay); \
                                         border-radius: var(--fsn-radius-sm); \
@@ -353,7 +354,7 @@ fn TemplateBrowser(on_use_template: EventHandler<&'static str>) -> Element {
             }
             div { style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;",
                 for tmpl in BUILTIN_TEMPLATES {
-                    TemplateCard { template: tmpl, on_use: on_use_template }
+                    TemplateCard { key: "{tmpl.id}", template: tmpl, on_use: on_use_template }
                 }
             }
         }

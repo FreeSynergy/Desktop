@@ -50,7 +50,7 @@ pub fn PipelineEditor(
                     }
                     div { style: "display: flex; flex-direction: column; gap: 4px;",
                         for m in &mappings {
-                            MappingRow { mapping: m.clone() }
+                            MappingRow { key: "{m.target_field}", mapping: m.clone() }
                         }
                     }
                 }

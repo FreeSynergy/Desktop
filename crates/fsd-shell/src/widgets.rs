@@ -274,7 +274,7 @@ pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
                     border: 1px solid var(--fsn-color-border-default); \
                     border-radius: var(--fsn-radius-lg); \
                     padding: 16px 20px; \
-                    display: flex; flex-direction: column; justify-content: center; \
+                    display: flex; flex-direction: column; justify-content: center; align-items: center; \
                     gap: {gap}px; overflow: hidden;",
 
             div {
@@ -282,7 +282,8 @@ pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
                         text-transform: uppercase; letter-spacing: 0.08em; \
                         color: var(--fsn-color-text-muted); \
                         border-bottom: 1px solid var(--fsn-color-border-default); \
-                        padding-bottom: 8px; flex-shrink: 0;",
+                        padding-bottom: 8px; flex-shrink: 0; \
+                        width: 100%; text-align: center;",
                 "System Info"
             }
 

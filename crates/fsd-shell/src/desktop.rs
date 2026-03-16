@@ -155,6 +155,44 @@ pub fn Desktop() -> Element {
         .map(|w| vec![Breadcrumb::new(app_id_to_label(w.title_key.trim_start_matches("app-")))])
         .unwrap_or_else(|| vec![Breadcrumb::new("Desktop")]);
 
+    // Pre-compute icon positions for minimized windows.
+    // Algorithm: fill grid slots left→right; when a row is full, go one row up.
+    // Windows that already have a stored drag position keep that position.
+    let effective_icon_positions: HashMap<u64, (f64, f64)> = {
+        const ICON_W: f64 = 88.0;
+        const ICON_H: f64 = 84.0;
+        const START_X: f64 = 20.0;
+        const START_Y: f64 = 600.0;
+        const MAX_COLS: usize = 14; // ~14 × 88 px ≈ 1232 px — fits any HD+ screen
+
+        let stored = icon_positions.read().clone();
+        let mut used: Vec<(f64, f64)> = stored.values().cloned().collect();
+        let mut result = stored.clone();
+
+        for window in wm.read().windows().iter().filter(|w| w.minimized) {
+            if stored.contains_key(&window.id.0) {
+                continue; // already has a user-dragged position
+            }
+            // Find first free slot: right → up
+            let pos = 'find: {
+                for row in 0usize.. {
+                    let y = START_Y - row as f64 * ICON_H;
+                    for col in 0..MAX_COLS {
+                        let x = START_X + col as f64 * ICON_W;
+                        let free = !used.iter().any(|(ux, uy)| {
+                            (ux - x).abs() < ICON_W * 0.8 && (uy - y).abs() < ICON_H * 0.8
+                        });
+                        if free { break 'find (x, y); }
+                    }
+                }
+                (START_X, START_Y)
+            };
+            used.push(pos);
+            result.insert(window.id.0, pos);
+        }
+        result
+    };
+
     rsx! {
         style { "{GLOBAL_CSS}" }
         style { "{FSNOBJ_CSS}" }
@@ -254,14 +292,14 @@ pub fn Desktop() -> Element {
 
                         // Render minimized windows as desktop icons.
                         // Key pattern "min-{id}" avoids collisions with visible-window keys.
-                        // Enumerate provides a fallback cascade position (88px apart) for
-                        // newly minimized windows that have no stored position yet.
-                        for (i, window) in wm.read().windows().iter().filter(|w| w.minimized).cloned().collect::<Vec<_>>().into_iter().enumerate() {
+                        // effective_icon_positions (pre-computed above) assigns grid slots
+                        // right → up for windows without a stored drag position.
+                        for window in wm.read().windows().iter().filter(|w| w.minimized).cloned().collect::<Vec<_>>() {
                             MinimizedWindowIcon {
                                 key: "min-{window.id.0}",
                                 window: window.clone(),
-                                pos_x: icon_positions.read().get(&window.id.0).map(|p| p.0).unwrap_or(20.0 + i as f64 * 88.0),
-                                pos_y: icon_positions.read().get(&window.id.0).map(|p| p.1).unwrap_or(600.0),
+                                pos_x: effective_icon_positions.get(&window.id.0).map(|p| p.0).unwrap_or(20.0),
+                                pos_y: effective_icon_positions.get(&window.id.0).map(|p| p.1).unwrap_or(600.0),
                                 on_restore: on_focus_window,
                                 on_move: {
                                     let wid = window.id.0;
