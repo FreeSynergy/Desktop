@@ -181,6 +181,8 @@ pub fn render_widget(kind: &WidgetKind, w: f64, h: f64) -> Element {
         WidgetKind::Clock      => rsx! { ClockWidget { w, h } },
         WidgetKind::SystemInfo => rsx! { SystemInfoWidget { w, h } },
         WidgetKind::QuickNotes => rsx! { QuickNotesWidget { w, h } },
+        WidgetKind::Messages   => rsx! { MessagesWidget { w, h } },
+        WidgetKind::MyTasks    => rsx! { MyTasksWidget { w, h } },
         other => rsx! { PlaceholderWidget { kind: other.clone() } },
     }
 }
@@ -442,6 +444,200 @@ pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
             span {
                 style: "font-size: 11px; color: var(--fsn-color-text-muted);",
                 "coming soon"
+            }
+        }
+    }
+}
+
+// ── MessagesWidget ────────────────────────────────────────────────────────────
+
+/// A messages widget showing recent messages from the FreeSynergy message bus.
+/// Displays an empty state until the message bus (Phase G) is connected.
+#[component]
+pub fn MessagesWidget(w: f64, h: f64) -> Element {
+    let scale      = content_scale(w, h, 320.0, 220.0, 3.0);
+    let font_size  = (13.0 * scale).clamp(10.0, 32.0);
+    let title_size = (12.0 * scale).clamp(9.0, 28.0);
+    let icon_size  = (28.0 * scale).clamp(20.0, 64.0);
+
+    rsx! {
+        div {
+            class: "fsn-widget fsn-widget--messages",
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
+                    border: 1px solid var(--fsn-color-border-default); \
+                    border-radius: var(--fsn-radius-lg); \
+                    padding: 16px 20px; \
+                    display: flex; flex-direction: column; gap: 10px; \
+                    overflow: hidden;",
+
+            // Header row: title + unread badge
+            div {
+                style: "font-size: {title_size}px; font-weight: 600; \
+                        text-transform: uppercase; letter-spacing: 0.08em; \
+                        color: var(--fsn-color-text-muted); \
+                        border-bottom: 1px solid var(--fsn-color-border-default); \
+                        padding-bottom: 8px; flex-shrink: 0; \
+                        display: flex; align-items: center; justify-content: space-between;",
+                span { "Messages" }
+                span {
+                    style: "background: var(--fsn-color-primary); color: #fff; \
+                            border-radius: 10px; padding: 1px 7px; \
+                            font-size: {title_size * 0.9}px; font-weight: 700;",
+                    "0"
+                }
+            }
+
+            // Empty state
+            div {
+                style: "flex: 1; display: flex; flex-direction: column; \
+                        align-items: center; justify-content: center; gap: 8px;",
+                span { style: "font-size: {icon_size}px; opacity: 0.4;", "📭" }
+                span {
+                    style: "font-size: {font_size}px; color: var(--fsn-color-text-muted);",
+                    "No new messages"
+                }
+            }
+        }
+    }
+}
+
+// ── MyTasksWidget ─────────────────────────────────────────────────────────────
+
+/// An in-memory task checklist widget.
+///
+/// Tasks can be added by typing in the input field and pressing Enter.
+/// Completed tasks are struck through. State is not persisted across restarts.
+#[derive(Clone)]
+struct Task {
+    id:   u32,
+    text: String,
+    done: bool,
+}
+
+#[component]
+pub fn MyTasksWidget(w: f64, h: f64) -> Element {
+    let mut tasks:         Signal<Vec<Task>> = use_signal(Vec::new);
+    let mut new_task_text: Signal<String>    = use_signal(String::new);
+    let mut next_id:       Signal<u32>       = use_signal(|| 0);
+
+    let scale      = content_scale(w, h, 320.0, 220.0, 3.0);
+    let font_size  = (13.0 * scale).clamp(10.0, 30.0);
+    let title_size = (12.0 * scale).clamp(9.0, 26.0);
+    let gap        = (4.0  * scale).clamp(2.0, 10.0);
+
+    let task_list  = tasks.read().clone();
+    let done_count = task_list.iter().filter(|t| t.done).count();
+    let total      = task_list.len();
+
+    rsx! {
+        div {
+            class: "fsn-widget fsn-widget--tasks",
+            style: "width: 100%; height: 100%; box-sizing: border-box; \
+                    background: var(--fsn-color-bg-surface); \
+                    border: 1px solid var(--fsn-color-border-default); \
+                    border-radius: var(--fsn-radius-lg); \
+                    padding: 14px 18px; \
+                    display: flex; flex-direction: column; gap: {gap * 2.0}px; \
+                    overflow: hidden;",
+
+            // Header
+            div {
+                style: "font-size: {title_size}px; font-weight: 600; \
+                        text-transform: uppercase; letter-spacing: 0.08em; \
+                        color: var(--fsn-color-text-muted); \
+                        border-bottom: 1px solid var(--fsn-color-border-default); \
+                        padding-bottom: 8px; flex-shrink: 0; \
+                        display: flex; align-items: center; justify-content: space-between;",
+                span { "My Tasks" }
+                if total > 0 {
+                    span {
+                        style: "font-size: {title_size * 0.85}px; \
+                                color: var(--fsn-color-text-muted);",
+                        "{done_count}/{total}"
+                    }
+                }
+            }
+
+            // Task list — scrollable
+            div {
+                style: "flex: 1; overflow-y: auto; min-height: 0; \
+                        display: flex; flex-direction: column; gap: {gap}px;",
+                if task_list.is_empty() {
+                    div {
+                        style: "flex: 1; display: flex; align-items: center; \
+                                justify-content: center; \
+                                font-size: {font_size}px; \
+                                color: var(--fsn-color-text-muted); opacity: 0.7;",
+                        "No tasks yet"
+                    }
+                }
+                for task in task_list.iter().cloned() {
+                    {
+                        let done_style = if task.done {
+                            "text-decoration: line-through; opacity: 0.5;"
+                        } else {
+                            ""
+                        };
+                        rsx! {
+                            div {
+                                key: "{task.id}",
+                                style: "display: flex; align-items: center; gap: 8px; \
+                                        flex-shrink: 0; padding: 1px 0;",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: task.done,
+                                    style: "width: {font_size}px; height: {font_size}px; \
+                                            cursor: pointer; \
+                                            accent-color: var(--fsn-color-primary); flex-shrink: 0;",
+                                    onchange: {
+                                        let tid = task.id;
+                                        move |_| {
+                                            if let Some(t) = tasks.write().iter_mut().find(|t| t.id == tid) {
+                                                t.done = !t.done;
+                                            }
+                                        }
+                                    },
+                                }
+                                span {
+                                    style: "font-size: {font_size}px; flex: 1; min-width: 0; \
+                                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \
+                                            color: var(--fsn-color-text-primary); {done_style}",
+                                    "{task.text}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add task row
+            div {
+                style: "display: flex; gap: 6px; flex-shrink: 0;",
+                input {
+                    r#type: "text",
+                    placeholder: "Add a task…",
+                    value: "{new_task_text}",
+                    style: "flex: 1; padding: 5px 8px; \
+                            background: var(--fsn-color-bg-base, #0f172a); \
+                            color: var(--fsn-color-text-primary); \
+                            border: 1px solid var(--fsn-color-border-default); \
+                            border-radius: 4px; \
+                            font-size: {font_size * 0.9}px; font-family: inherit; \
+                            outline: none; box-sizing: border-box;",
+                    oninput: move |e| new_task_text.set(e.value()),
+                    onkeydown: move |e: KeyboardEvent| {
+                        if e.key() == Key::Enter {
+                            let text = new_task_text.read().trim().to_string();
+                            if !text.is_empty() {
+                                let id = *next_id.read();
+                                next_id.set(id + 1);
+                                tasks.write().push(Task { id, text, done: false });
+                                new_task_text.set(String::new());
+                            }
+                        }
+                    },
+                }
             }
         }
     }

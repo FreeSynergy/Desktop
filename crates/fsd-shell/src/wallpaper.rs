@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub enum WallpaperSource {
     /// Solid color background.
     Color { hex: String },
+    /// CSS gradient background (any valid CSS gradient string).
+    Gradient { css: String },
     /// Loaded from a URL.
     Url { url: String },
     /// Local file path.
@@ -47,6 +49,7 @@ impl Wallpaper {
     pub fn to_css_background(&self) -> String {
         match &self.source {
             WallpaperSource::Color { hex } => format!("background-color: {};", hex),
+            WallpaperSource::Gradient { css } => format!("background: {};", css),
             WallpaperSource::Url { url } => {
                 format!("background-image: url('{}'); background-size: {};", url, self.fit_css())
             }

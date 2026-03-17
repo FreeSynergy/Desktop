@@ -29,7 +29,15 @@ use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
 #[component]
 pub fn Desktop() -> Element {
     // Wallpaper CSS is provided as context so child apps (e.g. AppearanceSettings) can update it.
-    let wallpaper_bg: Signal<String> = use_context_provider(|| Signal::new(Wallpaper::default().to_css_background()));
+    let wallpaper_bg: Signal<String> = use_context_provider(|| {
+        let saved = crate::db::load_wallpaper_css_from_db();
+        Signal::new(if saved.is_empty() { Wallpaper::default().to_css_background() } else { saved })
+    });
+    // Persist wallpaper whenever it changes.
+    use_effect(move || {
+        let css = wallpaper_bg.read().clone();
+        crate::db::save_wallpaper_css_to_db(css);
+    });
     let mut wm              = use_signal(WindowManager::default);
     let mut apps            = use_signal(default_apps);
     let mut launcher        = use_signal(LauncherState::default);

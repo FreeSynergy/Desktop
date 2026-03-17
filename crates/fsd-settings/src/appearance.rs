@@ -415,6 +415,69 @@ pub fn AppearanceSettings() -> Element {
             h3 { style: "margin-bottom: 12px; font-size: 16px;", "Wallpaper" }
 
             div { style: "display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px;",
+                // Solid color
+                div { style: "display: flex; gap: 8px; align-items: center;",
+                    span { style: "font-size: 13px; color: var(--fsn-color-text-muted); \
+                                   min-width: 48px; flex-shrink: 0;",
+                        "Color"
+                    }
+                    input {
+                        r#type: "color",
+                        style: "width: 40px; height: 32px; border: 1px solid var(--fsn-border); \
+                                border-radius: 4px; cursor: pointer; padding: 2px;",
+                        oninput: move |e| {
+                            let hex = e.value();
+                            let css = format!("background-color: {};", hex);
+                            if let Some(mut ctx) = wallpaper_ctx {
+                                ctx.set(css);
+                            }
+                        },
+                    }
+                }
+
+                // Gradient presets
+                div { style: "display: flex; gap: 6px; flex-wrap: wrap; align-items: center;",
+                    span { style: "font-size: 13px; color: var(--fsn-color-text-muted); \
+                                   min-width: 48px; flex-shrink: 0;",
+                        "Gradients"
+                    }
+                    {
+                        let presets: &[(&str, &str, &str)] = &[
+                            ("Dark Blue", "#0f172a,#1e293b",  "linear-gradient(135deg, #0f172a, #1e293b)"),
+                            ("Ocean",     "#0c4a6e,#0ea5e9",  "linear-gradient(135deg, #0c4a6e, #0369a1, #0ea5e9)"),
+                            ("Forest",    "#052e16,#166534",  "linear-gradient(135deg, #052e16, #14532d, #166534)"),
+                            ("Sunset",    "#450a0a,#c2410c",  "linear-gradient(135deg, #450a0a, #7c2d12, #c2410c)"),
+                            ("Dusk",      "#1e1b4b,#4338ca",  "linear-gradient(135deg, #1e1b4b, #312e81, #4338ca)"),
+                        ];
+                        rsx! {
+                            for (name, preview_colors, gradient_css) in presets.iter().copied() {
+                                {
+                                    let parts: Vec<&str> = preview_colors.split(',').collect();
+                                    let (c1, c2) = (parts[0], parts[1]);
+                                    let gradient_owned = gradient_css.to_string();
+                                    rsx! {
+                                        button {
+                                            key: "{name}",
+                                            title: "{name}",
+                                            style: "width: 36px; height: 28px; border-radius: 4px; \
+                                                    border: 1px solid var(--fsn-border); \
+                                                    cursor: pointer; padding: 0; \
+                                                    background: linear-gradient(135deg, {c1}, {c2}); \
+                                                    flex-shrink: 0;",
+                                            onclick: move |_| {
+                                                let css = format!("background: {};", gradient_owned);
+                                                if let Some(mut ctx) = wallpaper_ctx {
+                                                    ctx.set(css);
+                                                }
+                                            },
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // URL input
                 div { style: "display: flex; gap: 8px;",
                     input {

@@ -92,6 +92,28 @@ pub fn save_language_to_db(lang: String) {
     });
 }
 
+/// Loads the wallpaper CSS from `fsn-shared.db`.
+/// Returns empty string if not set (caller uses default).
+pub fn load_wallpaper_css_from_db() -> String {
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            match SharedDb::open().await {
+                Ok(db) => db.get_setting_or("wallpaper_css", "").await.unwrap_or_default(),
+                Err(_) => String::new(),
+            }
+        })
+    })
+}
+
+/// Saves the wallpaper CSS to `fsn-shared.db` (fire-and-forget via spawn).
+pub fn save_wallpaper_css_to_db(css: String) {
+    tokio::spawn(async move {
+        if let Ok(db) = SharedDb::open().await {
+            let _ = db.set_setting("wallpaper_css", &css).await;
+        }
+    });
+}
+
 // ── Conversions ───────────────────────────────────────────────────────────────
 
 fn db_slot_to_widget(db: DbWidgetSlot) -> Option<WidgetSlot> {
