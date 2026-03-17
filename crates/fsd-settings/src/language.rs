@@ -318,8 +318,8 @@ fn AvailableLanguages(
                             pack:      pack.clone(),
                             installing: busy.read().as_deref() == Some(pack.id.as_str()),
                             on_install: {
-                                let mut available = available.clone();
-                                let mut busy      = busy.clone();
+                                let available = available.clone();
+                                let mut busy  = busy.clone();
                                 move |p: LangPack| {
                                     let id   = p.id.clone();
                                     let name = p.name.clone();

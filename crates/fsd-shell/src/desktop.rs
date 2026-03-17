@@ -25,6 +25,47 @@ use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, 
 use crate::window::{Window, WindowId, WindowManager};
 use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
 
+/// Eight invisible fixed-position resize handles around the OS window border.
+/// Only compiled in desktop mode (requires tao window API).
+#[cfg(feature = "desktop")]
+fn os_resize_handles() -> Element {
+    use dioxus::desktop::tao::window::ResizeDirection;
+    let ctx = dioxus::desktop::window();
+
+    macro_rules! handle {
+        ($dir:expr, $style:literal, $cursor:literal) => {{
+            let c = ctx.clone();
+            rsx! {
+                div {
+                    style: concat!(
+                        "position: fixed; z-index: 999999; pointer-events: all; cursor: ",
+                        $cursor, "; ", $style
+                    ),
+                    onmousedown: move |_| { let _ = c.drag_resize_window($dir); },
+                }
+            }
+        }};
+    }
+
+    rsx! {
+        // Corners
+        {handle!(ResizeDirection::NorthWest, "top: 0; left: 0; width: 8px; height: 8px;", "nwse-resize")}
+        {handle!(ResizeDirection::NorthEast, "top: 0; right: 0; width: 8px; height: 8px;", "nesw-resize")}
+        {handle!(ResizeDirection::SouthWest, "bottom: 0; left: 0; width: 8px; height: 8px;", "nesw-resize")}
+        {handle!(ResizeDirection::SouthEast, "bottom: 0; right: 0; width: 8px; height: 8px;", "nwse-resize")}
+        // Edges
+        {handle!(ResizeDirection::North, "top: 0; left: 8px; right: 8px; height: 4px;", "ns-resize")}
+        {handle!(ResizeDirection::South, "bottom: 0; left: 8px; right: 8px; height: 4px;", "ns-resize")}
+        {handle!(ResizeDirection::West,  "left: 0; top: 8px; bottom: 8px; width: 4px;", "ew-resize")}
+        {handle!(ResizeDirection::East,  "right: 0; top: 8px; bottom: 8px; width: 4px;", "ew-resize")}
+    }
+}
+
+#[cfg(not(feature = "desktop"))]
+fn os_resize_handles() -> Element {
+    rsx! {}
+}
+
 /// Root desktop component.
 #[component]
 pub fn Desktop() -> Element {
@@ -38,6 +79,7 @@ pub fn Desktop() -> Element {
         let css = wallpaper_bg.read().clone();
         crate::db::save_wallpaper_css_to_db(css);
     });
+
     let mut wm              = use_signal(WindowManager::default);
     let mut apps            = use_signal(default_apps);
     let mut launcher        = use_signal(LauncherState::default);
@@ -52,6 +94,17 @@ pub fn Desktop() -> Element {
     let chrome_style: Signal<String>  = use_context_provider(|| Signal::new("kde".to_string()));
     let btn_style: Signal<String>     = use_context_provider(|| Signal::new("rounded".to_string()));
     let sidebar_style: Signal<String> = use_context_provider(|| Signal::new("solid".to_string()));
+    // Any sub-app can request opening another app by setting this to Some(app_id).
+    let mut app_open_req: Signal<Option<String>> = use_context_provider(|| Signal::new(None));
+
+    // Handle app-open requests from sub-apps (e.g. Conductor's "Install Service" → Store).
+    use_effect(move || {
+        let req = app_open_req.read().clone();
+        if let Some(app_id) = req {
+            open_app(&mut wm, &mut apps, &app_id);
+            *app_open_req.write() = None;
+        }
+    });
 
     // ── Widget layer state ─────────────────────────────────────────────────
     let mut widget_layout   = use_signal(load_widget_layout);
@@ -218,6 +271,9 @@ pub fn Desktop() -> Element {
         if !store_theme_css.is_empty() {
             style { "{store_theme_css}" }
         }
+
+        // OS-level window resize handles (desktop only, invisible 4-8px borders).
+        { os_resize_handles() }
 
         div {
             id: "fsd-desktop",

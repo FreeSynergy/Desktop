@@ -73,6 +73,9 @@ pub async fn list_fsn_units() -> Vec<String> {
 /// Service list component — renders all FSN services with start/stop/restart buttons.
 #[component]
 pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
+    // Request the shell to open the Store when the user clicks "Install Service".
+    // Uses try_use_context so standalone mode (no shell) doesn't panic.
+    let app_open_req = try_use_context::<Signal<Option<String>>>();
     let mut services: Signal<Vec<ServiceEntry>> = use_signal(Vec::new);
     let mut error: Signal<Option<String>> = use_signal(|| None);
 
@@ -141,6 +144,11 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
                 button {
                     style: "background: var(--fsn-primary); color: white; border: none; \
                             padding: 8px 16px; border-radius: var(--fsn-radius-md); cursor: pointer;",
+                    onclick: move |_| {
+                        if let Some(mut req) = app_open_req {
+                            *req.write() = Some("store".to_string());
+                        }
+                    },
                     "Install Service"
                 }
             }
