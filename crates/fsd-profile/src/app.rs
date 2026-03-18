@@ -2,6 +2,7 @@
 use std::path::PathBuf;
 
 use dioxus::prelude::*;
+use fsn_i18n;
 use serde::{Deserialize, Serialize};
 
 // ── PersonalCapability ────────────────────────────────────────────────────────
@@ -205,7 +206,7 @@ pub fn ProfileApp() -> Element {
             class: "fsd-profile",
             style: "padding: 24px; max-width: 600px;",
 
-            h2 { style: "margin-top: 0;", "Profile" }
+            h2 { style: "margin-top: 0;", {fsn_i18n::t("profile.title")} }
 
             // Avatar
             div { style: "display: flex; align-items: center; gap: 24px; margin-bottom: 32px;",
@@ -224,13 +225,13 @@ pub fn ProfileApp() -> Element {
                         style: "display: block; padding: 6px 12px; background: var(--fsn-color-bg-surface); \
                                 border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); \
                                 cursor: pointer; margin-bottom: 8px;",
-                        "Upload photo"
+                        {fsn_i18n::t("profile.btn.upload_photo")}
                     }
                     button {
                         style: "display: block; padding: 6px 12px; background: none; border: none; \
                                 cursor: pointer; color: var(--fsn-color-error); font-size: 13px;",
                         onclick: move |_| profile.write().avatar_url = None,
-                        "Remove"
+                        {fsn_i18n::t("actions.remove")}
                     }
                 }
             }
@@ -238,7 +239,7 @@ pub fn ProfileApp() -> Element {
             // Display Name + Email
             div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;",
                 div {
-                    label { style: "display: block; font-weight: 500; margin-bottom: 4px;", "Display Name" }
+                    label { style: "display: block; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.display_name")} }
                     input {
                         r#type: "text",
                         value: "{profile.read().display_name}",
@@ -247,7 +248,7 @@ pub fn ProfileApp() -> Element {
                     }
                 }
                 div {
-                    label { style: "display: block; font-weight: 500; margin-bottom: 4px;", "Email" }
+                    label { style: "display: block; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.email")} }
                     input {
                         r#type: "email",
                         value: "{profile.read().email}",
@@ -259,7 +260,7 @@ pub fn ProfileApp() -> Element {
 
             // Bio
             div { style: "margin-bottom: 24px;",
-                label { style: "display: block; font-weight: 500; margin-bottom: 4px;", "Bio" }
+                label { style: "display: block; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.bio")} }
                 textarea {
                     style: "width: 100%; height: 80px; padding: 8px 12px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); resize: vertical;",
                     placeholder: "A short description…",
@@ -271,7 +272,7 @@ pub fn ProfileApp() -> Element {
             // SSH Keys
             div { style: "margin-bottom: 24px;",
                 div { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;",
-                    label { style: "font-weight: 500;", "SSH Keys" }
+                    label { style: "font-weight: 500;", {fsn_i18n::t("profile.section.ssh_keys")} }
                     button {
                         style: "padding: 4px 10px; background: var(--fsn-color-primary); color: white; \
                                 border: none; border-radius: 4px; cursor: pointer; font-size: 13px;",
@@ -279,7 +280,7 @@ pub fn ProfileApp() -> Element {
                             let cur = *show_add_key.read();
                             *show_add_key.write() = !cur;
                         },
-                        if *show_add_key.read() { "Cancel" } else { "+ Add Key" }
+                        if *show_add_key.read() { {fsn_i18n::t("actions.cancel")} } else { {fsn_i18n::t("profile.btn.add_key")} }
                     }
                 }
 
@@ -290,7 +291,7 @@ pub fn ProfileApp() -> Element {
                                 border-radius: var(--fsn-radius-md); margin-bottom: 8px; \
                                 border: 1px solid var(--fsn-color-border-default);",
                         div { style: "margin-bottom: 8px;",
-                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Label" }
+                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.key_label")} }
                             input {
                                 r#type: "text",
                                 placeholder: "e.g. Work Laptop",
@@ -300,7 +301,7 @@ pub fn ProfileApp() -> Element {
                             }
                         }
                         div { style: "margin-bottom: 8px;",
-                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Public Key" }
+                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.public_key")} }
                             textarea {
                                 style: "width: 100%; height: 60px; padding: 6px 10px; border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); font-family: var(--fsn-font-mono); font-size: 12px; resize: vertical;",
                                 placeholder: "ssh-ed25519 AAAA…",
@@ -325,7 +326,7 @@ pub fn ProfileApp() -> Element {
                                     *show_add_key.write() = false;
                                 }
                             },
-                            "Add"
+                            {fsn_i18n::t("actions.add")}
                         }
                     }
                 }
@@ -362,7 +363,7 @@ pub fn ProfileApp() -> Element {
             div { style: "margin-bottom: 24px;",
                 div { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;",
                     div {
-                        label { style: "font-weight: 500; display: block;", "Linked Accounts" }
+                        label { style: "font-weight: 500; display: block;", {fsn_i18n::t("profile.section.linked_accounts")} }
                         p { style: "margin: 2px 0 0; font-size: 12px; color: var(--fsn-color-text-muted);",
                             "OIDC identities linked to this profile."
                         }
@@ -377,7 +378,7 @@ pub fn ProfileApp() -> Element {
                             *link_subject.write() = String::new();
                             *link_username.write() = String::new();
                         },
-                        if *show_link.read() { "Cancel" } else { "+ Link Account" }
+                        if *show_link.read() { {fsn_i18n::t("actions.cancel")} } else { {fsn_i18n::t("profile.btn.link_account")} }
                     }
                 }
 
@@ -388,7 +389,7 @@ pub fn ProfileApp() -> Element {
                                 border: 1px solid var(--fsn-color-border-default);",
                         div { style: "display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;",
                             div {
-                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Provider" }
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.provider")} }
                                 input {
                                     r#type: "text", placeholder: "e.g. Kanidm",
                                     value: "{link_provider.read()}",
@@ -397,7 +398,7 @@ pub fn ProfileApp() -> Element {
                                 }
                             }
                             div {
-                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Username" }
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("labels.name")} }
                                 input {
                                     r#type: "text", placeholder: "e.g. alice",
                                     value: "{link_username.read()}",
@@ -406,7 +407,7 @@ pub fn ProfileApp() -> Element {
                                 }
                             }
                             div {
-                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Subject (sub)" }
+                                label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("profile.label.subject")} }
                                 input {
                                     r#type: "text", placeholder: "OIDC sub claim",
                                     value: "{link_subject.read()}",
@@ -429,7 +430,7 @@ pub fn ProfileApp() -> Element {
                                     *show_link.write() = false;
                                 }
                             },
-                            "Link"
+                            {fsn_i18n::t("actions.add")}
                         }
                     }
                 }
@@ -476,7 +477,7 @@ pub fn ProfileApp() -> Element {
             div { style: "margin-bottom: 24px;",
                 div { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;",
                     div {
-                        label { style: "font-weight: 500; display: block;", "Personal Capabilities" }
+                        label { style: "font-weight: 500; display: block;", {fsn_i18n::t("profile.section.capabilities")} }
                         p { style: "margin: 2px 0 0; font-size: 12px; color: var(--fsn-color-text-muted);",
                             "Messengers, task managers, mailboxes, and AI assistants."
                         }
@@ -503,11 +504,11 @@ pub fn ProfileApp() -> Element {
                                         *cap_llm_model.write() = "llama3".to_string();
                                     }
                                 },
-                                option { value: "__placeholder__", "+ Add Capability ▼" }
-                                option { value: "messenger", "Messenger Account" }
-                                option { value: "task", "Task Manager" }
-                                option { value: "mailbox", "Mailbox" }
-                                option { value: "llm", "LLM Assistant" }
+                                option { value: "__placeholder__", {fsn_i18n::t("profile.btn.add_capability")} }
+                                option { value: "messenger", {fsn_i18n::t("profile.capability.messenger_account")} }
+                                option { value: "task", {fsn_i18n::t("profile.capability.task_manager")} }
+                                option { value: "mailbox", {fsn_i18n::t("profile.capability.mailbox")} }
+                                option { value: "llm", {fsn_i18n::t("profile.capability.llm_assistant")} }
                             }
                         }
                     }
@@ -519,7 +520,7 @@ pub fn ProfileApp() -> Element {
                                 *cap_type.write() = None;
                                 *link_token.write() = None;
                             },
-                            "Cancel"
+                            {fsn_i18n::t("actions.cancel")}
                         }
                     }
                 }
@@ -672,7 +673,7 @@ pub fn ProfileApp() -> Element {
                                             *cap_type.write() = None;
                                         }
                                     },
-                                    "Add"
+                                    {fsn_i18n::t("actions.add")}
                                 }
                             }
                         }
@@ -715,7 +716,7 @@ pub fn ProfileApp() -> Element {
                                             *cap_type.write() = None;
                                         }
                                     },
-                                    "Add"
+                                    {fsn_i18n::t("actions.add")}
                                 }
                             }
                         }
@@ -758,7 +759,7 @@ pub fn ProfileApp() -> Element {
                                             *cap_type.write() = None;
                                         }
                                     },
-                                    "Add"
+                                    {fsn_i18n::t("actions.add")}
                                 }
                             }
                         }
@@ -803,11 +804,11 @@ pub fn ProfileApp() -> Element {
                     style: "padding: 8px 24px; background: var(--fsn-color-primary); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer;",
                     onclick: move |_| {
                         match profile.read().save() {
-                            Ok(()) => *save_msg.write() = Some("Profile saved.".into()),
-                            Err(e) => *save_msg.write() = Some(format!("Error: {e}")),
+                            Ok(()) => *save_msg.write() = Some(fsn_i18n::t("profile.msg.saved")),
+                            Err(e) => *save_msg.write() = Some(fsn_i18n::t_with("profile.msg.save_failed", &[("error", e.as_str())])),
                         }
                     },
-                    "Save Profile"
+                    {fsn_i18n::t("profile.btn.save")}
                 }
                 if let Some(msg) = save_msg.read().as_deref() {
                     span { style: "font-size: 13px; color: var(--fsn-color-text-muted);", "{msg}" }

@@ -1,5 +1,6 @@
 /// ShellHeader — 60px fixed header with menu bar, breadcrumbs and user avatar menu.
 use dioxus::prelude::*;
+use fsn_i18n;
 use crate::notification::{NotificationBell, NotificationHistory};
 
 /// A single breadcrumb entry.
@@ -18,89 +19,89 @@ impl Breadcrumb {
 /// A menu item descriptor for the menu bar.
 #[derive(Clone, PartialEq, Debug)]
 pub struct MenuItem {
-    pub label: &'static str,
+    pub label: String,
     pub items: Vec<MenuAction>,
 }
 
 /// A single action in a submenu (leaf item only).
 #[derive(Clone, PartialEq, Debug)]
 pub struct SubAction {
-    pub label: &'static str,
+    pub label: String,
     pub id: &'static str,
 }
 
 /// A single action in a menu dropdown.
 #[derive(Clone, PartialEq, Debug)]
 pub enum MenuAction {
-    Action { label: &'static str, shortcut: Option<&'static str>, id: &'static str },
-    SubMenu { label: &'static str, items: Vec<SubAction> },
+    Action { label: String, shortcut: Option<&'static str>, id: &'static str },
+    SubMenu { label: String, items: Vec<SubAction> },
     Separator,
 }
 
 fn default_menu() -> Vec<MenuItem> {
     vec![
         MenuItem {
-            label: "FreeSynergy",
+            label: "FreeSynergy".into(),
             items: vec![
-                MenuAction::Action { label: "About FreeSynergy…", shortcut: None,               id: "about" },
-                MenuAction::Action { label: "Settings",           shortcut: Some("Ctrl+,"),     id: "settings" },
-                MenuAction::Action { label: "App Launcher",       shortcut: Some("Ctrl+Space"), id: "launcher" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.about"),    shortcut: None,               id: "about" },
+                MenuAction::Action { label: fsn_i18n::t("settings.title"),      shortcut: Some("Ctrl+,"),     id: "settings" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.launcher"), shortcut: Some("Ctrl+Space"), id: "launcher" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Quit",               shortcut: Some("Ctrl+Q"),     id: "quit" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.quit"),     shortcut: Some("Ctrl+Q"),     id: "quit" },
             ],
         },
         MenuItem {
-            label: "View",
+            label: fsn_i18n::t("shell.menu.view"),
             items: vec![
-                MenuAction::Action { label: "Fullscreen", shortcut: Some("F11"), id: "fullscreen" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.fullscreen"), shortcut: Some("F11"), id: "fullscreen" },
                 MenuAction::Separator,
                 MenuAction::SubMenu {
-                    label: "Theme ▸",
+                    label: fsn_i18n::t("shell.menu.theme"),
                     items: vec![
-                        SubAction { label: "Midnight Blue", id: "theme-midnight-blue" },
-                        SubAction { label: "Cloud White",   id: "theme-cloud-white" },
-                        SubAction { label: "Cupertino",     id: "theme-cupertino" },
-                        SubAction { label: "Nordic",        id: "theme-nordic" },
-                        SubAction { label: "Rose Pine",     id: "theme-rose-pine" },
+                        SubAction { label: "Midnight Blue".into(), id: "theme-midnight-blue" },
+                        SubAction { label: "Cloud White".into(),   id: "theme-cloud-white" },
+                        SubAction { label: "Cupertino".into(),     id: "theme-cupertino" },
+                        SubAction { label: "Nordic".into(),        id: "theme-nordic" },
+                        SubAction { label: "Rose Pine".into(),     id: "theme-rose-pine" },
                     ],
                 },
                 MenuAction::SubMenu {
-                    label: "Rendering Mode ▸",
+                    label: fsn_i18n::t("shell.menu.rendering_mode"),
                     items: vec![
-                        SubAction { label: "Desktop", id: "render-desktop" },
-                        SubAction { label: "Web",     id: "render-web" },
+                        SubAction { label: "Desktop".into(), id: "render-desktop" },
+                        SubAction { label: "Web".into(),     id: "render-web" },
                     ],
                 },
             ],
         },
         MenuItem {
-            label: "Services",
+            label: fsn_i18n::t("shell.menu.services"),
             items: vec![
-                MenuAction::Action { label: "Open Conductor", shortcut: None, id: "open-conductor" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.open_conductor"), shortcut: None, id: "open-conductor" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Start All", shortcut: None, id: "start-all" },
-                MenuAction::Action { label: "Stop All",  shortcut: None, id: "stop-all" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.start_all"), shortcut: None, id: "start-all" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.stop_all"),  shortcut: None, id: "stop-all" },
             ],
         },
         MenuItem {
-            label: "Tools",
+            label: fsn_i18n::t("shell.menu.tools"),
             items: vec![
-                MenuAction::Action { label: "Open Store",       shortcut: Some("Ctrl+S"), id: "open-store" },
-                MenuAction::Action { label: "Open Studio",      shortcut: None,           id: "open-studio" },
-                MenuAction::Action { label: "Open Tasks",       shortcut: Some("Ctrl+T"), id: "open-tasks" },
-                MenuAction::Action { label: "Open Bots",        shortcut: None,           id: "open-bots" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.open_store"),       shortcut: Some("Ctrl+S"), id: "open-store" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.open_studio"),      shortcut: None,           id: "open-studio" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.open_tasks"),       shortcut: Some("Ctrl+T"), id: "open-tasks" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.open_bots"),        shortcut: None,           id: "open-bots" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Install Package…", shortcut: Some("Ctrl+I"), id: "install-package" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.install_package"), shortcut: Some("Ctrl+I"), id: "install-package" },
             ],
         },
         MenuItem {
-            label: "Help",
+            label: fsn_i18n::t("shell.menu.help"),
             items: vec![
-                MenuAction::Action { label: "Help",               shortcut: Some("F1"), id: "help" },
-                MenuAction::Action { label: "Keyboard Shortcuts", shortcut: None,       id: "shortcuts" },
-                MenuAction::Action { label: "Documentation",      shortcut: None,       id: "documentation" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.help"),               shortcut: Some("F1"), id: "help" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.keyboard_shortcuts"), shortcut: None,       id: "shortcuts" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.documentation"),      shortcut: None,       id: "documentation" },
                 MenuAction::Separator,
-                MenuAction::Action { label: "Report a Bug…", shortcut: None, id: "report-bug" },
+                MenuAction::Action { label: fsn_i18n::t("shell.menu.report_bug"), shortcut: None, id: "report-bug" },
             ],
         },
     ]
@@ -212,7 +213,7 @@ fn OsWindowControls() -> Element {
             // Maximize / Restore
             button {
                 class: "fsd-window-btn",
-                title: "Maximize",
+                title: fsn_i18n::t("shell.window.maximize"),
                 onmousedown: move |evt: MouseEvent| evt.stop_propagation(),
                 onclick: move |_| {
                     dioxus::desktop::window().toggle_maximized();
@@ -222,7 +223,7 @@ fn OsWindowControls() -> Element {
             // Close
             button {
                 class: "fsd-window-btn fsd-window-btn--close",
-                title: "Close",
+                title: fsn_i18n::t("shell.window.close"),
                 onmousedown: move |evt: MouseEvent| evt.stop_propagation(),
                 onclick: move |_| {
                     dioxus::desktop::window().close();
@@ -364,7 +365,7 @@ fn MenuDropdown(
 /// A menu row that reveals a flyout submenu on hover.
 #[component]
 fn SubMenuRow(
-    label: &'static str,
+    label: String,
     items: Vec<SubAction>,
     on_action: EventHandler<String>,
     on_close: EventHandler<()>,
@@ -505,10 +506,10 @@ fn AvatarDropdown(on_close: EventHandler<MouseEvent>) -> Element {
                     border: 1px solid var(--fsn-color-border-default, #334155); \
                     border-radius: 8px; min-width: 160px; z-index: 300; \
                     box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 4px 0;",
-            AvatarMenuItem { icon: "👤", label: "Profile",  on_click: on_close.clone() }
-            AvatarMenuItem { icon: "⚙",  label: "Settings", on_click: on_close.clone() }
+            AvatarMenuItem { icon: "👤", label: fsn_i18n::t("shell.avatar.profile"),  on_click: on_close.clone() }
+            AvatarMenuItem { icon: "⚙",  label: fsn_i18n::t("settings.title"),         on_click: on_close.clone() }
             hr { style: "border: none; border-top: 1px solid var(--fsn-color-border-default, #334155); margin: 4px 0;" }
-            AvatarMenuItem { icon: "⎋",  label: "Sign out", on_click: on_close }
+            AvatarMenuItem { icon: "⎋",  label: fsn_i18n::t("shell.avatar.sign_out"),  on_click: on_close }
         }
     }
 }
@@ -516,7 +517,7 @@ fn AvatarDropdown(on_close: EventHandler<MouseEvent>) -> Element {
 #[component]
 fn AvatarMenuItem(
     icon: &'static str,
-    label: &'static str,
+    label: String,
     on_click: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {

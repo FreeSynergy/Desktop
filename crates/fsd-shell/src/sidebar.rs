@@ -2,6 +2,7 @@
 /// Uses the FsnSidebar CSS class (icons-only 48px, expands to 220px on hover).
 use dioxus::prelude::*;
 use fsn_components::{FsnSidebarItem, FsnSidebar};
+use fsn_i18n;
 
 /// A single navigation item in the sidebar.
 #[derive(Clone, PartialEq, Debug)]
@@ -24,20 +25,20 @@ pub fn default_sidebar_sections() -> Vec<SidebarSection> {
         SidebarSection {
             label: "Apps",
             items: vec![
-                SidebarNavItem { id: "tasks".into(),     label: "Tasks".into(),     icon: "📋".into() },
-                SidebarNavItem { id: "bots".into(),      label: "Bots".into(),      icon: "🤖".into() },
-                SidebarNavItem { id: "conductor".into(), label: "Conductor".into(), icon: "🎛".into() },
-                SidebarNavItem { id: "store".into(),     label: "Store".into(),     icon: "📦".into() },
-                SidebarNavItem { id: "studio".into(),    label: "Studio".into(),    icon: "🔧".into() },
+                SidebarNavItem { id: "tasks".into(),     label: fsn_i18n::t("shell.nav.tasks"),     icon: "📋".into() },
+                SidebarNavItem { id: "bots".into(),      label: fsn_i18n::t("shell.nav.bots"),      icon: "🤖".into() },
+                SidebarNavItem { id: "conductor".into(), label: fsn_i18n::t("shell.nav.conductor"), icon: "🎛".into() },
+                SidebarNavItem { id: "store".into(),     label: fsn_i18n::t("shell.nav.store"),     icon: "📦".into() },
+                SidebarNavItem { id: "studio".into(),    label: fsn_i18n::t("shell.nav.studio"),    icon: "🔧".into() },
             ],
         },
         SidebarSection {
             label: "System",
             items: vec![
-                SidebarNavItem { id: "settings".into(), label: "Settings".into(),      icon: "⚙".into() },
-                SidebarNavItem { id: "profile".into(),  label: "Profile".into(),       icon: "👤".into() },
-                SidebarNavItem { id: "ai".into(),       label: "AI Assistant".into(),  icon: "🤖".into() },
-                SidebarNavItem { id: "help".into(),     label: "Help".into(),          icon: "❓".into() },
+                SidebarNavItem { id: "settings".into(), label: fsn_i18n::t("shell.nav.settings"),     icon: "⚙".into() },
+                SidebarNavItem { id: "profile".into(),  label: fsn_i18n::t("shell.nav.profile"),      icon: "👤".into() },
+                SidebarNavItem { id: "ai".into(),       label: fsn_i18n::t("shell.nav.ai_assistant"), icon: "🤖".into() },
+                SidebarNavItem { id: "help".into(),     label: fsn_i18n::t("shell.nav.help"),         icon: "❓".into() },
             ],
         },
     ]

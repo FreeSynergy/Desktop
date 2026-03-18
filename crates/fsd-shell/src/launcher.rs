@@ -6,6 +6,7 @@
 ///  - Each group row: icon grid → repeat(auto-fill, 120px)
 ///  - Pagination for large groups (future: currently shows all)
 use dioxus::prelude::*;
+use fsn_i18n;
 
 use crate::taskbar::AppEntry;
 
@@ -147,7 +148,7 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                             outline: none; box-sizing: border-box; \
                             transition: border-color 150ms ease;",
                     r#type: "text",
-                    placeholder: "Search apps…",
+                    placeholder: fsn_i18n::t("shell.launcher.search_placeholder"),
                     value: props.query.clone(),
                     autofocus: true,
                     oninput: move |evt| {
@@ -169,7 +170,7 @@ pub fn AppLauncher(props: AppLauncherProps) -> Element {
                     if filtered.is_empty() {
                         div {
                             style: "text-align: center; color: var(--fsn-text-muted); padding: 48px 0; font-size: 14px;",
-                            "No apps found for \"{props.query}\""
+                            {fsn_i18n::t_with("shell.launcher.no_apps", &[("query", props.query.as_str())])}
                         }
                     } else {
                         for group in &page_groups {
@@ -217,7 +218,9 @@ fn LauncherPagination(
     let at_end     = current + 1 >= total;
     let op_prev    = if at_start { "0.3" } else { "1.0" };
     let op_next    = if at_end   { "0.3" } else { "1.0" };
-    let page_label = format!("Page {} / {}", current + 1, total);
+    let n_str = (current + 1).to_string();
+    let total_str = total.to_string();
+    let page_label = fsn_i18n::t_with("shell.launcher.page", &[("n", n_str.as_str()), ("total", total_str.as_str())]);
     // Pre-compute dot colors — avoids if/else inside rsx! format strings
     let dots: Vec<(usize, &'static str)> = (0..total)
         .map(|i| (i, if i == current { "var(--fsn-primary)" } else { "var(--fsn-text-muted)" }))

@@ -1,5 +1,6 @@
 /// i18n editor — view and edit installed FSN language files (ui.toml).
 use dioxus::prelude::*;
+use fsn_i18n;
 use fsd_db::package_registry::PackageRegistry;
 
 /// Built-in language codes (always shown, even without a registry entry).
@@ -86,12 +87,12 @@ pub fn I18nEditor() -> Element {
                     label {
                         style: "display: block; font-size: 12px; font-weight: 600; \
                                 margin-bottom: 8px; color: var(--fsn-color-text-muted);",
-                        "LANGUAGE"
+                        {fsn_i18n::t("studio.i18n.language_label")}
                     }
                     if lang_options.read().is_empty() {
                         p {
                             style: "font-size: 12px; color: var(--fsn-color-text-muted);",
-                            "No language packs installed. Use the Store to install one."
+                            {fsn_i18n::t("studio.i18n.no_packs")}
                         }
                     } else {
                         div {
@@ -143,7 +144,7 @@ pub fn I18nEditor() -> Element {
                         if *dirty.read() {
                             span { style: "margin-left: 6px; font-size: 12px; \
                                            color: var(--fsn-color-warning, #f59e0b);",
-                                "● unsaved"
+                                {fsn_i18n::t("studio.i18n.unsaved")}
                             }
                         }
                     }
@@ -173,7 +174,7 @@ pub fn I18nEditor() -> Element {
                                     }
                                 }
                             },
-                            "Save"
+                            {fsn_i18n::t("actions.save")}
                         }
                     }
                 }
@@ -188,9 +189,9 @@ pub fn I18nEditor() -> Element {
                                 border: 1px dashed var(--fsn-color-border-default); \
                                 border-radius: var(--fsn-radius-md);",
                         div {
-                            p { style: "margin: 0 0 8px;", "No ui.toml found for this language." }
+                            p { style: "margin: 0 0 8px;", {fsn_i18n::t("studio.i18n.no_toml_title")} }
                             p { style: "font-size: 12px;",
-                                "Install it from the Store or create a new file at:"
+                                {fsn_i18n::t("studio.i18n.no_toml_hint")}
                             }
                             code {
                                 style: "font-size: 11px; display: block; margin-top: 8px; \

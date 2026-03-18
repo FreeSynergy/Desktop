@@ -1,5 +1,6 @@
 /// Notification / Toast system — ephemeral messages stacked in the top-right corner.
 use dioxus::prelude::*;
+use fsn_i18n;
 
 /// Severity level of a notification.
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -196,11 +197,16 @@ pub fn NotificationBell(
                                 border-bottom: 1px solid var(--fsn-color-border-default); \
                                 display: flex; align-items: center; justify-content: space-between;",
                         span { style: "font-size: 14px; font-weight: 600; color: var(--fsn-color-text-primary);",
-                            "Notifications"
+                            {fsn_i18n::t("shell.notifications.title")}
                         }
                         if !entries.is_empty() {
-                            span { style: "font-size: 11px; color: var(--fsn-color-text-muted);",
-                                "{entries.len()} total"
+                            {
+                                let n_str = entries.len().to_string();
+                                rsx! {
+                                    span { style: "font-size: 11px; color: var(--fsn-color-text-muted);",
+                                        {fsn_i18n::t_with("shell.notifications.count", &[("n", n_str.as_str())])}
+                                    }
+                                }
                             }
                         }
                     }
@@ -210,7 +216,7 @@ pub fn NotificationBell(
                             div {
                                 style: "padding: 24px; text-align: center; \
                                         color: var(--fsn-color-text-muted); font-size: 13px;",
-                                "No notifications"
+                                {fsn_i18n::t("shell.notifications.empty")}
                             }
                         }
                         for entry in &entries {
@@ -305,7 +311,7 @@ fn Toast(notification: Notification, on_dismiss: EventHandler<u64>) -> Element {
                         background: none; border: none; cursor: pointer; \
                         color: var(--fsn-color-text-muted, #94a3b8); font-size: 14px; \
                         line-height: 1; padding: 2px 4px;",
-                title: "Dismiss",
+                title: fsn_i18n::t("shell.notifications.dismiss"),
                 onclick: move |_| on_dismiss.call(id),
                 "×"
             }
