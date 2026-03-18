@@ -10,6 +10,8 @@ pub enum PackageKind {
     Plugin,
     /// A Podman/Quadlet container service (e.g. Kanidm, Forgejo, Outline).
     Container,
+    /// Built-in desktop manager (Language, Theme, Icons, ContainerApp, Bots).
+    Manager,
     Language,
     Theme,
     Widget,
@@ -23,6 +25,7 @@ impl PackageKind {
     pub const ALL: &'static [PackageKind] = &[
         PackageKind::Plugin,
         PackageKind::Container,
+        PackageKind::Manager,
         PackageKind::Language,
         PackageKind::Theme,
         PackageKind::Widget,
@@ -35,6 +38,7 @@ impl PackageKind {
         match self {
             PackageKind::Plugin     => "Plugin",
             PackageKind::Container  => "Service",
+            PackageKind::Manager    => "Manager",
             PackageKind::Language   => "Language",
             PackageKind::Theme      => "Theme",
             PackageKind::Widget     => "Widget",
@@ -48,9 +52,10 @@ impl PackageKind {
         match self {
             PackageKind::Plugin     => "🔌",
             PackageKind::Container  => "📦",
+            PackageKind::Manager    => "🧩",
             PackageKind::Language   => "🌐",
             PackageKind::Theme      => "🎨",
-            PackageKind::Widget     => "🧩",
+            PackageKind::Widget     => "🧱",
             PackageKind::BotCommand => "🤖",
             PackageKind::Bridge     => "🌉",
             PackageKind::Task       => "⚡",
@@ -62,6 +67,7 @@ impl PackageKind {
         match self {
             PackageKind::Plugin     => "plugin".into(),
             PackageKind::Container  => "container".into(),
+            PackageKind::Manager    => "manager".into(),
             PackageKind::Language   => "language".into(),
             PackageKind::Theme      => "theme".into(),
             PackageKind::Widget     => "widget".into(),

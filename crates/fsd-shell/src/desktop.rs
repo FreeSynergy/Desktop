@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use dioxus::prelude::*;
 use fsn_i18n;
 
-use fsd_bots::BotManagerApp;
 use fsd_browser::BrowserApp;
-use fsd_conductor::ConductorApp;
 use fsd_lenses::LensesApp;
 use fsd_managers::ManagersApp;
 use fsd_profile::ProfileApp;
@@ -84,7 +82,6 @@ fn init_i18n() -> String {
 
     // 2. App-specific strings — each crate owns its own TOML assets
     fsd_store::register_i18n();
-    fsd_conductor::register_i18n();
     fsd_settings::register_i18n();
     fsd_builder::register_i18n();
     fsd_browser::register_i18n();
@@ -202,7 +199,6 @@ pub fn Desktop() -> Element {
             "theme-midnight-blue" => { theme.set("midnight-blue".to_string()); crate::db::save_theme_to_db("midnight-blue".to_string()); }
             "launcher"            => launcher.write().toggle(),
             "open-tasks"          => open_app(&mut wm, &mut apps, "tasks"),
-            "open-bots"           => open_app(&mut wm, &mut apps, "bots"),
             _ => {}
         }
     };
@@ -818,16 +814,6 @@ fn AppWindowContent(title_key: String) -> Element {
                 LayoutA { TasksApp {} }
             }
         },
-        "app-bots" => rsx! {
-            AppShell { mode: AppMode::Window,
-                BotManagerApp {}
-            }
-        },
-        "app-conductor" => rsx! {
-            AppShell { mode: AppMode::Window,
-                ConductorApp {}
-            }
-        },
         "app-store" => rsx! {
             AppShell { mode: AppMode::Window,
                 LayoutA { StoreApp {} }
@@ -886,18 +872,16 @@ fn AppWindowContent(title_key: String) -> Element {
 /// Map an app id (the part after `"app-"`) to a human-readable breadcrumb label.
 fn app_id_to_label(id: &str) -> &str {
     match id {
-        "tasks"     => "Tasks",
-        "bots"      => "Bots",
-        "conductor" => "Conductor",
-        "store"     => "Store",
-        "builder"   => "Builder",
-        "browser"   => "Browser",
-        "lenses"    => "Lenses",
-        "settings"  => "Settings",
-        "managers"  => "Managers",
-        "profile"   => "Profile",
-        "ai"        => "AI Assistant",
-        "help"      => "Help",
-        other       => other,
+        "tasks"    => "Tasks",
+        "store"    => "Store",
+        "builder"  => "Builder",
+        "browser"  => "Browser",
+        "lenses"   => "Lenses",
+        "settings" => "Settings",
+        "managers" => "Managers",
+        "profile"  => "Profile",
+        "ai"       => "AI Assistant",
+        "help"     => "Help",
+        other      => other,
     }
 }

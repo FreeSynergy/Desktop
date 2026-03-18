@@ -29,10 +29,10 @@ impl MultiwindowHandle {
         dioxus::desktop::window().new_window(VirtualDom::new(component), cfg);
     }
 
-    /// Open fsd-conductor in its own window.
+    /// Open fsd-managers in its own window.
     #[cfg(feature = "desktop")]
-    pub fn open_conductor(&self) {
-        self.open("FreeSynergy — Container Manager", 1000.0, 700.0, fsd_conductor::ConductorApp);
+    pub fn open_managers(&self) {
+        self.open("FreeSynergy — Managers", 900.0, 640.0, fsd_managers::ManagersApp);
     }
 
     /// Open fsd-settings in its own window.

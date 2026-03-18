@@ -18,6 +18,7 @@ available = "Available"
 
 [store.tab]
 all       = "All"
+managers  = "Managers"
 services  = "Services"
 plugins   = "Plugins"
 languages = "Languages"

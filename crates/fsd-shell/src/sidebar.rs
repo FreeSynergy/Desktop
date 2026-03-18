@@ -1,11 +1,12 @@
 /// ShellSidebar — left-side navigation panel for the desktop shell.
 /// Uses the FsnSidebar CSS class (icons-only 48px, expands to 220px on hover).
 use dioxus::prelude::*;
+use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
 use fsn_components::{FsnSidebarItem, FsnSidebar};
 use fsn_i18n;
 
 /// A single navigation item in the sidebar.
-/// Items with non-empty `children` are rendered as folders.
+/// Items with non-empty `children` are rendered as folders (bundles).
 #[derive(Clone, PartialEq, Debug)]
 pub struct SidebarNavItem {
     pub id:       String,
@@ -21,36 +22,84 @@ pub struct SidebarSection {
     pub items: Vec<SidebarNavItem>,
 }
 
-/// Build the Apps section from the PackageRegistry.
-///
-/// Only packages with `kind = "app"` are shown. The display label is resolved
-/// via i18n (`shell.nav.<id>`) with a fallback to the package name so that
-/// third-party apps installed from the Store also get a label even if they
-/// have no built-in translation key.
+// ── OOP Trait ────────────────────────────────────────────────────────────────
+
+/// Any type that can present itself as a sidebar navigation item.
+/// Programs expose their own id, icon, and label — the sidebar just renders them.
+pub trait SidebarEntry {
+    fn nav_item(&self) -> SidebarNavItem;
+}
+
+/// An installed app or manager package provides its own nav item.
+impl SidebarEntry for InstalledPackage {
+    fn nav_item(&self) -> SidebarNavItem {
+        let key   = format!("shell.nav.{}", self.id);
+        let label = fsn_i18n::t(&key);
+        let label = if label == key { self.name.clone() } else { label };
+        SidebarNavItem {
+            id:       self.id.clone(),
+            label,
+            icon:     self.icon.clone(),
+            children: vec![],
+        }
+    }
+}
+
+/// A bundle groups several installed packages under a single folder entry.
+/// The bundle itself exposes its own id, icon, and label — OOP, no hard-coding.
+pub struct ManagerBundle(pub Vec<InstalledPackage>);
+
+impl SidebarEntry for ManagerBundle {
+    fn nav_item(&self) -> SidebarNavItem {
+        SidebarNavItem {
+            id:       "managers-folder".into(),
+            label:    fsn_i18n::t("shell.nav.managers"),
+            icon:     "🧩".into(),
+            children: self.0.iter().map(|m| m.nav_item()).collect(),
+        }
+    }
+}
+
+// ── Dynamic registry reads ───────────────────────────────────────────────────
+
+/// All installed apps (`kind = "app"`) as nav items.
 fn installed_app_items() -> Vec<SidebarNavItem> {
-    fsd_db::package_registry::PackageRegistry::by_kind("app")
-        .into_iter()
-        .map(|pkg| {
-            let key = format!("shell.nav.{}", pkg.id);
-            let label = fsn_i18n::t(&key);
-            // Fall back to the package name when no translation key exists.
-            let label = if label == key { pkg.name.clone() } else { label };
-            SidebarNavItem {
-                id:       pkg.id,
-                label,
-                icon:     pkg.icon,
-                children: vec![],
-            }
-        })
+    PackageRegistry::by_kind("app")
+        .iter()
+        .map(|pkg| pkg.nav_item())
         .collect()
 }
 
+/// Managers bundle — only returned when at least one manager is installed.
+fn installed_manager_bundle() -> Option<SidebarNavItem> {
+    let managers = PackageRegistry::by_kind("manager");
+    if managers.is_empty() {
+        None
+    } else {
+        Some(ManagerBundle(managers).nav_item())
+    }
+}
+
+// ── Sidebar sections ─────────────────────────────────────────────────────────
+
 /// Default sidebar sections for the shell.
 ///
-/// The **Apps** section is built dynamically from the PackageRegistry so that
-/// only installed apps appear. The **System** section (Settings, Profile, AI,
-/// Help, Managers) is always present — these are not user-installable.
+/// - **Apps**: built dynamically from PackageRegistry (`kind = "app"`).
+/// - **System**: Settings, Profile, AI, Help — always present.
+/// - The Managers bundle is appended to System when managers are installed.
 pub fn default_sidebar_sections() -> Vec<SidebarSection> {
+    let mut system_items = vec![
+        SidebarNavItem { id: "settings".into(), label: fsn_i18n::t("shell.nav.settings"),     icon: "⚙".into(),  children: vec![] },
+        SidebarNavItem { id: "profile".into(),  label: fsn_i18n::t("shell.nav.profile"),      icon: "👤".into(), children: vec![] },
+        SidebarNavItem { id: "ai".into(),       label: fsn_i18n::t("shell.nav.ai_assistant"), icon: "🤖".into(), children: vec![] },
+        SidebarNavItem { id: "help".into(),     label: fsn_i18n::t("shell.nav.help"),         icon: "❓".into(), children: vec![] },
+    ];
+
+    // Managers folder — only shows when at least one manager is installed.
+    if let Some(bundle) = installed_manager_bundle() {
+        system_items.push(bundle);
+    }
+
     vec![
         SidebarSection {
             label: "Apps",
@@ -58,31 +107,14 @@ pub fn default_sidebar_sections() -> Vec<SidebarSection> {
         },
         SidebarSection {
             label: "System",
-            items: vec![
-                SidebarNavItem { id: "settings".into(), label: fsn_i18n::t("shell.nav.settings"),     icon: "⚙".into(),  children: vec![] },
-                SidebarNavItem { id: "profile".into(),  label: fsn_i18n::t("shell.nav.profile"),      icon: "👤".into(), children: vec![] },
-                SidebarNavItem { id: "ai".into(),       label: fsn_i18n::t("shell.nav.ai_assistant"), icon: "🤖".into(), children: vec![] },
-                SidebarNavItem { id: "help".into(),     label: fsn_i18n::t("shell.nav.help"),         icon: "❓".into(), children: vec![] },
-                // Managers folder — opens sub-level with all available managers
-                SidebarNavItem {
-                    id:    "managers-folder".into(),
-                    label: fsn_i18n::t("shell.nav.managers"),
-                    icon:  "🧩".into(),
-                    children: vec![
-                        SidebarNavItem { id: "managers".into(), label: fsn_i18n::t("shell.nav.manager_language"),      icon: "🌐".into(), children: vec![] },
-                        SidebarNavItem { id: "managers".into(), label: fsn_i18n::t("shell.nav.manager_theme"),         icon: "🎨".into(), children: vec![] },
-                        SidebarNavItem { id: "managers".into(), label: fsn_i18n::t("shell.nav.manager_icons"),         icon: "🖼".into(), children: vec![] },
-                        SidebarNavItem { id: "managers".into(), label: fsn_i18n::t("shell.nav.manager_container_app"), icon: "📦".into(), children: vec![] },
-                        SidebarNavItem { id: "managers".into(), label: fsn_i18n::t("shell.nav.manager_bots"),          icon: "🤖".into(), children: vec![] },
-                    ],
-                },
-            ],
+            items: system_items,
         },
     ]
 }
 
-/// Converts a `SidebarNavItem` (shell type) into a `FsnSidebarItem` (component type),
-/// recursively converting children so that folder items work correctly.
+// ── Component ────────────────────────────────────────────────────────────────
+
+/// Converts a `SidebarNavItem` into a `FsnSidebarItem`, recursively for folders.
 fn nav_item_to_fsn(item: &SidebarNavItem) -> FsnSidebarItem {
     if item.children.is_empty() {
         FsnSidebarItem::new(item.id.clone(), item.icon.clone(), item.label.clone())

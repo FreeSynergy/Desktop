@@ -12,6 +12,7 @@ use crate::package_detail::PackageDetail;
 #[derive(Clone, PartialEq, Debug)]
 pub enum StoreTab {
     All,
+    Managers,
     Services,
     Plugins,
     Languages,
@@ -28,6 +29,7 @@ impl StoreTab {
     /// Returns the PackageKind filter for this tab (None = show all).
     pub fn kind_filter(&self) -> Option<PackageKind> {
         match self {
+            Self::Managers  => Some(PackageKind::Manager),
             Self::Services  => Some(PackageKind::Container),
             Self::Plugins   => Some(PackageKind::Plugin),
             Self::Languages => Some(PackageKind::Language),
@@ -43,6 +45,7 @@ impl StoreTab {
     pub fn label(&self) -> String {
         match self {
             Self::All       => fsn_i18n::t("store.tab.all"),
+            Self::Managers  => fsn_i18n::t("store.tab.managers"),
             Self::Services  => fsn_i18n::t("store.tab.services"),
             Self::Plugins   => fsn_i18n::t("store.tab.plugins"),
             Self::Languages => fsn_i18n::t("store.tab.languages"),
@@ -60,11 +63,12 @@ impl StoreTab {
     pub fn icon(&self) -> &'static str {
         match self {
             Self::All       => "📦",
+            Self::Managers  => "🧩",
             Self::Services  => "⚙",
             Self::Plugins   => "🔌",
             Self::Languages => "🌐",
             Self::Themes    => "🎨",
-            Self::Widgets   => "🧩",
+            Self::Widgets   => "🧱",
             Self::Bots      => "🤖",
             Self::Bridges   => "🔗",
             Self::Tasks     => "📋",
@@ -77,6 +81,7 @@ impl StoreTab {
     pub fn id(&self) -> &'static str {
         match self {
             Self::All       => "All",
+            Self::Managers  => "Managers",
             Self::Services  => "Services",
             Self::Plugins   => "Plugins",
             Self::Languages => "Languages",
@@ -93,6 +98,7 @@ impl StoreTab {
     /// Look up a tab by its ID string.
     pub fn from_id(id: &str) -> Self {
         match id {
+            "Managers"  => Self::Managers,
             "Services"  => Self::Services,
             "Plugins"   => Self::Plugins,
             "Languages" => Self::Languages,
@@ -110,6 +116,7 @@ impl StoreTab {
 
 const ALL_TABS: &[StoreTab] = &[
     StoreTab::All,
+    StoreTab::Managers,
     StoreTab::Services,
     StoreTab::Plugins,
     StoreTab::Languages,
