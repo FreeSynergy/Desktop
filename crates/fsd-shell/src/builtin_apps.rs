@@ -1,7 +1,10 @@
-/// Built-in app registry — pre-registers all compiled-in apps in PackageRegistry.
+/// Built-in app registry — pre-registers only the Store at startup.
 ///
-/// Built-in apps are compiled into the desktop binary and are always _runnable_,
-/// but they still need to be registered as `kind = "app"` entries in the
+/// The Store is the only app that exists before anything is installed.
+/// All other apps (Browser, Lenses, Tasks, managers, …) must be installed
+/// through the Store and are registered dynamically when installed.
+///
+/// Built-in apps still need to be registered as `kind = "app"` entries in the
 /// PackageRegistry so that:
 ///  - they appear in the Store's "Installed" section with proper metadata
 ///  - the sidebar reads them dynamically (only registered apps are shown)
@@ -20,14 +23,11 @@ struct BuiltinApp {
     version: &'static str,
 }
 
+const ICON_STORE: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>"#;
+
+/// Only the Store is pre-installed. Everything else is installed via the Store.
 const BUILTIN_APPS: &[BuiltinApp] = &[
-    BuiltinApp { id: "browser",       name: "Browser",           icon: "🌐", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "lenses",        name: "Lenses",            icon: "🔍", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "tasks",         name: "Tasks",             icon: "📋", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "store",         name: "Store",             icon: "📦", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "container",     name: "Container Manager", icon: "📦", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "theme-manager", name: "Theme Manager",     icon: "🎨", version: env!("CARGO_PKG_VERSION") },
-    BuiltinApp { id: "bot-manager",   name: "Bot Manager",       icon: "🤖", version: env!("CARGO_PKG_VERSION") },
+    BuiltinApp { id: "store", name: "Store", icon: ICON_STORE, version: env!("CARGO_PKG_VERSION") },
 ];
 
 /// Pre-registers all built-in apps in the PackageRegistry (idempotent).
