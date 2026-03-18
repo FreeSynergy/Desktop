@@ -1,0 +1,34 @@
+# fsd-managers — English i18n strings
+
+[managers]
+title  = "Managers"
+saved  = "Applied."
+
+[managers.section]
+language       = "Language"
+theme          = "Theme"
+icons          = "Icons"
+container_apps = "Container Apps"
+bots           = "Bots"
+
+[managers.language]
+title       = "Language Manager"
+description = "Select the active interface language. Changes apply across all FreeSynergy programs."
+
+[managers.theme]
+title       = "Theme Manager"
+description = "Select the active UI theme. Changes apply across all FreeSynergy programs."
+
+[managers.icons]
+title       = "Icon Manager"
+description = "Available icon sets for the FreeSynergy interface."
+no_sets     = "No icon sets found. Check the FreeSynergy.Icons repository."
+
+[managers.container_apps]
+title       = "Container App Manager"
+description = "Manage containerized applications running on this node."
+empty       = "No container apps installed yet. Browse the Store to install apps."
+
+[managers.bots]
+title       = "Bot Manager"
+placeholder = "Bot management is coming soon."

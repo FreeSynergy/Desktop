@@ -1,0 +1,29 @@
+[package]
+name        = "fsd-managers"
+description = "FreeSynergy Desktop – Managers: language, theme, icons, container apps, bots"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "fsd_managers"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fsd-managers"
+path = "src/main.rs"
+
+[features]
+default = ["desktop"]
+desktop = ["dioxus/desktop", "fsn-components/desktop"]
+web     = ["dioxus/web",     "fsn-components/web"]
+
+[dependencies]
+fsn-components         = { workspace = true }
+fsn-i18n               = { workspace = true }
+dioxus                 = { workspace = true }
+tracing                = { workspace = true }
+fsn-manager-language      = { path = "../../../FreeSynergy.Managers/language" }
+fsn-manager-theme         = { path = "../../../FreeSynergy.Managers/theme" }
+fsn-manager-icons         = { path = "../../../FreeSynergy.Managers/icons" }
+fsn-manager-container-app = { path = "../../../FreeSynergy.Managers/container_app" }

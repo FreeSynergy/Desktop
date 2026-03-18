@@ -7,6 +7,7 @@ use fsd_bots::BotManagerApp;
 use fsd_browser::BrowserApp;
 use fsd_conductor::ConductorApp;
 use fsd_lenses::LensesApp;
+use fsd_managers::ManagersApp;
 use fsd_profile::ProfileApp;
 use fsd_settings::SettingsApp;
 use fsd_store::StoreApp;
@@ -88,6 +89,7 @@ fn init_i18n() -> String {
     fsd_builder::register_i18n();
     fsd_browser::register_i18n();
     fsd_lenses::register_i18n();
+    fsd_managers::register_i18n();
     // shell.* + profile.* — registered inline below
     {
         const EN: &str = include_str!("../assets/i18n/en.toml");
@@ -841,6 +843,11 @@ fn AppWindowContent(title_key: String) -> Element {
                 SettingsApp {}
             }
         },
+        "app-managers" => rsx! {
+            AppShell { mode: AppMode::Window,
+                ManagersApp {}
+            }
+        },
         "app-profile" => rsx! {
             AppShell { mode: AppMode::Window,
                 LayoutC { ProfileApp {} }
@@ -887,6 +894,7 @@ fn app_id_to_label(id: &str) -> &str {
         "browser"   => "Browser",
         "lenses"    => "Lenses",
         "settings"  => "Settings",
+        "managers"  => "Managers",
         "profile"   => "Profile",
         "ai"        => "AI Assistant",
         "help"      => "Help",

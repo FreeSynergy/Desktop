@@ -13,6 +13,7 @@ members = [
     "crates/fsd-tasks",
     "crates/fsd-browser",
     "crates/fsd-lenses",
+    "crates/fsd-managers",
 ]
 resolver = "2"
 
@@ -39,6 +40,7 @@ fsd-bots      = { path = "crates/fsd-bots" }
 fsd-tasks     = { path = "crates/fsd-tasks" }
 fsd-browser   = { path = "crates/fsd-browser" }
 fsd-lenses    = { path = "crates/fsd-lenses" }
+fsd-managers  = { path = "crates/fsd-managers" }
 
 # FreeSynergy.Lib — shared libraries
 fsn-types          = { path = "../FreeSynergy.Lib/fsn-types" }

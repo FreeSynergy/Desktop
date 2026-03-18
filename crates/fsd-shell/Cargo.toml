@@ -29,6 +29,7 @@ fsd-bots      = { workspace = true }
 fsd-tasks     = { workspace = true }
 fsd-browser   = { workspace = true }
 fsd-lenses    = { workspace = true }
+fsd-managers  = { workspace = true }
 fsn-components = { workspace = true }
 fsn-i18n       = { workspace = true }
 fsn-theme      = { workspace = true }
