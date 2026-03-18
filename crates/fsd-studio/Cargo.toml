@@ -19,9 +19,13 @@ desktop  = ["dioxus/desktop", "fsn-components/desktop"]
 web      = ["dioxus/web",     "fsn-components/web"]
 
 [dependencies]
+fsd-db         = { workspace = true }
 fsn-components = { workspace = true }
+fsn-store      = { workspace = true }
 dioxus         = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }
 serde_yaml     = { workspace = true }
 reqwest        = { workspace = true }
+tracing        = { workspace = true }
+tokio          = { workspace = true }

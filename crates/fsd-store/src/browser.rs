@@ -7,6 +7,9 @@ use fsn_store::{Catalog, StoreClient};
 use crate::node_package::{NodePackage, PackageKind};
 use crate::package_card::{PackageCard, PackageEntry};
 
+/// Language codes built into the desktop (always considered "installed").
+const BUILTIN_LANG_CODES: &[&str] = &["de", "en", "fr", "es", "it", "pt"];
+
 /// Package browser component. `kind` filters by package type (None = show all).
 #[component]
 pub fn PackageBrowser(
@@ -116,25 +119,50 @@ fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
         .map(|p| p.id)
         .collect();
 
-    catalog
+    let mut entries: Vec<PackageEntry> = catalog
         .packages
         .into_iter()
         .map(|p| {
             let installed = installed_ids.contains(&p.id);
             PackageEntry {
-                id:               p.id.clone(),
-                name:             p.name.clone(),
-                description:      p.description.clone(),
-                version:          p.version.clone(),
-                category:         p.category.clone(),
-                kind:             p.kind.clone(),
-                capabilities:     p.capabilities.clone(),
-                tags:             p.tags.clone(),
-                icon:             p.icon.clone(),
-                store_path:       p.path.clone(),
+                id:               p.id,
+                name:             p.name,
+                description:      p.description,
+                version:          p.version,
+                category:         p.category,
+                kind:             p.kind,
+                capabilities:     p.capabilities,
+                tags:             p.tags,
+                icon:             p.icon,
+                store_path:       p.path,
                 installed,
                 update_available: false,
             }
         })
-        .collect()
+        .collect();
+
+    // Add locales as Language packages
+    for locale in catalog.locales {
+        let installed = installed_ids.contains(&locale.code)
+            || BUILTIN_LANG_CODES.contains(&locale.code.as_str());
+        entries.push(PackageEntry {
+            id:               locale.code.clone(),
+            name:             locale.name.clone(),
+            description:      format!(
+                "{} language pack · {}% complete",
+                locale.name, locale.completeness
+            ),
+            version:          locale.version,
+            category:         "i18n.language".to_string(),
+            kind:             PackageKind::Language,
+            capabilities:     vec![],
+            tags:             vec!["language".to_string(), locale.direction],
+            icon:             None,
+            store_path:       locale.path,
+            installed,
+            update_available: false,
+        });
+    }
+
+    entries
 }

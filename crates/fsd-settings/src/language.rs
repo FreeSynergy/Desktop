@@ -1,8 +1,49 @@
 /// Language settings — select UI language, install/remove language packs.
 use dioxus::prelude::*;
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
-use fsn_store::StoreClient;
+use fsn_store::{LocaleEntry, Manifest, StoreClient};
 use serde::Deserialize;
+
+/// Minimal package type used only to satisfy `fetch_catalog`'s `Manifest` bound.
+/// We only care about `catalog.locales`; the packages field is ignored.
+#[derive(Deserialize)]
+struct MinPkg {
+    id:       String,
+    name:     String,
+    version:  String,
+    category: String,
+}
+
+impl Manifest for MinPkg {
+    fn id(&self)       -> &str { &self.id }
+    fn name(&self)     -> &str { &self.name }
+    fn version(&self)  -> &str { &self.version }
+    fn category(&self) -> &str { &self.category }
+}
+
+/// Local view of a `LocaleEntry` — implements PartialEq for use as Dioxus prop.
+#[derive(Clone, PartialEq, Debug)]
+struct LocaleInfo {
+    code:         String,
+    name:         String,
+    version:      String,
+    completeness: u8,
+    direction:    String,
+    path:         Option<String>,
+}
+
+impl From<LocaleEntry> for LocaleInfo {
+    fn from(l: LocaleEntry) -> Self {
+        Self {
+            code:         l.code,
+            name:         l.name,
+            version:      l.version,
+            completeness: l.completeness,
+            direction:    l.direction,
+            path:         l.path,
+        }
+    }
+}
 
 /// Built-in (always available, cannot be removed) languages.
 pub const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
@@ -22,23 +63,25 @@ struct LangEntry {
     builtin: bool,
 }
 
-// ── Minimal catalog types for parsing shared/catalog.toml ─────────────────────
+// ── Persistence ────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-struct LangPack {
-    id:      String,
-    name:    String,
-    version: String,
-    #[serde(default)]
-    kind:    String,
-    #[serde(default)]
-    path:    Option<String>,
+fn active_language_path() -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    std::path::PathBuf::from(home).join(".local/share/fsn/settings/language")
 }
 
-#[derive(Deserialize)]
-struct SharedCatalog {
-    #[serde(default)]
-    packages: Vec<LangPack>,
+fn load_active_language() -> String {
+    std::fs::read_to_string(active_language_path())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "de".to_string())
+}
+
+fn save_active_language(code: &str) {
+    let path = active_language_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(path, code);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -62,17 +105,17 @@ fn load_installed() -> Vec<LangEntry> {
     entries
 }
 
-async fn install_language_pack(pack: LangPack) -> Result<(), String> {
+async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
     let home    = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let fsn_dir = std::path::PathBuf::from(&home).join(".local/share/fsn");
 
-    let base = pack.path.clone()
-        .unwrap_or_else(|| format!("shared/i18n/{}", pack.id));
+    let base = locale.path.clone()
+        .unwrap_or_else(|| format!("Node/i18n/{}", locale.code));
     let url = format!("{base}/ui.toml");
 
     let file_path = match StoreClient::node_store().fetch_raw(&url).await {
         Ok(content) => {
-            let dest_dir = fsn_dir.join("i18n").join(&pack.id);
+            let dest_dir = fsn_dir.join("i18n").join(&locale.code);
             std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
             let dest = dest_dir.join("ui.toml");
             std::fs::write(&dest, content).map_err(|e| e.to_string())?;
@@ -85,10 +128,10 @@ async fn install_language_pack(pack: LangPack) -> Result<(), String> {
     };
 
     PackageRegistry::install(InstalledPackage {
-        id:        pack.id.clone(),
-        name:      pack.name.clone(),
+        id:        locale.code.clone(),
+        name:      locale.name.clone(),
         kind:      "language".into(),
-        version:   pack.version.clone(),
+        version:   locale.version.clone(),
         file_path,
     })
     .map_err(|e| format!("Registry error: {e}"))
@@ -99,8 +142,9 @@ async fn install_language_pack(pack: LangPack) -> Result<(), String> {
 #[component]
 pub fn LanguageSettings() -> Element {
     let installed          = use_signal(load_installed);
-    let mut selected       = use_signal(|| "de".to_string());
+    let mut selected       = use_signal(load_active_language);
     let mut show_available = use_signal(|| false);
+    let mut saved_msg      = use_signal(|| Option::<&'static str>::None);
 
     let count = installed.read().len();
     let list_style = if count >= 8 {
@@ -184,12 +228,22 @@ pub fn LanguageSettings() -> Element {
             }
 
             // ── Apply button ───────────────────────────────────────────────────
-            div { style: "margin-top: 24px;",
+            div { style: "margin-top: 24px; display: flex; align-items: center; gap: 12px;",
                 button {
                     style: "padding: 8px 24px; background: var(--fsn-color-primary); \
                             color: white; border: none; border-radius: var(--fsn-radius-md); \
                             cursor: pointer;",
+                    onclick: move |_| {
+                        save_active_language(&selected.read());
+                        saved_msg.set(Some("Language saved. Restart to apply."));
+                    },
                     "Apply"
+                }
+                if let Some(msg) = *saved_msg.read() {
+                    span {
+                        style: "font-size: 12px; color: var(--fsn-color-text-muted);",
+                        "{msg}"
+                    }
                 }
             }
         }
@@ -246,33 +300,26 @@ fn AvailableLanguages(
     installed_ids: Vec<String>,
     on_installed:  EventHandler<LangEntry>,
 ) -> Element {
-    let available: Signal<Vec<LangPack>>    = use_signal(Vec::new);
-    let mut loading: Signal<bool>           = use_signal(|| true);
-    let mut error:   Signal<Option<String>> = use_signal(|| None);
-    let busy:        Signal<Option<String>> = use_signal(|| None); // id of pack being installed
+    // All locales from store — loaded once, filtered in render
+    let all_locales: Signal<Vec<LocaleInfo>>    = use_signal(Vec::new);
+    let mut loading: Signal<bool>               = use_signal(|| true);
+    let mut error:   Signal<Option<String>>     = use_signal(|| None);
+    let busy:        Signal<Option<String>>     = use_signal(|| None);
 
     {
-        let available = available.clone();
-        let installed_ids = installed_ids.clone();
+        let all_locales = all_locales.clone();
         use_future(move || {
-            let available = available.clone();
-            let installed_ids = installed_ids.clone();
+            let mut all_locales = all_locales.clone();
             async move {
-                match StoreClient::node_store().fetch_raw("shared/catalog.toml").await {
-                    Ok(content) => {
-                        match toml::from_str::<SharedCatalog>(&content) {
-                            Ok(catalog) => {
-                                let langs: Vec<LangPack> = catalog
-                                    .packages
-                                    .into_iter()
-                                    .filter(|p| p.kind == "language")
-                                    .filter(|p| !installed_ids.contains(&p.id))
-                                    .collect();
-                                available.clone().set(langs);
-                                error.set(None);
-                            }
-                            Err(e) => error.set(Some(format!("Parse error: {e}"))),
-                        }
+                match StoreClient::node_store()
+                    .fetch_catalog::<MinPkg>("Node", false)
+                    .await
+                {
+                    Ok(catalog) => {
+                        all_locales.set(
+                            catalog.locales.into_iter().map(LocaleInfo::from).collect()
+                        );
+                        error.set(None);
                     }
                     Err(e) => error.set(Some(format!("Could not load catalog: {e}"))),
                 }
@@ -280,6 +327,14 @@ fn AvailableLanguages(
             }
         });
     }
+
+    // Filter in render — reactive when installed_ids prop changes
+    let available: Vec<LocaleInfo> = all_locales
+        .read()
+        .iter()
+        .filter(|l| !installed_ids.contains(&l.code))
+        .cloned()
+        .collect();
 
     rsx! {
         div {
@@ -303,7 +358,7 @@ fn AvailableLanguages(
                     style: "padding: 12px 14px; color: var(--fsn-color-error); font-size: 13px;",
                     "{err}"
                 }
-            } else if available.read().is_empty() {
+            } else if available.is_empty() {
                 div {
                     style: "padding: 16px; text-align: center; color: var(--fsn-color-text-muted); \
                             font-size: 13px;",
@@ -312,28 +367,23 @@ fn AvailableLanguages(
             } else {
                 div {
                     style: "max-height: 280px; overflow-y: auto; scrollbar-width: thin;",
-                    for pack in available.read().clone() {
+                    for locale in available {
                         AvailableLangRow {
-                            key:       "{pack.id}",
-                            pack:      pack.clone(),
-                            installing: busy.read().as_deref() == Some(pack.id.as_str()),
+                            key:        "{locale.code}",
+                            locale:     locale.clone(),
+                            installing: busy.read().as_deref() == Some(locale.code.as_str()),
                             on_install: {
-                                let available = available.clone();
-                                let mut busy  = busy.clone();
-                                move |p: LangPack| {
-                                    let id   = p.id.clone();
-                                    let name = p.name.clone();
+                                let mut busy = busy.clone();
+                                move |l: LocaleInfo| {
+                                    let id   = l.code.clone();
+                                    let name = l.name.clone();
                                     busy.set(Some(id.clone()));
-                                    let mut available = available.clone();
-                                    let mut busy      = busy.clone();
-                                    let entry = LangEntry { code: id.clone(), name: name.clone(), builtin: false };
-                                    let cb    = on_installed.clone();
+                                    let mut busy = busy.clone();
+                                    let entry = LangEntry { code: id.clone(), name, builtin: false };
+                                    let cb = on_installed.clone();
                                     spawn(async move {
-                                        match install_language_pack(p).await {
-                                            Ok(()) => {
-                                                available.write().retain(|x| x.id != id);
-                                                cb.call(entry);
-                                            }
+                                        match install_language_pack(l).await {
+                                            Ok(()) => cb.call(entry),
                                             Err(e) => tracing::error!("Install failed: {e}"),
                                         }
                                         busy.set(None);
@@ -352,17 +402,25 @@ fn AvailableLanguages(
 
 #[component]
 fn AvailableLangRow(
-    pack:       LangPack,
+    locale:     LocaleInfo,
     installing: bool,
-    on_install: EventHandler<LangPack>,
+    on_install: EventHandler<LocaleInfo>,
 ) -> Element {
     rsx! {
         div {
             style: "display: flex; align-items: center; gap: 12px; padding: 8px 14px; \
                     border-bottom: 1px solid var(--fsn-color-border-default); \
                     color: var(--fsn-color-text-primary);",
-            span { style: "font-size: 14px; flex: 1;", "{pack.name}" }
-            span { style: "font-size: 12px; color: var(--fsn-color-text-muted);", "{pack.id}" }
+            span { style: "font-size: 14px; flex: 1;", "{locale.name}" }
+            span { style: "font-size: 12px; color: var(--fsn-color-text-muted);", "{locale.code}" }
+            if locale.completeness < 100 {
+                span {
+                    style: "font-size: 11px; color: var(--fsn-color-text-muted); \
+                            background: var(--fsn-color-bg-overlay); padding: 2px 6px; \
+                            border-radius: 999px;",
+                    "{locale.completeness}%"
+                }
+            }
             button {
                 style: "padding: 4px 12px; font-size: 12px; \
                         background: var(--fsn-color-primary); color: white; \
@@ -370,8 +428,8 @@ fn AvailableLangRow(
                         cursor: pointer; min-width: 60px;",
                 disabled: installing,
                 onclick: {
-                    let pack = pack.clone();
-                    move |_| on_install.call(pack.clone())
+                    let locale = locale.clone();
+                    move |_| on_install.call(locale.clone())
                 },
                 if installing { "…" } else { "Install" }
             }

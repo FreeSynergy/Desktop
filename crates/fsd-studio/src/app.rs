@@ -1,54 +1,65 @@
-/// Studio — root component: module builder, plugin builder, i18n editor.
+/// Studio — root component: module builder, plugin builder, i18n editor, resource browser.
 use dioxus::prelude::*;
 use fsn_components::{FsnSidebar, FsnSidebarItem, FSN_SIDEBAR_CSS};
 
+use crate::i18n_editor::I18nEditor;
 use crate::module_builder::ModuleBuilder;
 use crate::plugin_builder::PluginBuilder;
-use crate::i18n_editor::I18nEditor;
+use crate::resource_browser::ResourceBrowser;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum StudioTab {
     Modules,
     Plugins,
     I18n,
+    Resources,
 }
 
 impl StudioTab {
     pub fn id(&self) -> &'static str {
         match self {
-            Self::Modules => "modules",
-            Self::Plugins => "plugins",
-            Self::I18n    => "i18n",
+            Self::Modules   => "modules",
+            Self::Plugins   => "plugins",
+            Self::I18n      => "i18n",
+            Self::Resources => "resources",
         }
     }
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::Modules => "Module Builder",
-            Self::Plugins => "Plugin Builder",
-            Self::I18n    => "i18n Editor",
+            Self::Modules   => "Module Builder",
+            Self::Plugins   => "Plugin Builder",
+            Self::I18n      => "i18n Editor",
+            Self::Resources => "Resources",
         }
     }
 
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Modules => "📦",
-            Self::Plugins => "🔌",
-            Self::I18n    => "🌐",
+            Self::Modules   => "📦",
+            Self::Plugins   => "🔌",
+            Self::I18n      => "🌐",
+            Self::Resources => "📁",
         }
     }
 
     pub fn from_id(id: &str) -> Option<Self> {
         match id {
-            "modules" => Some(Self::Modules),
-            "plugins" => Some(Self::Plugins),
-            "i18n"    => Some(Self::I18n),
-            _         => None,
+            "modules"   => Some(Self::Modules),
+            "plugins"   => Some(Self::Plugins),
+            "i18n"      => Some(Self::I18n),
+            "resources" => Some(Self::Resources),
+            _           => None,
         }
     }
 }
 
-const ALL_TABS: &[StudioTab] = &[StudioTab::Modules, StudioTab::Plugins, StudioTab::I18n];
+const ALL_TABS: &[StudioTab] = &[
+    StudioTab::Modules,
+    StudioTab::Plugins,
+    StudioTab::I18n,
+    StudioTab::Resources,
+];
 
 /// Root Studio component.
 #[component]
@@ -93,9 +104,10 @@ pub fn StudioApp() -> Element {
                 div {
                     style: "flex: 1; overflow: auto;",
                     match *active_tab.read() {
-                        StudioTab::Modules => rsx! { ModuleBuilder {} },
-                        StudioTab::Plugins => rsx! { PluginBuilder {} },
-                        StudioTab::I18n    => rsx! { I18nEditor {} },
+                        StudioTab::Modules   => rsx! { ModuleBuilder {} },
+                        StudioTab::Plugins   => rsx! { PluginBuilder {} },
+                        StudioTab::I18n      => rsx! { I18nEditor {} },
+                        StudioTab::Resources => rsx! { ResourceBrowser {} },
                     }
                 }
             }

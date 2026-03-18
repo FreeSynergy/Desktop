@@ -1,95 +1,218 @@
-/// i18n editor — create and edit FSN language files (.ftl snippets).
+/// i18n editor — view and edit installed FSN language files (ui.toml).
 use dioxus::prelude::*;
+use fsd_db::package_registry::PackageRegistry;
 
-/// A single i18n entry (key → value).
-#[derive(Clone, Debug, PartialEq)]
-pub struct I18nEntry {
-    pub key: String,
-    pub value: String,
-    pub category: String,
+/// Built-in language codes (always shown, even without a registry entry).
+const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
+    ("de", "Deutsch"),
+    ("en", "English"),
+    ("fr", "Français"),
+    ("es", "Español"),
+    ("it", "Italiano"),
+    ("pt", "Português"),
+];
+
+// ── LangOption ────────────────────────────────────────────────────────────────
+
+#[derive(Clone, PartialEq, Debug)]
+struct LangOption {
+    code: String,
+    name: String,
 }
 
-/// i18n editor component.
+fn load_lang_options() -> Vec<LangOption> {
+    let mut opts: Vec<LangOption> = BUILTIN_LANGUAGES
+        .iter()
+        .map(|(code, name)| LangOption { code: code.to_string(), name: name.to_string() })
+        .collect();
+
+    let builtin_codes: Vec<&str> = BUILTIN_LANGUAGES.iter().map(|(c, _)| *c).collect();
+    for pkg in PackageRegistry::by_kind("language") {
+        if !builtin_codes.contains(&pkg.id.as_str()) {
+            opts.push(LangOption { code: pkg.id, name: pkg.name });
+        }
+    }
+    opts
+}
+
+// ── ui.toml path ───────────────────────────────────────────────────────────────
+
+fn ui_toml_path(code: &str) -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    std::path::PathBuf::from(home)
+        .join(".local/share/fsn/i18n")
+        .join(code)
+        .join("ui.toml")
+}
+
+fn load_ui_toml(code: &str) -> String {
+    std::fs::read_to_string(ui_toml_path(code)).unwrap_or_default()
+}
+
+fn save_ui_toml(code: &str, content: &str) -> Result<(), String> {
+    let path = ui_toml_path(code);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+// ── I18nEditor ────────────────────────────────────────────────────────────────
+
+/// i18n editor component — shows installed languages and allows editing their ui.toml.
 #[component]
 pub fn I18nEditor() -> Element {
-    let entries = use_signal(Vec::<I18nEntry>::new);
-    let selected_lang = use_signal(|| "de".to_string());
-    let selected_category = use_signal(|| "actions".to_string());
+    let lang_options    = use_signal(load_lang_options);
+    let mut selected    = use_signal(|| {
+        load_lang_options().first().map(|l| l.code.clone()).unwrap_or_else(|| "de".to_string())
+    });
+    let mut content     = use_signal(|| load_ui_toml(&selected.read()));
+    let mut save_msg    = use_signal(|| Option::<String>::None);
+    let mut dirty       = use_signal(|| false);
 
     rsx! {
         div {
             class: "fsd-i18n-editor",
             style: "display: flex; height: 100%;",
 
-            // Sidebar — language + category picker
+            // ── Sidebar ───────────────────────────────────────────────────────
             div {
-                style: "width: 200px; border-right: 1px solid var(--fsn-color-border-default); padding: 16px;",
-
-                div { style: "margin-bottom: 16px;",
-                    label { style: "display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--fsn-color-text-muted);", "LANGUAGE" }
-                    select {
-                        style: "width: 100%; padding: 6px; border: 1px solid var(--fsn-color-border-default); border-radius: 4px;",
-                        option { value: "de", "Deutsch" }
-                        option { value: "en", "English" }
-                        option { value: "fr", "Français" }
-                    }
-                }
+                style: "width: 200px; border-right: 1px solid var(--fsn-color-border-default); \
+                        padding: 16px; display: flex; flex-direction: column; gap: 12px;",
 
                 div {
-                    label { style: "display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--fsn-color-text-muted);", "CATEGORY" }
-                    for cat in &["actions", "nouns", "status", "errors", "phrases", "time", "validation", "help"] {
-                        CategoryBtn {
-                            cat: cat.to_string(),
-                            selected: selected_category,
+                    label {
+                        style: "display: block; font-size: 12px; font-weight: 600; \
+                                margin-bottom: 8px; color: var(--fsn-color-text-muted);",
+                        "LANGUAGE"
+                    }
+                    if lang_options.read().is_empty() {
+                        p {
+                            style: "font-size: 12px; color: var(--fsn-color-text-muted);",
+                            "No language packs installed. Use the Store to install one."
                         }
-                    }
-                }
-            }
-
-            // Main editor area
-            div {
-                style: "flex: 1; padding: 16px; overflow: auto;",
-
-                div {
-                    style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;",
-                    h3 { style: "margin: 0;", "{selected_lang.read()} / {selected_category.read()}.ftl" }
-                    button {
-                        style: "padding: 6px 12px; background: var(--fsn-color-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;",
-                        "+ Add Key"
-                    }
-                }
-
-                if entries.read().is_empty() {
-                    div {
-                        style: "text-align: center; color: var(--fsn-color-text-muted); padding: 48px;",
-                        "No entries yet. Click '+ Add Key' to start."
-                    }
-                } else {
-                    div {
-                        for entry in entries.read().iter() {
-                            div {
-                                style: "display: flex; gap: 8px; margin-bottom: 8px; align-items: center;",
-                                input {
-                                    r#type: "text",
-                                    value: "{entry.key}",
-                                    style: "width: 200px; padding: 6px 8px; border: 1px solid var(--fsn-color-border-default); border-radius: 4px; font-family: var(--fsn-font-mono); font-size: 13px;",
-                                }
-                                span { style: "color: var(--fsn-color-text-muted);", "=" }
-                                input {
-                                    r#type: "text",
-                                    value: "{entry.value}",
-                                    style: "flex: 1; padding: 6px 8px; border: 1px solid var(--fsn-color-border-default); border-radius: 4px; font-size: 13px;",
+                    } else {
+                        div {
+                            style: "border: 1px solid var(--fsn-color-border-default); \
+                                    border-radius: var(--fsn-radius-md); overflow: hidden;",
+                            for opt in lang_options.read().clone() {
+                                LangBtn {
+                                    key:      "{opt.code}",
+                                    code:     opt.code.clone(),
+                                    name:     opt.name.clone(),
+                                    active:   *selected.read() == opt.code,
+                                    on_click: {
+                                        let code = opt.code.clone();
+                                        move |_| {
+                                            *selected.write() = code.clone();
+                                            *content.write() = load_ui_toml(&code);
+                                            *dirty.write() = false;
+                                            *save_msg.write() = None;
+                                        }
+                                    },
                                 }
                             }
                         }
                     }
                 }
 
-                // Export button
-                if !entries.read().is_empty() {
-                    button {
-                        style: "margin-top: 16px; padding: 8px 16px; background: var(--fsn-color-success); color: white; border: none; border-radius: var(--fsn-radius-md); cursor: pointer;",
-                        "Export .ftl"
+                // File path hint
+                div {
+                    style: "font-size: 11px; color: var(--fsn-color-text-muted); \
+                            word-break: break-all;",
+                    {
+                        let path = ui_toml_path(&selected.read());
+                        format!("{}", path.display())
+                    }
+                }
+            }
+
+            // ── Editor area ───────────────────────────────────────────────────
+            div {
+                style: "flex: 1; padding: 16px; display: flex; flex-direction: column; \
+                        overflow: hidden;",
+
+                // Header bar
+                div {
+                    style: "display: flex; justify-content: space-between; \
+                            align-items: center; margin-bottom: 12px; flex-shrink: 0;",
+                    h3 { style: "margin: 0; font-size: 15px;",
+                        "{selected.read()}/ui.toml"
+                        if *dirty.read() {
+                            span { style: "margin-left: 6px; font-size: 12px; \
+                                           color: var(--fsn-color-warning, #f59e0b);",
+                                "● unsaved"
+                            }
+                        }
+                    }
+                    div { style: "display: flex; gap: 8px; align-items: center;",
+                        if let Some(msg) = save_msg.read().as_deref() {
+                            span {
+                                style: "font-size: 12px; color: var(--fsn-color-text-muted);",
+                                "{msg}"
+                            }
+                        }
+                        button {
+                            style: "padding: 6px 16px; background: var(--fsn-color-primary); \
+                                    color: white; border: none; \
+                                    border-radius: var(--fsn-radius-md); cursor: pointer; \
+                                    font-size: 13px;",
+                            disabled: !*dirty.read(),
+                            onclick: move |_| {
+                                let code = selected.read().clone();
+                                let text = content.read().clone();
+                                match save_ui_toml(&code, &text) {
+                                    Ok(()) => {
+                                        *dirty.write() = false;
+                                        *save_msg.write() = Some("Saved.".to_string());
+                                    }
+                                    Err(e) => {
+                                        *save_msg.write() = Some(format!("Error: {e}"));
+                                    }
+                                }
+                            },
+                            "Save"
+                        }
+                    }
+                }
+
+                // TOML textarea
+                if content.read().is_empty() {
+                    div {
+                        style: "flex: 1; display: flex; align-items: center; \
+                                justify-content: center; \
+                                color: var(--fsn-color-text-muted); font-size: 13px; \
+                                text-align: center; padding: 32px; \
+                                border: 1px dashed var(--fsn-color-border-default); \
+                                border-radius: var(--fsn-radius-md);",
+                        div {
+                            p { style: "margin: 0 0 8px;", "No ui.toml found for this language." }
+                            p { style: "font-size: 12px;",
+                                "Install it from the Store or create a new file at:"
+                            }
+                            code {
+                                style: "font-size: 11px; display: block; margin-top: 8px; \
+                                        background: var(--fsn-color-bg-overlay); \
+                                        padding: 6px 10px; border-radius: 4px;",
+                                "~/.local/share/fsn/i18n/{selected.read()}/ui.toml"
+                            }
+                        }
+                    }
+                } else {
+                    textarea {
+                        style: "flex: 1; width: 100%; padding: 10px 12px; \
+                                font-family: var(--fsn-font-mono, monospace); font-size: 13px; \
+                                border: 1px solid var(--fsn-color-border-default); \
+                                border-radius: var(--fsn-radius-md); resize: none; \
+                                background: var(--fsn-color-bg-elevated); \
+                                color: var(--fsn-color-text-primary); \
+                                box-sizing: border-box; min-height: 400px;",
+                        value: "{content.read()}",
+                        oninput: move |e| {
+                            *content.write() = e.value();
+                            *dirty.write() = true;
+                            *save_msg.write() = None;
+                        },
                     }
                 }
             }
@@ -97,15 +220,29 @@ pub fn I18nEditor() -> Element {
     }
 }
 
+// ── LangBtn ────────────────────────────────────────────────────────────────────
+
 #[component]
-fn CategoryBtn(cat: String, mut selected: Signal<String>) -> Element {
-    let is_active = *selected.read() == cat;
-    let bg = if is_active { "var(--fsn-color-bg-overlay)" } else { "transparent" };
+fn LangBtn(
+    code:     String,
+    name:     String,
+    active:   bool,
+    on_click: EventHandler<MouseEvent>,
+) -> Element {
+    let bg = if active {
+        "background: var(--fsn-color-primary); color: white;"
+    } else {
+        "background: transparent; color: var(--fsn-color-text-primary);"
+    };
+
     rsx! {
         button {
-            style: "display: block; width: 100%; text-align: left; padding: 6px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; background: {bg};",
-            onclick: move |_| *selected.write() = cat.clone(),
-            "{cat}"
+            style: "display: flex; justify-content: space-between; width: 100%; \
+                    text-align: left; padding: 8px 10px; border: none; \
+                    cursor: pointer; font-size: 13px; {bg}",
+            onclick: on_click,
+            span { "{name}" }
+            span { style: "opacity: 0.6; font-size: 11px;", "{code}" }
         }
     }
 }
