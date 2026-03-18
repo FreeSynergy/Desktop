@@ -8,10 +8,21 @@ use crate::window::WindowId;
 pub const DASHBOARD_ICONS_BASE: &str =
     "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg";
 
+/// We10X icon theme raw base URL (scalable SVGs from the upstream repo).
+pub const WE10X_ICONS_BASE: &str =
+    "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src";
+
 /// Returns the CDN URL for a Homarr Dashboard Icon.
 /// `icon_name` must be the slug as it appears in the dashboard-icons repo (e.g. "kanidm").
 pub fn homarr_icon_url(icon_name: &str) -> String {
     format!("{}/{}.svg", DASHBOARD_ICONS_BASE, icon_name)
+}
+
+/// Returns the raw GitHub URL for a We10X icon.
+/// `subdir` is the category (e.g. "apps/scalable", "places/scalable").
+/// `icon_name` is the file stem without extension (e.g. "preferences-system").
+pub fn we10x_icon_url(subdir: &str, icon_name: &str) -> String {
+    format!("{}/{}/{}.svg", WE10X_ICONS_BASE, subdir, icon_name)
 }
 
 /// A registered application that can appear in the taskbar.
@@ -56,12 +67,12 @@ impl AppEntry {
 /// Builds the default pinned apps list.
 pub fn default_apps() -> Vec<AppEntry> {
     vec![
-        AppEntry { id: "conductor".into(), label_key: "Conductor".into(), icon: "⚙".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
-        AppEntry { id: "store".into(),     label_key: "Store".into(),     icon: "📦".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
-        AppEntry { id: "studio".into(),    label_key: "Studio".into(),    icon: "🔧".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
-        AppEntry { id: "settings".into(),  label_key: "Settings".into(),  icon: "⚙".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
-        AppEntry { id: "ai".into(),        label_key: "AI".into(),        icon: "🤖".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
-        AppEntry { id: "help".into(),      label_key: "Help".into(),      icon: "❓".into(), icon_url: None, group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "conductor".into(), label_key: "Conductor".into(), icon: "⚙".into(),  icon_url: Some(we10x_icon_url("apps/scalable", "virt-manager")),                 group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "store".into(),     label_key: "Store".into(),     icon: "📦".into(), icon_url: Some(we10x_icon_url("apps/scalable", "system-software-install")),       group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "studio".into(),    label_key: "Studio".into(),    icon: "🔧".into(), icon_url: Some(we10x_icon_url("apps/scalable", "preferences-plugin-script")),    group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "settings".into(),  label_key: "Settings".into(),  icon: "⚙".into(),  icon_url: Some(we10x_icon_url("apps/scalable", "preferences-system")),           group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "ai".into(),        label_key: "AI".into(),        icon: "🤖".into(), icon_url: Some(we10x_icon_url("apps/scalable", "braindump")),                     group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "help".into(),      label_key: "Help".into(),      icon: "❓".into(), icon_url: Some(we10x_icon_url("apps/scalable", "help-browser")),                  group: Some("System".into()), pinned: true, windows: vec![] },
     ]
 }
 

@@ -53,7 +53,7 @@ impl WidgetKind {
         }
     }
 
-    /// Emoji icon used in the widget picker panel.
+    /// Emoji icon used as fallback when no icon URL is available.
     pub fn icon(&self) -> &'static str {
         match self {
             WidgetKind::Clock         => "🕐",
@@ -63,6 +63,19 @@ impl WidgetKind {
             WidgetKind::QuickNotes    => "📝",
             WidgetKind::Weather       => "🌤",
             WidgetKind::Custom(_)     => "🧩",
+        }
+    }
+
+    /// We10X SVG icon URL for the widget picker panel.
+    pub fn icon_url(&self) -> &'static str {
+        match self {
+            WidgetKind::Clock      => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/preferences-system-time.svg",
+            WidgetKind::SystemInfo => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/utilities-system-monitor.svg",
+            WidgetKind::Messages   => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/internet-mail.svg",
+            WidgetKind::MyTasks    => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/evolution-tasks.svg",
+            WidgetKind::QuickNotes => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/accessories-text-editor.svg",
+            WidgetKind::Weather    => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/indicator-weather.svg",
+            WidgetKind::Custom(_)  => "https://raw.githubusercontent.com/yeyushengfan258/We10X-icon-theme/master/src/apps/scalable/preferences-plugin-script.svg",
         }
     }
 
