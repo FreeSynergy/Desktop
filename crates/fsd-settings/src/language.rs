@@ -22,6 +22,13 @@ impl Manifest for MinPkg {
     fn category(&self) -> &str { &self.category }
 }
 
+/// Newtype wrapper around `Signal<String>` used as a Dioxus context for the active language.
+///
+/// A dedicated type avoids collisions with other `Signal<String>` contexts (theme, wallpaper).
+/// Provided by `Desktop` and consumed by `LanguageSettings` when the user switches languages.
+#[derive(Clone, Copy)]
+pub struct LangContext(pub dioxus::prelude::Signal<String>);
+
 /// Local view of a `LocaleEntry` — implements PartialEq for use as Dioxus prop.
 #[derive(Clone, PartialEq, Debug)]
 struct LocaleInfo {
@@ -68,7 +75,7 @@ fn active_language_path() -> std::path::PathBuf {
     std::path::PathBuf::from(home).join(".local/share/fsn/settings/language")
 }
 
-fn load_active_language() -> String {
+pub fn load_active_language() -> String {
     std::fs::read_to_string(active_language_path())
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| "de".to_string())
@@ -234,7 +241,27 @@ pub fn LanguageSettings() -> Element {
                     onclick: move |_| {
                         let code = selected.read().clone();
                         save_active_language(&code);
+
+                        // Load the installed language pack into i18n before switching.
+                        // Pack lives at ~/.local/share/fsn/i18n/{lang}/ui.toml
+                        if code != "en" {
+                            let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+                            let pack = std::path::PathBuf::from(home)
+                                .join(".local/share/fsn/i18n")
+                                .join(&code)
+                                .join("ui.toml");
+                            if let Ok(content) = std::fs::read_to_string(&pack) {
+                                let _ = fsn_i18n::add_toml_lang(&code, &content);
+                            }
+                        }
+
                         fsn_i18n::set_active_lang(&code);
+
+                        // Update the Desktop's reactive lang context so the whole UI re-renders.
+                        if let Some(LangContext(mut sig)) = dioxus::prelude::try_consume_context::<LangContext>() {
+                            *sig.write() = code;
+                        }
+
                         saved_msg.set(Some("Language applied."));
                     },
                     "Apply"

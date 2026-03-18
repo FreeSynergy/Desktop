@@ -1,6 +1,7 @@
 /// Desktop — root layout: header + sidebar + content area.
 use std::collections::HashMap;
 use dioxus::prelude::*;
+use fsn_i18n;
 
 use fsd_bots::BotManagerApp;
 use fsd_conductor::ConductorApp;
@@ -66,9 +67,41 @@ fn os_resize_handles() -> Element {
     rsx! {}
 }
 
+/// Initialize the global i18n instance and load any user-installed language pack.
+///
+/// Called once at Desktop startup. Loads built-in snippets (EN + DE), then
+/// overlays the user's chosen language pack from disk if available.
+fn init_i18n() -> String {
+    let lang = fsd_settings::load_active_language();
+
+    // Initialize with built-in snippet bundles; ignore double-init errors.
+    let _ = fsn_i18n::init_with_builtins(&lang);
+
+    // Overlay user-installed language pack from ~/.local/share/fsn/i18n/{lang}/ui.toml
+    if lang != "en" {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+        let pack = std::path::PathBuf::from(home)
+            .join(".local/share/fsn/i18n")
+            .join(&lang)
+            .join("ui.toml");
+        if let Ok(content) = std::fs::read_to_string(&pack) {
+            let _ = fsn_i18n::add_toml_lang(&lang, &content);
+        }
+    }
+
+    lang
+}
+
 /// Root desktop component.
 #[component]
 pub fn Desktop() -> Element {
+    // Initialize i18n once and expose the active language as a reactive context.
+    // fsd-settings writes to this via LangContext when the user switches languages,
+    // triggering a full re-render with the new language active.
+    let _lang_ctx = use_context_provider(|| {
+        fsd_settings::LangContext(Signal::new(init_i18n()))
+    });
+
     // Wallpaper CSS is provided as context so child apps (e.g. AppearanceSettings) can update it.
     let wallpaper_bg: Signal<String> = use_context_provider(|| {
         let saved = crate::db::load_wallpaper_css_from_db();

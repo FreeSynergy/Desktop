@@ -28,6 +28,7 @@ fsd-profile   = { workspace = true }
 fsd-bots      = { workspace = true }
 fsd-tasks     = { workspace = true }
 fsn-components = { workspace = true }
+fsn-i18n       = { workspace = true }
 fsn-theme      = { workspace = true }
 dioxus         = { workspace = true }
 serde          = { workspace = true }

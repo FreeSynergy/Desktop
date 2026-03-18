@@ -1,10 +1,11 @@
 /// Service detail panel — shown when a service is selected in the Services list.
 ///
 /// Displays: service status, start/stop/restart actions, environment variables
-/// editor (.env file), and a mini log tail.
+/// editor (.env file), module instance config, and a mini log tail.
 use dioxus::prelude::*;
 use fsn_container::{SystemctlManager, UnitActiveState};
 
+use crate::instance_config::InstanceConfigEditor;
 use crate::log_viewer::LogViewer;
 
 // ── ServiceDetail ──────────────────────────────────────────────────────────────
@@ -12,6 +13,7 @@ use crate::log_viewer::LogViewer;
 #[derive(Clone, PartialEq, Debug)]
 pub enum DetailTab {
     Config,
+    Module,
     Logs,
 }
 
@@ -58,6 +60,11 @@ pub fn ServiceDetail(service_name: String, on_close: EventHandler<()>) -> Elemen
                     onclick: move |_| tab.set(DetailTab::Config),
                 }
                 DetailTabBtn {
+                    label: "Module",
+                    active: *tab.read() == DetailTab::Module,
+                    onclick: move |_| tab.set(DetailTab::Module),
+                }
+                DetailTabBtn {
                     label: "Logs",
                     active: *tab.read() == DetailTab::Logs,
                     onclick: move |_| tab.set(DetailTab::Logs),
@@ -70,6 +77,11 @@ pub fn ServiceDetail(service_name: String, on_close: EventHandler<()>) -> Elemen
                 match *tab.read() {
                     DetailTab::Config => rsx! {
                         ServiceConfigTab { service_name: service_name.clone() }
+                    },
+                    DetailTab::Module => rsx! {
+                        div { style: "padding: 16px;",
+                            InstanceConfigEditor { service_name: service_name.clone() }
+                        }
                     },
                     DetailTab::Logs => rsx! {
                         LogViewer { service: service_name.clone() }
