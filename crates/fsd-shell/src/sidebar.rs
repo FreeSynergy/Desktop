@@ -29,7 +29,7 @@ pub fn default_sidebar_sections() -> Vec<SidebarSection> {
                 SidebarNavItem { id: "bots".into(),      label: fsn_i18n::t("shell.nav.bots"),      icon: "🤖".into() },
                 SidebarNavItem { id: "conductor".into(), label: fsn_i18n::t("shell.nav.conductor"), icon: "🎛".into() },
                 SidebarNavItem { id: "store".into(),     label: fsn_i18n::t("shell.nav.store"),     icon: "📦".into() },
-                SidebarNavItem { id: "studio".into(),    label: fsn_i18n::t("shell.nav.studio"),    icon: "🔧".into() },
+                SidebarNavItem { id: "builder".into(),    label: fsn_i18n::t("shell.nav.builder"),    icon: "🔧".into() },
             ],
         },
         SidebarSection {

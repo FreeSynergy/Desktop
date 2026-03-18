@@ -87,12 +87,12 @@ pub fn I18nEditor() -> Element {
                     label {
                         style: "display: block; font-size: 12px; font-weight: 600; \
                                 margin-bottom: 8px; color: var(--fsn-color-text-muted);",
-                        {fsn_i18n::t("studio.i18n.language_label")}
+                        {fsn_i18n::t("builder.i18n.language_label")}
                     }
                     if lang_options.read().is_empty() {
                         p {
                             style: "font-size: 12px; color: var(--fsn-color-text-muted);",
-                            {fsn_i18n::t("studio.i18n.no_packs")}
+                            {fsn_i18n::t("builder.i18n.no_packs")}
                         }
                     } else {
                         div {
@@ -144,7 +144,7 @@ pub fn I18nEditor() -> Element {
                         if *dirty.read() {
                             span { style: "margin-left: 6px; font-size: 12px; \
                                            color: var(--fsn-color-warning, #f59e0b);",
-                                {fsn_i18n::t("studio.i18n.unsaved")}
+                                {fsn_i18n::t("builder.i18n.unsaved")}
                             }
                         }
                     }
@@ -189,9 +189,9 @@ pub fn I18nEditor() -> Element {
                                 border: 1px dashed var(--fsn-color-border-default); \
                                 border-radius: var(--fsn-radius-md);",
                         div {
-                            p { style: "margin: 0 0 8px;", {fsn_i18n::t("studio.i18n.no_toml_title")} }
+                            p { style: "margin: 0 0 8px;", {fsn_i18n::t("builder.i18n.no_toml_title")} }
                             p { style: "font-size: 12px;",
-                                {fsn_i18n::t("studio.i18n.no_toml_hint")}
+                                {fsn_i18n::t("builder.i18n.no_toml_hint")}
                             }
                             code {
                                 style: "font-size: 11px; display: block; margin-top: 8px; \

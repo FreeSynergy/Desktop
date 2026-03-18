@@ -55,8 +55,8 @@ impl MultiwindowHandle {
 
     /// Open fsd-studio in its own window.
     #[cfg(feature = "desktop")]
-    pub fn open_studio(&self) {
-        self.open("FreeSynergy — Studio", 1000.0, 700.0, fsd_studio::StudioApp);
+    pub fn open_builder(&self) {
+        self.open("FreeSynergy — Builder", 1000.0, 700.0, fsd_builder::BuilderApp);
     }
 
     // Non-desktop stub: no-ops so code compiles for web target too.
@@ -69,7 +69,7 @@ impl MultiwindowHandle {
     #[cfg(not(feature = "desktop"))]
     pub fn open_store(&self) {}
     #[cfg(not(feature = "desktop"))]
-    pub fn open_studio(&self) {}
+    pub fn open_builder(&self) {}
 }
 
 /// Hook that returns a `MultiwindowHandle`.

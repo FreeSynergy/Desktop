@@ -1,14 +1,15 @@
-# fsd-studio — English i18n strings
+# fsd-builder — English i18n strings
 
-[studio]
-title = "Studio"
+[builder]
+title = "Builder"
 
-[studio.section]
-i18n    = "i18n Editor"
-plugins = "Plugin Builder"
-modules = "Module Builder"
+[builder.section]
+container_app = "Container App"
+bridge        = "Bridge"
+i18n          = "i18n Editor"
+resources     = "Resources"
 
-[studio.i18n]
+[builder.i18n]
 language_label   = "LANGUAGE"
 no_packs         = "No language packs installed. Use the Store to install one."
 file_path_hint   = "File path"

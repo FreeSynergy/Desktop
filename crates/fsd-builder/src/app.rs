@@ -1,70 +1,70 @@
-/// Studio — root component: module builder, plugin builder, i18n editor, resource browser.
+/// Builder — root component: ContainerApp builder, Bridge builder, i18n editor, resource browser.
 use dioxus::prelude::*;
 use fsn_components::{FsnSidebar, FsnSidebarItem, FSN_SIDEBAR_CSS};
 
+use crate::bridge_builder::BridgeBuilder;
+use crate::container_app_builder::ContainerAppBuilder;
 use crate::i18n_editor::I18nEditor;
-use crate::module_builder::ModuleBuilder;
-use crate::plugin_builder::PluginBuilder;
 use crate::resource_browser::ResourceBrowser;
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum StudioTab {
-    Modules,
-    Plugins,
+pub enum BuilderTab {
+    ContainerApp,
+    Bridge,
     I18n,
     Resources,
 }
 
-impl StudioTab {
+impl BuilderTab {
     pub fn id(&self) -> &'static str {
         match self {
-            Self::Modules   => "modules",
-            Self::Plugins   => "plugins",
-            Self::I18n      => "i18n",
-            Self::Resources => "resources",
+            Self::ContainerApp => "container-app",
+            Self::Bridge       => "bridge",
+            Self::I18n         => "i18n",
+            Self::Resources    => "resources",
         }
     }
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::Modules   => "Module Builder",
-            Self::Plugins   => "Plugin Builder",
-            Self::I18n      => "i18n Editor",
-            Self::Resources => "Resources",
+            Self::ContainerApp => "Container App",
+            Self::Bridge       => "Bridge",
+            Self::I18n         => "i18n Editor",
+            Self::Resources    => "Resources",
         }
     }
 
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Modules   => "📦",
-            Self::Plugins   => "🔌",
-            Self::I18n      => "🌐",
-            Self::Resources => "📁",
+            Self::ContainerApp => "📦",
+            Self::Bridge       => "🔗",
+            Self::I18n         => "🌐",
+            Self::Resources    => "📁",
         }
     }
 
     pub fn from_id(id: &str) -> Option<Self> {
         match id {
-            "modules"   => Some(Self::Modules),
-            "plugins"   => Some(Self::Plugins),
-            "i18n"      => Some(Self::I18n),
-            "resources" => Some(Self::Resources),
-            _           => None,
+            "container-app" => Some(Self::ContainerApp),
+            "bridge"        => Some(Self::Bridge),
+            "i18n"          => Some(Self::I18n),
+            "resources"     => Some(Self::Resources),
+            _               => None,
         }
     }
 }
 
-const ALL_TABS: &[StudioTab] = &[
-    StudioTab::Modules,
-    StudioTab::Plugins,
-    StudioTab::I18n,
-    StudioTab::Resources,
+const ALL_TABS: &[BuilderTab] = &[
+    BuilderTab::ContainerApp,
+    BuilderTab::Bridge,
+    BuilderTab::I18n,
+    BuilderTab::Resources,
 ];
 
-/// Root Studio component.
+/// Root Builder component.
 #[component]
-pub fn StudioApp() -> Element {
-    let mut active_tab = use_signal(|| StudioTab::Modules);
+pub fn BuilderApp() -> Element {
+    let mut active_tab = use_signal(|| BuilderTab::ContainerApp);
 
     let sidebar_items: Vec<FsnSidebarItem> = ALL_TABS.iter()
         .map(|t| FsnSidebarItem::new(t.id(), t.icon(), t.label()))
@@ -73,7 +73,7 @@ pub fn StudioApp() -> Element {
     rsx! {
         style { "{FSN_SIDEBAR_CSS}" }
         div {
-            class: "fsd-studio",
+            class: "fsd-builder",
             style: "display: flex; flex-direction: column; height: 100%; background: var(--fsn-color-bg-base);",
 
             // App title bar
@@ -82,7 +82,7 @@ pub fn StudioApp() -> Element {
                         flex-shrink: 0; background: var(--fsn-bg-surface);",
                 h2 {
                     style: "margin: 0; font-size: 16px; font-weight: 600; color: var(--fsn-text-primary);",
-                    "Studio"
+                    "Builder"
                 }
             }
 
@@ -94,7 +94,7 @@ pub fn StudioApp() -> Element {
                     items: sidebar_items,
                     active_id: active_tab.read().id().to_string(),
                     on_select: move |id: String| {
-                        if let Some(tab) = StudioTab::from_id(&id) {
+                        if let Some(tab) = BuilderTab::from_id(&id) {
                             active_tab.set(tab);
                         }
                     },
@@ -104,10 +104,10 @@ pub fn StudioApp() -> Element {
                 div {
                     style: "flex: 1; overflow: auto;",
                     match *active_tab.read() {
-                        StudioTab::Modules   => rsx! { ModuleBuilder {} },
-                        StudioTab::Plugins   => rsx! { PluginBuilder {} },
-                        StudioTab::I18n      => rsx! { I18nEditor {} },
-                        StudioTab::Resources => rsx! { ResourceBrowser {} },
+                        BuilderTab::ContainerApp => rsx! { ContainerAppBuilder {} },
+                        BuilderTab::Bridge       => rsx! { BridgeBuilder {} },
+                        BuilderTab::I18n         => rsx! { I18nEditor {} },
+                        BuilderTab::Resources    => rsx! { ResourceBrowser {} },
                     }
                 }
             }

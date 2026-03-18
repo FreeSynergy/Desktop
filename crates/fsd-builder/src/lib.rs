@@ -1,13 +1,13 @@
 pub mod app;
+pub mod bridge_builder;
+pub mod container_app_builder;
 pub mod i18n_editor;
-pub mod module_builder;
 pub mod ollama;
-pub mod plugin_builder;
 pub mod resource_browser;
 
-pub use app::StudioApp;
+pub use app::BuilderApp;
 
-/// Register app-specific i18n strings for fsd-studio (`studio.*` keys).
+/// Register app-specific i18n strings for fsd-builder (`builder.*` keys).
 /// Called once at desktop startup before any component renders.
 pub fn register_i18n() {
     const EN: &str = include_str!("../assets/i18n/en.toml");

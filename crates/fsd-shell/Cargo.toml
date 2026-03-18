@@ -22,7 +22,7 @@ web      = ["dioxus/web",     "fsn-components/web"]
 fsd-db        = { workspace = true }
 fsd-conductor = { workspace = true }
 fsd-store     = { workspace = true }
-fsd-studio    = { workspace = true }
+fsd-builder   = { workspace = true }
 fsd-settings  = { workspace = true }
 fsd-profile   = { workspace = true }
 fsd-bots      = { workspace = true }

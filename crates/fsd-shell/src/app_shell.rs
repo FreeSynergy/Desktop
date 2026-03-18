@@ -314,7 +314,7 @@ pub fn ScreenWrapper(
 
 // ── Standard Layouts ──────────────────────────────────────────────────────────
 
-/// Layout A — full-width scrollable column (fsd-store, fsd-studio).
+/// Layout A — full-width scrollable column (fsd-store, fsd-builder).
 #[component]
 pub fn LayoutA(children: Element) -> Element {
     rsx! {

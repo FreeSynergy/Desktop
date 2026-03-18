@@ -4,7 +4,7 @@ members = [
     "crates/fsd-shell",
     "crates/fsd-conductor",
     "crates/fsd-store",
-    "crates/fsd-studio",
+    "crates/fsd-builder",
     "crates/fsd-settings",
     "crates/fsd-profile",
     "crates/fsd-app",
@@ -29,7 +29,7 @@ fsd-db        = { path = "crates/fsd-db" }
 fsd-shell     = { path = "crates/fsd-shell", default-features = false }
 fsd-conductor = { path = "crates/fsd-conductor" }
 fsd-store     = { path = "crates/fsd-store" }
-fsd-studio    = { path = "crates/fsd-studio" }
+fsd-builder   = { path = "crates/fsd-builder" }
 fsd-settings  = { path = "crates/fsd-settings" }
 fsd-profile   = { path = "crates/fsd-profile" }
 fsd-showcase  = { path = "crates/fsd-showcase" }

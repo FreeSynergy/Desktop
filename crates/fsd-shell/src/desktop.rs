@@ -8,7 +8,7 @@ use fsd_conductor::ConductorApp;
 use fsd_profile::ProfileApp;
 use fsd_settings::SettingsApp;
 use fsd_store::StoreApp;
-use fsd_studio::StudioApp;
+use fsd_builder::BuilderApp;
 use fsd_tasks::TasksApp;
 
 use crate::ai_view::AiApp;
@@ -83,7 +83,7 @@ fn init_i18n() -> String {
     fsd_store::register_i18n();
     fsd_conductor::register_i18n();
     fsd_settings::register_i18n();
-    fsd_studio::register_i18n();
+    fsd_builder::register_i18n();
     // shell.* + profile.* — registered inline below
     {
         const EN: &str = include_str!("../assets/i18n/en.toml");
@@ -819,9 +819,9 @@ fn AppWindowContent(title_key: String) -> Element {
                 LayoutA { StoreApp {} }
             }
         },
-        "app-studio" => rsx! {
+        "app-builder" => rsx! {
             AppShell { mode: AppMode::Window,
-                LayoutA { StudioApp {} }
+                LayoutA { BuilderApp {} }
             }
         },
         "app-settings" => rsx! {
@@ -861,7 +861,7 @@ fn app_id_to_label(id: &str) -> &str {
         "bots"      => "Bots",
         "conductor" => "Conductor",
         "store"     => "Store",
-        "studio"    => "Studio",
+        "builder"    => "Builder",
         "settings"  => "Settings",
         "profile"   => "Profile",
         "ai"        => "AI Assistant",
