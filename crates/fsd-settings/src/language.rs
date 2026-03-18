@@ -1,6 +1,7 @@
 /// Language settings — select UI language, install/remove language packs.
 use dioxus::prelude::*;
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
+use fsn_i18n;
 use fsn_store::{LocaleEntry, Manifest, StoreClient};
 use serde::Deserialize;
 
@@ -46,13 +47,10 @@ impl From<LocaleEntry> for LocaleInfo {
 }
 
 /// Built-in (always available, cannot be removed) languages.
+/// English is the only language guaranteed to be present — it is the fallback
+/// for all i18n lookups and requires no installation.
 pub const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
-    ("de", "Deutsch"),
     ("en", "English"),
-    ("fr", "Français"),
-    ("es", "Español"),
-    ("it", "Italiano"),
-    ("pt", "Português"),
 ];
 
 /// A language entry for display/selection.
@@ -234,8 +232,10 @@ pub fn LanguageSettings() -> Element {
                             color: white; border: none; border-radius: var(--fsn-radius-md); \
                             cursor: pointer;",
                     onclick: move |_| {
-                        save_active_language(&selected.read());
-                        saved_msg.set(Some("Language saved. Restart to apply."));
+                        let code = selected.read().clone();
+                        save_active_language(&code);
+                        fsn_i18n::set_active_lang(&code);
+                        saved_msg.set(Some("Language applied."));
                     },
                     "Apply"
                 }

@@ -42,7 +42,7 @@ fn write_file(path: &str, content: &str) -> Result<(), String> {
 #[component]
 pub fn ResourceBrowser() -> Element {
     let packages      = use_signal(|| PackageRegistry::load());
-    let mut selected  = use_signal(|| Option::<InstalledPackage>::None);
+    let selected  = use_signal(|| Option::<InstalledPackage>::None);
     let mut file_text = use_signal(String::new);
     let mut dirty     = use_signal(|| false);
     let mut msg       = use_signal(|| Option::<String>::None);

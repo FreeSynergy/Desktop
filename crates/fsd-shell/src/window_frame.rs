@@ -413,8 +413,8 @@ fn ResizeHandles(props: ResizeHandlesProps) -> Element {
     macro_rules! handle {
         ($dir:expr, $style:literal) => {{
             let dir  = $dir;
-            let mut pos_sig = props.pos;
-            let mut dim_sig = props.dim;
+            let pos_sig = props.pos;
+            let dim_sig = props.dim;
             rsx! {
                 div {
                     style: concat!("position: absolute; z-index: 200; ", $style),

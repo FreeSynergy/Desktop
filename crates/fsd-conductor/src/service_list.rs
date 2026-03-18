@@ -48,21 +48,25 @@ pub enum ServiceAction {
     Restart,
 }
 
-/// Fetch all fsn-*.service unit names via systemctl --user.
+/// Fetch all FSN-managed service unit names by reading the Quadlet directory
+/// (`~/.config/containers/systemd/`).  Each `{name}.container` file corresponds
+/// to a `{name}.service` unit managed by systemd via Podman Quadlet.
 pub async fn list_fsn_units() -> Vec<String> {
-    let Ok(out) = tokio::process::Command::new("systemctl")
-        .args(["--user", "list-units", "--type=service", "--no-legend", "--plain", "--all"])
-        .output()
-        .await
-    else {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let quadlet_dir = std::path::PathBuf::from(home)
+        .join(".config/containers/systemd");
+
+    let Ok(entries) = std::fs::read_dir(&quadlet_dir) else {
         return vec![];
     };
-    String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .filter_map(|line| {
-            let unit = line.split_whitespace().next()?;
-            if unit.starts_with("fsn-") && unit.ends_with(".service") {
-                Some(unit.to_string())
+
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            if path.extension()?.to_str()? == "container" {
+                let stem = path.file_stem()?.to_str()?.to_string();
+                Some(format!("{stem}.service"))
             } else {
                 None
             }

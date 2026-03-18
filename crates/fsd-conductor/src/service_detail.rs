@@ -126,7 +126,7 @@ fn ServiceStatusBadge(service_name: String) -> Element {
 /// Config tab: action buttons + .env editor.
 #[component]
 fn ServiceConfigTab(service_name: String) -> Element {
-    let mut action_msg: Signal<Option<String>> = use_signal(|| None);
+    let action_msg: Signal<Option<String>> = use_signal(|| None);
 
     rsx! {
         div { style: "padding: 16px;",
