@@ -2,6 +2,7 @@
 ///
 /// Calls `journalctl --user -u <unit> -n 200 --no-pager` (no Podman socket).
 use dioxus::prelude::*;
+use fsn_i18n;
 
 /// Log entry with severity level.
 #[derive(Clone, Debug, PartialEq)]
@@ -100,7 +101,7 @@ pub fn LogViewer(service: String) -> Element {
             div {
                 style: "display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--fsn-border);",
 
-                h3 { style: "margin: 0; flex: 1;", "Logs: {service}" }
+                h3 { style: "margin: 0; flex: 1;", {fsn_i18n::t_with("conductor.logs.title", &[("service", &service)])} }
 
                 label { style: "display: flex; align-items: center; gap: 4px; font-size: 13px;",
                     input {
@@ -108,13 +109,13 @@ pub fn LogViewer(service: String) -> Element {
                         checked: *follow.read(),
                         oninput: move |e| follow.set(e.checked()),
                     }
-                    "Follow"
+                    {fsn_i18n::t("conductor.logs.follow")}
                 }
 
                 button {
                     style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px;",
                     onclick: move |_| entries.set(vec![]),
-                    "Clear"
+                    {fsn_i18n::t("actions.clear")}
                 }
             }
 
@@ -126,9 +127,9 @@ pub fn LogViewer(service: String) -> Element {
                     div {
                         style: "color: var(--fsn-text-muted); padding: 16px;",
                         if service.is_empty() {
-                            "Select a service to view its logs."
+                            {fsn_i18n::t("conductor.logs.empty_no_service")}
                         } else {
-                            "No logs yet for {service}."
+                            {fsn_i18n::t_with("conductor.logs.empty", &[("service", &service)])}
                         }
                     }
                 }

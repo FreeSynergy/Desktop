@@ -9,6 +9,7 @@ pub use model::{Bot, BotAction, BotTrigger};
 use bot_row::BotRow;
 use dioxus::prelude::*;
 use form::{AddBotForm, AddBotFormView};
+use fsn_i18n;
 use model::BotsConfig;
 
 // ── persistence helper ────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ pub fn BotManagement() -> Element {
 
     let showing_add   = *show_add.read();
     let is_empty      = bots.read().is_empty();
-    let add_btn_label = if showing_add { "Cancel" } else { "+ Add Bot" };
+    let add_btn_label = if showing_add { fsn_i18n::t("actions.cancel") } else { fsn_i18n::t("conductor.bots.btn_add") };
     let save_err      = status_msg.read().clone();
 
     // Snapshot to avoid holding read guard across rsx
@@ -47,10 +48,10 @@ pub fn BotManagement() -> Element {
             div {
                 style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;",
                 div {
-                    h3 { style: "margin: 0;", "Bots" }
+                    h3 { style: "margin: 0;", {fsn_i18n::t("conductor.section.bots")} }
                     p {
                         style: "margin: 4px 0 0; font-size: 13px; color: var(--fsn-color-text-muted);",
-                        "Automated container lifecycle rules — triggered on startup or on an interval."
+                        {fsn_i18n::t("conductor.bots.description")}
                     }
                 }
                 button {
@@ -74,9 +75,9 @@ pub fn BotManagement() -> Element {
                 div {
                     style: "text-align: center; padding: 40px; background: var(--fsn-color-bg-surface); \
                             border-radius: var(--fsn-radius-md); border: 1px dashed var(--fsn-color-border-default);",
-                    p { style: "color: var(--fsn-color-text-muted); margin: 0;", "No bots defined yet." }
+                    p { style: "color: var(--fsn-color-text-muted); margin: 0;", {fsn_i18n::t("conductor.bots.empty")} }
                     p { style: "font-size: 12px; color: var(--fsn-color-text-muted); margin: 8px 0 0;",
-                        "Add a bot to automate container start/stop/restart actions."
+                        {fsn_i18n::t("conductor.bots.empty_hint")}
                     }
                 }
             }

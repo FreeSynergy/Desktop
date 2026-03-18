@@ -1,6 +1,7 @@
 // form.rs — AddBotForm state and the "New Bot" form component.
 
 use dioxus::prelude::*;
+use fsn_i18n;
 
 use super::model::{Bot, BotAction, BotTrigger};
 use super::save_bots;
@@ -67,7 +68,7 @@ pub fn AddBotFormView(
     let show_interval = form.read().trigger_kind == "interval";
     let is_command    = form.read().action_kind == "command";
     let form_valid    = form.read().is_valid();
-    let svc_label     = if is_command { "Command" } else { "Service name" };
+    let svc_label     = if is_command { fsn_i18n::t("conductor.bots.label_command") } else { fsn_i18n::t("conductor.bots.label_service_name") };
     let svc_hint      = if is_command { "e.g. /usr/bin/fsn sync" } else { "e.g. zentinel" };
 
     rsx! {
@@ -76,12 +77,12 @@ pub fn AddBotFormView(
                     border-radius: var(--fsn-radius-md); border: 1px solid var(--fsn-color-border-default); \
                     margin-bottom: 16px;",
 
-            h4 { style: "margin: 0 0 12px;", "New Bot" }
+            h4 { style: "margin: 0 0 12px;", {fsn_i18n::t("conductor.bots.form_title")} }
 
             // Row 1: Name + Description
             div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;",
                 div {
-                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Name" }
+                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("labels.name")} }
                     input {
                         r#type: "text",
                         placeholder: "e.g. auto-restart-proxy",
@@ -105,18 +106,18 @@ pub fn AddBotFormView(
             // Row 2: Trigger + Interval
             div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;",
                 div {
-                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Trigger" }
+                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("conductor.bots.label_trigger")} }
                     select {
                         style: INPUT_STYLE,
                         onchange: move |e| form.write().trigger_kind = e.value(),
                         option { value: "", "— select —" }
-                        option { value: "startup",  "On startup" }
-                        option { value: "interval", "Interval" }
+                        option { value: "startup",  {fsn_i18n::t("conductor.bots.trigger_startup")} }
+                        option { value: "interval", {fsn_i18n::t("conductor.bots.trigger_interval")} }
                     }
                 }
                 if show_interval {
                     div {
-                        label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Every (seconds)" }
+                        label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("conductor.bots.label_every_seconds")} }
                         input {
                             r#type: "number",
                             placeholder: "300",
@@ -131,15 +132,15 @@ pub fn AddBotFormView(
             // Row 3: Action + Service/Command
             div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;",
                 div {
-                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", "Action" }
+                    label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fsn_i18n::t("conductor.bots.label_action")} }
                     select {
                         style: INPUT_STYLE,
                         onchange: move |e| form.write().action_kind = e.value(),
                         option { value: "",        "— select —" }
-                        option { value: "start",   "Start container" }
-                        option { value: "stop",    "Stop container" }
-                        option { value: "restart", "Restart container" }
-                        option { value: "command", "Run command" }
+                        option { value: "start",   {fsn_i18n::t("conductor.bots.action_start")} }
+                        option { value: "stop",    {fsn_i18n::t("conductor.bots.action_stop")} }
+                        option { value: "restart", {fsn_i18n::t("conductor.bots.action_restart")} }
+                        option { value: "command", {fsn_i18n::t("conductor.bots.action_command")} }
                     }
                 }
                 div {
@@ -169,7 +170,7 @@ pub fn AddBotFormView(
                         form.set(AddBotForm::default());
                     }
                 },
-                "Add Bot"
+                {fsn_i18n::t("conductor.bots.btn_submit")}
             }
         }
     }

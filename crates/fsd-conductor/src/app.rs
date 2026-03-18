@@ -1,6 +1,7 @@
 /// Conductor — main app component for container/service/bot management.
 use dioxus::prelude::*;
 use fsn_components::{FsnSidebar, FsnSidebarItem, FSN_SIDEBAR_CSS};
+use fsn_i18n;
 
 use crate::bot_management::BotManagement;
 use crate::dep_graph::DependencyGraph;
@@ -68,7 +69,16 @@ pub fn ConductorApp() -> Element {
     let mut selected_service: Signal<Option<String>> = use_signal(|| None);
 
     let sidebar_items: Vec<FsnSidebarItem> = ALL_SECTIONS.iter()
-        .map(|s| FsnSidebarItem::new(s.label(), s.icon(), s.label()))
+        .map(|s| {
+            let translated = match s {
+                ConductorSection::Services  => fsn_i18n::t("conductor.section.services"),
+                ConductorSection::Bots      => fsn_i18n::t("conductor.section.bots"),
+                ConductorSection::Resources => fsn_i18n::t("conductor.section.resources"),
+                ConductorSection::Logs      => fsn_i18n::t("conductor.section.logs"),
+                ConductorSection::Graph     => fsn_i18n::t("conductor.section.graph"),
+            };
+            FsnSidebarItem::new(s.label(), s.icon(), translated)
+        })
         .collect();
 
     rsx! {
@@ -84,7 +94,7 @@ pub fn ConductorApp() -> Element {
                         flex-shrink: 0; background: var(--fsn-bg-surface);",
                 h2 {
                     style: "margin: 0; font-size: 16px; font-weight: 600; color: var(--fsn-text-primary);",
-                    "Conductor"
+                    {fsn_i18n::t("conductor.title")}
                 }
             }
 

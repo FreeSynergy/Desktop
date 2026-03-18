@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use fsn_i18n;
 use serde::{Deserialize, Serialize};
 
 // ── BotTrigger ────────────────────────────────────────────────────────────────
@@ -17,10 +18,10 @@ pub enum BotTrigger {
 }
 
 impl BotTrigger {
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            Self::OnStartup => "On startup",
-            Self::Interval { .. } => "Interval",
+            Self::OnStartup       => fsn_i18n::t("conductor.bots.trigger_startup"),
+            Self::Interval { .. } => fsn_i18n::t("conductor.bots.trigger_interval"),
         }
     }
 }
@@ -44,9 +45,9 @@ pub enum BotAction {
 impl BotAction {
     pub fn label(&self) -> String {
         match self {
-            Self::Start { service }      => format!("Start {service}"),
-            Self::Stop { service }       => format!("Stop {service}"),
-            Self::Restart { service }    => format!("Restart {service}"),
+            Self::Start { service }      => format!("{} {service}", fsn_i18n::t("actions.start")),
+            Self::Stop { service }       => format!("{} {service}", fsn_i18n::t("actions.stop")),
+            Self::Restart { service }    => format!("{} {service}", fsn_i18n::t("actions.restart")),
             Self::RunCommand { command } => format!("Run: {command}"),
         }
     }

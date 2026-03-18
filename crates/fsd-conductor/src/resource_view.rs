@@ -4,6 +4,7 @@
 /// Use `podman stats` or system monitoring tools for resource metrics.
 use dioxus::prelude::*;
 use fsn_container::{SystemctlManager, UnitActiveState};
+use fsn_i18n;
 
 use crate::service_list::list_fsn_units;
 
@@ -30,7 +31,7 @@ pub fn ResourceView() -> Element {
         loop {
             let units = list_fsn_units().await;
             if units.is_empty() {
-                error.set(Some("No FSN services found.".into()));
+                error.set(Some(fsn_i18n::t("conductor.services.not_found")));
             } else {
                 let mut rows = Vec::new();
                 for unit in &units {
@@ -54,11 +55,10 @@ pub fn ResourceView() -> Element {
             // Header
             div {
                 style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;",
-                h2 { style: "margin: 0; font-size: 18px;", "Resources" }
+                h2 { style: "margin: 0; font-size: 18px;", {fsn_i18n::t("conductor.section.resources")} }
                 span {
                     style: "font-size: 12px; color: var(--fsn-text-muted);",
-                    "For CPU/RAM metrics use: "
-                    code { "podman stats" }
+                    {fsn_i18n::t("conductor.resources.metrics_hint")}
                 }
             }
 
@@ -73,7 +73,7 @@ pub fn ResourceView() -> Element {
             if entries.read().is_empty() && error.read().is_none() {
                 div {
                     style: "text-align: center; color: var(--fsn-text-muted); padding: 48px;",
-                    "No running containers."
+                    {fsn_i18n::t("conductor.resources.empty")}
                 }
             } else if !entries.read().is_empty() {
                 table {

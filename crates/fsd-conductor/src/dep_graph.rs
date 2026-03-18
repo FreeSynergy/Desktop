@@ -5,6 +5,7 @@
 /// which are not available via systemctl — edge rendering is omitted.
 use dioxus::prelude::*;
 use fsn_container::{SystemctlManager, UnitActiveState};
+use fsn_i18n;
 
 use crate::service_list::list_fsn_units;
 
@@ -40,7 +41,7 @@ pub fn DependencyGraph() -> Element {
         loop {
             let units = list_fsn_units().await;
             if units.is_empty() {
-                error.set(Some("No FSN services found.".into()));
+                error.set(Some(fsn_i18n::t("conductor.graph.empty")));
             } else {
                 let mut result = Vec::new();
                 for (i, unit) in units.iter().enumerate() {
@@ -83,10 +84,10 @@ pub fn DependencyGraph() -> Element {
             // Header
             div {
                 style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;",
-                h2 { style: "margin: 0; font-size: 18px;", "Service Graph" }
+                h2 { style: "margin: 0; font-size: 18px;", {fsn_i18n::t("conductor.section.graph")} }
                 span {
                     style: "font-size: 12px; color: var(--fsn-text-muted);",
-                    "FSN systemd units"
+                    {fsn_i18n::t("conductor.graph.subtitle")}
                 }
             }
 
@@ -101,7 +102,7 @@ pub fn DependencyGraph() -> Element {
             if list.is_empty() {
                 div {
                     style: "text-align: center; color: var(--fsn-text-muted); padding: 48px;",
-                    "No FSN services found."
+                    {fsn_i18n::t("conductor.graph.empty")}
                 }
             } else {
                 // SVG canvas

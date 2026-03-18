@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
 use fsn_container::{SystemctlManager, UnitActiveState};
+use fsn_i18n;
 
 /// A single service entry displayed in the list.
 #[derive(Clone, Debug, PartialEq)]
@@ -17,14 +18,14 @@ pub struct ServiceEntry {
 }
 
 impl ServiceEntry {
-    pub fn status_label(&self) -> &str {
+    pub fn status_label(&self) -> String {
         match self.active {
-            UnitActiveState::Active       => "Running",
-            UnitActiveState::Inactive     => "Stopped",
-            UnitActiveState::Activating   => "Starting",
-            UnitActiveState::Deactivating => "Stopping",
-            UnitActiveState::Failed       => "Failed",
-            UnitActiveState::Unknown      => "Unknown",
+            UnitActiveState::Active       => fsn_i18n::t("status.running"),
+            UnitActiveState::Inactive     => fsn_i18n::t("status.stopped"),
+            UnitActiveState::Activating   => fsn_i18n::t("status.starting"),
+            UnitActiveState::Deactivating => fsn_i18n::t("status.stopping"),
+            UnitActiveState::Failed       => fsn_i18n::t("status.failed"),
+            UnitActiveState::Unknown      => fsn_i18n::t("status.unknown"),
         }
     }
 
@@ -88,7 +89,7 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
         loop {
             let units = list_fsn_units().await;
             if units.is_empty() {
-                error.set(Some("No FSN services found. Deploy a project first.".into()));
+                error.set(Some(fsn_i18n::t("conductor.services.not_found")));
             } else {
                 let mut entries = Vec::new();
                 for unit in &units {
@@ -143,7 +144,7 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
             // Header
             div {
                 style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;",
-                h2 { style: "margin: 0; font-size: 18px;", "Services" }
+                h2 { style: "margin: 0; font-size: 18px;", {fsn_i18n::t("conductor.section.services")} }
                 button {
                     style: "background: var(--fsn-primary); color: white; border: none; \
                             padding: 8px 16px; border-radius: var(--fsn-radius-md); cursor: pointer;",
@@ -152,7 +153,7 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
                             *req.write() = Some("store".to_string());
                         }
                     },
-                    "Install Service"
+                    {fsn_i18n::t("conductor.services.install_btn")}
                 }
             }
 
@@ -170,8 +171,8 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
             if services.read().is_empty() && error.read().is_none() {
                 div {
                     style: "text-align: center; color: var(--fsn-text-muted); padding: 48px;",
-                    p { "No services installed yet." }
-                    p { "Open the Store to install your first service." }
+                    p { {fsn_i18n::t("conductor.services.empty")} }
+                    p { {fsn_i18n::t("conductor.services.empty_hint")} }
                 }
             }
 
@@ -223,7 +224,7 @@ fn ServiceAccordionGroup(
                 span { style: "font-weight: 600; font-size: 14px;", "{category}" }
                 span {
                     style: "margin-left: auto; font-size: 12px; color: var(--fsn-text-muted);",
-                    "{running}/{count} running"
+                    {fsn_i18n::t_with("conductor.services.running_count", &[("running", &running.to_string()), ("count", &count.to_string())])}
                 }
             }
 
@@ -316,7 +317,7 @@ fn ServiceActions(
             if !is_running {
                 button {
                     style: "padding: 4px 8px; background: var(--fsn-success); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;",
-                    title: "Start",
+                    title: fsn_i18n::t("actions.start"),
                     onclick: {
                         let n = name.clone();
                         move |_| on_action.call((n.clone(), ServiceAction::Start))
@@ -328,7 +329,7 @@ fn ServiceActions(
             if is_running {
                 button {
                     style: "padding: 4px 8px; background: var(--fsn-error); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;",
-                    title: "Stop",
+                    title: fsn_i18n::t("actions.stop"),
                     onclick: {
                         let n = name.clone();
                         move |_| on_action.call((n.clone(), ServiceAction::Stop))
@@ -337,7 +338,7 @@ fn ServiceActions(
                 }
                 button {
                     style: "padding: 4px 8px; background: var(--fsn-warning); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;",
-                    title: "Restart",
+                    title: fsn_i18n::t("actions.restart"),
                     onclick: {
                         let n = name.clone();
                         move |_| on_action.call((n.clone(), ServiceAction::Restart))
@@ -349,7 +350,7 @@ fn ServiceActions(
             // Select service for log view
             button {
                 style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px;",
-                title: "Logs",
+                title: fsn_i18n::t("conductor.section.logs"),
                 onclick: {
                     let n = name.clone();
                     move |_| *selected.write() = Some(n.clone())

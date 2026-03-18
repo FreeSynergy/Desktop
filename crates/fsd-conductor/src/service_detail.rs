@@ -4,6 +4,7 @@
 /// editor (.env file), module instance config, and a mini log tail.
 use dioxus::prelude::*;
 use fsn_container::{SystemctlManager, UnitActiveState};
+use fsn_i18n;
 
 use crate::instance_config::InstanceConfigEditor;
 use crate::log_viewer::LogViewer;
@@ -55,17 +56,17 @@ pub fn ServiceDetail(service_name: String, on_close: EventHandler<()>) -> Elemen
             div {
                 style: "display: flex; border-bottom: 1px solid var(--fsn-border); flex-shrink: 0;",
                 DetailTabBtn {
-                    label: "Config",
+                    label: fsn_i18n::t("conductor.tab.config"),
                     active: *tab.read() == DetailTab::Config,
                     onclick: move |_| tab.set(DetailTab::Config),
                 }
                 DetailTabBtn {
-                    label: "Module",
+                    label: fsn_i18n::t("conductor.tab.module"),
                     active: *tab.read() == DetailTab::Module,
                     onclick: move |_| tab.set(DetailTab::Module),
                 }
                 DetailTabBtn {
-                    label: "Logs",
+                    label: fsn_i18n::t("conductor.tab.logs"),
                     active: *tab.read() == DetailTab::Logs,
                     onclick: move |_| tab.set(DetailTab::Logs),
                 }
@@ -116,12 +117,12 @@ fn ServiceStatusBadge(service_name: String) -> Element {
     }
 
     let (label, color, bg) = match *state.read() {
-        UnitActiveState::Active       => ("Running",  "var(--fsn-success)",      "rgba(34,197,94,0.1)"),
-        UnitActiveState::Inactive     => ("Stopped",  "var(--fsn-text-muted)",   "var(--fsn-bg-elevated)"),
-        UnitActiveState::Activating   => ("Starting", "var(--fsn-info)",         "rgba(99,179,237,0.1)"),
-        UnitActiveState::Deactivating => ("Stopping", "var(--fsn-warning)",      "rgba(251,191,36,0.1)"),
-        UnitActiveState::Failed       => ("Failed",   "var(--fsn-error)",        "rgba(239,68,68,0.1)"),
-        UnitActiveState::Unknown      => ("Unknown",  "var(--fsn-text-muted)",   "var(--fsn-bg-elevated)"),
+        UnitActiveState::Active       => (fsn_i18n::t("status.running"),  "var(--fsn-success)",      "rgba(34,197,94,0.1)"),
+        UnitActiveState::Inactive     => (fsn_i18n::t("status.stopped"),  "var(--fsn-text-muted)",   "var(--fsn-bg-elevated)"),
+        UnitActiveState::Activating   => (fsn_i18n::t("status.starting"), "var(--fsn-info)",         "rgba(99,179,237,0.1)"),
+        UnitActiveState::Deactivating => (fsn_i18n::t("status.stopping"), "var(--fsn-warning)",      "rgba(251,191,36,0.1)"),
+        UnitActiveState::Failed       => (fsn_i18n::t("status.failed"),   "var(--fsn-error)",        "rgba(239,68,68,0.1)"),
+        UnitActiveState::Unknown      => (fsn_i18n::t("status.unknown"),  "var(--fsn-text-muted)",   "var(--fsn-bg-elevated)"),
     };
 
     rsx! {
@@ -147,21 +148,21 @@ fn ServiceConfigTab(service_name: String) -> Element {
             div {
                 style: "display: flex; gap: 8px; margin-bottom: 20px;",
                 ActionBtn {
-                    label: "Start",
+                    label: fsn_i18n::t("actions.start"),
                     color: "var(--fsn-success)",
                     name: service_name.clone(),
                     action: "start",
                     msg: action_msg,
                 }
                 ActionBtn {
-                    label: "Stop",
+                    label: fsn_i18n::t("actions.stop"),
                     color: "var(--fsn-error)",
                     name: service_name.clone(),
                     action: "stop",
                     msg: action_msg,
                 }
                 ActionBtn {
-                    label: "Restart",
+                    label: fsn_i18n::t("actions.restart"),
                     color: "var(--fsn-warning)",
                     name: service_name.clone(),
                     action: "restart",
@@ -267,7 +268,7 @@ fn EnvEditor(service_name: String) -> Element {
                         margin-bottom: 8px;",
                 span {
                     style: "font-size: 13px; font-weight: 600;",
-                    "Environment Variables"
+                    {fsn_i18n::t("conductor.env.heading")}
                 }
                 button {
                     style: "padding: 4px 12px; background: var(--fsn-color-primary); \
@@ -280,7 +281,7 @@ fn EnvEditor(service_name: String) -> Element {
                             let to_save = content.read().clone();
                             match std::fs::write(&path, &to_save) {
                                 Ok(()) => {
-                                    save_msg.set(Some("Saved. Restart the service to apply.".into()));
+                                    save_msg.set(Some(fsn_i18n::t("conductor.env.saved_hint")));
                                 }
                                 Err(e) => {
                                     save_msg.set(Some(format!("Save failed: {e}")));
@@ -288,7 +289,7 @@ fn EnvEditor(service_name: String) -> Element {
                             }
                         }
                     },
-                    "Save"
+                    {fsn_i18n::t("actions.save")}
                 }
             }
 
@@ -320,7 +321,7 @@ fn EnvEditor(service_name: String) -> Element {
             }
 
             p { style: "font-size: 11px; color: var(--fsn-text-muted); margin-top: 6px;",
-                "After saving, restart the service for changes to take effect."
+                {fsn_i18n::t("conductor.env.restart_hint")}
             }
         }
     }
