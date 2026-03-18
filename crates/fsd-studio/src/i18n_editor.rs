@@ -21,8 +21,10 @@ struct LangOption {
 }
 
 fn load_lang_options() -> Vec<LangOption> {
+    // Only show builtin languages that actually have a ui.toml installed on disk.
     let mut opts: Vec<LangOption> = BUILTIN_LANGUAGES
         .iter()
+        .filter(|(code, _)| ui_toml_path(code).exists())
         .map(|(code, name)| LangOption { code: code.to_string(), name: name.to_string() })
         .collect();
 

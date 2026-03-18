@@ -10,6 +10,14 @@ use crate::package_card::{PackageCard, PackageEntry};
 /// Language codes built into the desktop (always considered "installed").
 const BUILTIN_LANG_CODES: &[&str] = &["de", "en", "fr", "es", "it", "pt"];
 
+/// Install-state filter for the package browser.
+#[derive(Clone, PartialEq, Debug)]
+pub enum InstallFilter {
+    All,
+    Installed,
+    Available,
+}
+
 /// Package browser component. `kind` filters by package type (None = show all).
 #[component]
 pub fn PackageBrowser(
@@ -20,6 +28,7 @@ pub fn PackageBrowser(
     let packages: Signal<Vec<PackageEntry>> = use_signal(Vec::new);
     let mut loading: Signal<bool>           = use_signal(|| true);
     let mut error: Signal<Option<String>>   = use_signal(|| None);
+    let mut install_filter = use_signal(|| InstallFilter::All);
 
     {
         let packages = packages.clone();
@@ -55,6 +64,7 @@ pub fn PackageBrowser(
         .map(|w| w.to_string())
         .collect();
 
+    let cur_filter = install_filter.read().clone();
     let filtered: Vec<PackageEntry> = packages
         .read()
         .iter()
@@ -65,14 +75,50 @@ pub fn PackageBrowser(
                     || p.category.to_lowercase().contains(word.as_str())
                     || p.tags.iter().any(|t| t.to_lowercase().contains(word.as_str()))
             });
-            let matches_kind = kind.as_ref().map_or(true, |k| &p.kind == k);
-            matches_search && matches_kind
+            let matches_kind    = kind.as_ref().map_or(true, |k| &p.kind == k);
+            let matches_install = match &cur_filter {
+                InstallFilter::All       => true,
+                InstallFilter::Installed => p.installed,
+                InstallFilter::Available => !p.installed,
+            };
+            matches_search && matches_kind && matches_install
         })
         .cloned()
         .collect();
 
     rsx! {
         div { class: "fsd-browser",
+            // ── Install filter bar ──────────────────────────────────────────────
+            div {
+                style: "display: flex; gap: 6px; margin-bottom: 12px;",
+                for (label, variant) in [
+                    ("All",       InstallFilter::All),
+                    ("Installed", InstallFilter::Installed),
+                    ("Available", InstallFilter::Available),
+                ] {
+                    {
+                        let active = *install_filter.read() == variant;
+                        let v = variant.clone();
+                        rsx! {
+                            button {
+                                key: "{label}",
+                                style: if active {
+                                    "padding: 4px 12px; font-size: 12px; border-radius: var(--fsn-radius-sm); \
+                                     border: 1px solid var(--fsn-color-primary); cursor: pointer; \
+                                     background: var(--fsn-color-primary); color: white;"
+                                } else {
+                                    "padding: 4px 12px; font-size: 12px; border-radius: var(--fsn-radius-sm); \
+                                     border: 1px solid var(--fsn-color-border-default); cursor: pointer; \
+                                     background: transparent; color: var(--fsn-color-text-primary);"
+                                },
+                                onclick: move |_| install_filter.set(v.clone()),
+                                "{label}"
+                            }
+                        }
+                    }
+                }
+            }
+
             if *loading.read() {
                 LoadingOverlay {
                     size: SpinnerSize::Lg,
