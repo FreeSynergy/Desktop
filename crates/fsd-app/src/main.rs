@@ -32,7 +32,15 @@ fn main() {
                             .with_min_inner_size(dioxus::desktop::LogicalSize::new(900.0_f64, 600.0_f64))
                             .with_resizable(true),
                     )
-                    .with_background_color((12, 18, 34, 255)),
+                    .with_background_color((12, 18, 34, 255))
+                    // Allow iframes to load any external URL (needed for the Browser app).
+                    // The custom_head injects a permissive CSP so WebKit does not block
+                    // cross-origin frame navigation from the dioxus:// protocol context.
+                    .with_custom_head(
+                        r#"<meta http-equiv="Content-Security-Policy"
+                             content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
+                                      frame-src *;">"#.to_string()
+                    ),
             )
             .launch(fsd_shell::Desktop);
     }

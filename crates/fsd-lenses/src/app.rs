@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 use fsn_i18n;
 
-use crate::model::{Lens, LensRole};
+use crate::model::Lens;
 use crate::query::refresh_lens;
 
 // ── Context: Lenses can request opening URLs in the browser ───────────────────
@@ -63,14 +63,14 @@ pub fn LensesApp() -> Element {
                     input {
                         class: "fsd-lenses__input",
                         r#type: "text",
-                        placeholder: {fsn_i18n::t("lenses.form.name")},
+                        placeholder: fsn_i18n::t("lenses.form.name"),
                         value: "{form_name}",
                         oninput: move |e| form_name.set(e.value()),
                     }
                     input {
                         class: "fsd-lenses__input",
                         r#type: "text",
-                        placeholder: {fsn_i18n::t("lenses.search_hint")},
+                        placeholder: fsn_i18n::t("lenses.search_hint"),
                         value: "{form_query}",
                         oninput: move |e| form_query.set(e.value()),
                     }
@@ -226,7 +226,7 @@ fn LensListRow(
                 }
                 button {
                     class: "fsd-lenses__icon-btn fsd-lenses__icon-btn--danger",
-                    title: {fsn_i18n::t("lenses.delete_lens")},
+                    title: fsn_i18n::t("lenses.delete_lens"),
                     onclick: move |e: MouseEvent| { e.stop_propagation(); on_delete.call(()); },
                     "✕"
                 }

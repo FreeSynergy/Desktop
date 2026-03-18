@@ -10,7 +10,7 @@ use fsn_components::FSN_SIDEBAR_CSS;
 use fsn_i18n;
 
 use crate::bookmarks::{add_bookmark, record_visit, remove_bookmark};
-use crate::model::{Bookmark, BrowserTab, DownloadEntry, DownloadStatus, HistoryEntry};
+use crate::model::{Bookmark, BrowserTab, DownloadEntry, HistoryEntry};
 
 // ── Browser sections ──────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ pub fn BrowserApp() -> Element {
     // K4: Bookmarks + History (in-memory)
     let mut bookmarks: Signal<Vec<Bookmark>>      = use_signal(Vec::new);
     let mut history:   Signal<Vec<HistoryEntry>>  = use_signal(Vec::new);
-    let mut downloads: Signal<Vec<DownloadEntry>> = use_signal(Vec::new);
+    let downloads: Signal<Vec<DownloadEntry>> = use_signal(Vec::new);
 
     // Status message (bookmark added/removed feedback)
     let mut status_msg: Signal<Option<String>> = use_signal(|| None);
@@ -97,7 +97,7 @@ pub fn BrowserApp() -> Element {
                 // Nav buttons
                 button {
                     class: "fsd-browser__nav-btn",
-                    title: {fsn_i18n::t("browser.go_back")},
+                    title: fsn_i18n::t("browser.go_back"),
                     onclick: move |_| {
                         // Back navigation — in an iframe context use JS eval
                         // For now: no-op (history management per-tab not trivial in iframe)
@@ -106,13 +106,13 @@ pub fn BrowserApp() -> Element {
                 }
                 button {
                     class: "fsd-browser__nav-btn",
-                    title: {fsn_i18n::t("browser.go_forward")},
+                    title: fsn_i18n::t("browser.go_forward"),
                     onclick: move |_| {},
                     "›"
                 }
                 button {
                     class: "fsd-browser__nav-btn",
-                    title: {fsn_i18n::t("browser.reload")},
+                    title: fsn_i18n::t("browser.reload"),
                     onclick: move |_| {
                         let url = current_url_for_reload.clone();
                         navigate_to(&mut tabs, *active_tab.read(), &url, &mut history, &mut address_input);
@@ -124,7 +124,7 @@ pub fn BrowserApp() -> Element {
                 input {
                     class: "fsd-browser__address",
                     r#type: "text",
-                    placeholder: {fsn_i18n::t("browser.url_placeholder")},
+                    placeholder: fsn_i18n::t("browser.url_placeholder"),
                     value: "{address_input}",
                     oninput: move |e| address_input.set(e.value()),
                     onkeydown: move |e| {
@@ -138,7 +138,7 @@ pub fn BrowserApp() -> Element {
                 // Bookmark toggle
                 button {
                     class: "fsd-browser__nav-btn",
-                    title: {fsn_i18n::t("browser.bookmarks.add")},
+                    title: fsn_i18n::t("browser.bookmarks.add"),
                     onclick: move |_| {
                         let url = current_url.clone();
                         if !url.is_empty() {
@@ -154,7 +154,7 @@ pub fn BrowserApp() -> Element {
                 // Panel toggles
                 button {
                     class: if *panel.read() == BrowserPanel::Bookmarks { "fsd-browser__nav-btn fsd-browser__nav-btn--active" } else { "fsd-browser__nav-btn" },
-                    title: {fsn_i18n::t("browser.bookmarks")},
+                    title: fsn_i18n::t("browser.bookmarks"),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::Bookmarks { BrowserPanel::Browse } else { BrowserPanel::Bookmarks };
                         panel.set(p);
@@ -163,7 +163,7 @@ pub fn BrowserApp() -> Element {
                 }
                 button {
                     class: if *panel.read() == BrowserPanel::History { "fsd-browser__nav-btn fsd-browser__nav-btn--active" } else { "fsd-browser__nav-btn" },
-                    title: {fsn_i18n::t("browser.history")},
+                    title: fsn_i18n::t("browser.history"),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::History { BrowserPanel::Browse } else { BrowserPanel::History };
                         panel.set(p);
@@ -172,7 +172,7 @@ pub fn BrowserApp() -> Element {
                 }
                 button {
                     class: if *panel.read() == BrowserPanel::Downloads { "fsd-browser__nav-btn fsd-browser__nav-btn--active" } else { "fsd-browser__nav-btn" },
-                    title: {fsn_i18n::t("browser.downloads")},
+                    title: fsn_i18n::t("browser.downloads"),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::Downloads { BrowserPanel::Browse } else { BrowserPanel::Downloads };
                         panel.set(p);
@@ -203,7 +203,7 @@ pub fn BrowserApp() -> Element {
                         }
                         button {
                             class: "fsd-browser__tab-close",
-                            title: {fsn_i18n::t("browser.close_tab")},
+                            title: fsn_i18n::t("browser.close_tab"),
                             onclick: {
                                 let tab_id = tab.id;
                                 move |e: MouseEvent| {
@@ -219,7 +219,7 @@ pub fn BrowserApp() -> Element {
                 // New tab button
                 button {
                     class: "fsd-browser__new-tab",
-                    title: {fsn_i18n::t("browser.new_tab")},
+                    title: fsn_i18n::t("browser.new_tab"),
                     onclick: move |_| {
                         let id = *next_tab_id.read();
                         next_tab_id.set(id + 1);
@@ -246,7 +246,7 @@ pub fn BrowserApp() -> Element {
                 // Main iframe viewport
                 div {
                     class: "fsd-browser__viewport",
-                    style: if show_panel { "flex: 1; min-width: 0;" } else { "flex: 1;" },
+                    style: if show_panel { "min-width: 0;" } else { "" },
 
                     if current_url.is_empty() {
                         // Empty tab — show a welcome page
@@ -259,13 +259,13 @@ pub fn BrowserApp() -> Element {
                             }
                         }
                     } else {
-                        // K1: WebView via iframe (Dioxus desktop runs in Wry/WebView)
+                        // K1: WebView via iframe (Dioxus desktop runs in Wry/WebView).
+                        // flex: 1 fills the flex-column parent; min-height: 0 prevents
+                        // the flex minimum-size heuristic from collapsing the iframe to 0.
                         iframe {
                             key: "{current_url}",
                             src: "{current_url}",
-                            style: "width: 100%; height: 100%; border: none; display: block;",
-                            // K2: Download interception — S3 redirect handled by server
-                            // actual download capture would need wry custom protocol handler
+                            style: "flex: 1; min-height: 0; width: 100%; border: none; display: block;",
                         }
                     }
                 }
@@ -350,7 +350,7 @@ fn BookmarksPanel(
                             let id = bm.id;
                             move |_| on_remove.call(id)
                         },
-                        title: {fsn_i18n::t("browser.bookmarks.remove")},
+                        title: fsn_i18n::t("browser.bookmarks.remove"),
                         "✕"
                     }
                 }
@@ -646,12 +646,15 @@ const BROWSER_CSS: &str = r#"
 .fsd-browser__content {
     display: flex;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
 .fsd-browser__viewport {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 

@@ -26,8 +26,6 @@ struct ComposeServiceDef {
     image: Option<String>,
     #[serde(default)]
     ports: Vec<serde_json::Value>,
-    #[serde(default)]
-    volumes: Vec<serde_json::Value>,
     environment: Option<serde_json::Value>,
     healthcheck: Option<serde_json::Value>,
 }
@@ -410,8 +408,8 @@ fn analyze_compose_yaml(yaml: &str) -> Result<ContainerAppResource, String> {
 
 fn build_resource(yaml: &str, compose: ComposeFile) -> Result<ContainerAppResource, String> {
     use fsn_types::resources::{
-        container_app::{AutoSource, ContainerService, NetworkDef, RoleDep, VolumeDef},
-        meta::{ResourceMeta, ResourceType, Role, ValidationStatus},
+        container_app::{ContainerService, NetworkDef, RoleDep},
+        meta::{ResourceMeta, ResourceType, ValidationStatus},
     };
 
     // Detect primary service (non-infra with a port, or first).
