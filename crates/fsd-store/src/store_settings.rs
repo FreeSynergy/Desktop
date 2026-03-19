@@ -60,8 +60,17 @@ pub fn load_repos() -> Vec<RepoEntry> {
     let official = official_store();
     let already_present = stores.iter().any(|r| r.primary || r.url == official.url);
     if !already_present {
-        stores.insert(0, official);
+        stores.insert(0, official.clone());
     }
+
+    // Force primary = true on any entry that matches the official URL.
+    // Survives serialization round-trips that might have cleared the flag.
+    for r in stores.iter_mut() {
+        if r.url == official.url {
+            r.primary = true;
+        }
+    }
+
     stores
 }
 

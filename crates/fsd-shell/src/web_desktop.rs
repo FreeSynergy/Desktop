@@ -1,12 +1,14 @@
 /// WebDesktop — mobile-first shell layout for the web target.
 ///
 /// Layout:
-///   - TopBar (always visible):  [≡ Menu]  FreeSynergy  [🔔]  [👤 Admin]
+///   - TopBar (always visible):  [≡ Menu]  FreeSynergy  [Bell]  [User Admin]
 ///   - Content area: embedded app, fills remaining space, scrollable
 ///   - Taskbar (bottom): Fixed by default, slides up on tap/click, auto-hide optional
 ///
 /// Taskbar states: Fixed → SlideUp → Hidden (cycles on tap of drag handle).
 use dioxus::prelude::*;
+
+use crate::icons::ICON_BELL;
 
 use crate::taskbar::AppEntry;
 
@@ -185,9 +187,9 @@ fn WebTopBar(
             div { style: "position: relative;",
                 button {
                     style: "background: none; border: none; cursor: pointer; padding: 6px 8px; \
-                            border-radius: var(--fsn-radius-sm); font-size: 16px; line-height: 1; \
+                            border-radius: var(--fsn-radius-sm); display: flex; align-items: center; \
                             color: var(--fsn-text-secondary);",
-                    "🔔"
+                    span { dangerous_inner_html: ICON_BELL }
                 }
                 if notification_count > 0 {
                     div {

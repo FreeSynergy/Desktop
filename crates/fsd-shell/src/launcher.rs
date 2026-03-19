@@ -8,6 +8,8 @@
 use dioxus::prelude::*;
 use fsn_i18n;
 
+use crate::icons::{ICON_CHEVRON_DOWN, ICON_CHEVRON_RIGHT};
+
 use crate::taskbar::AppEntry;
 
 /// How many app groups to show per page in the launcher.
@@ -291,8 +293,12 @@ fn AppGroupSection(group: AppGroup, on_launch: EventHandler<String>) -> Element 
                     let v = *expanded.read();
                     *expanded.write() = !v;
                 },
-                span { style: "font-size: 10px; color: var(--fsn-text-muted);",
-                    if *expanded.read() { "▼" } else { "▶" }
+                span { style: "color: var(--fsn-text-muted); display: flex; align-items: center;",
+                    if *expanded.read() {
+                        span { dangerous_inner_html: ICON_CHEVRON_DOWN }
+                    } else {
+                        span { dangerous_inner_html: ICON_CHEVRON_RIGHT }
+                    }
                 }
                 "{group.label}"
                 span {

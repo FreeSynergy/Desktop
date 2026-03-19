@@ -236,26 +236,34 @@ fn find_local_build_binary(id: &str) -> Option<String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let base = std::path::PathBuf::from(&home).join("Server");
 
-    // Derive repo title (e.g. "node" → "Node", "desktop" → "Desktop")
-    let title: String = {
-        let mut c = id.chars();
-        match c.next() {
-            None => String::new(),
-            Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-        }
+    // Map known catalog IDs (both "fsn-*" prefixed and bare) → (repo title, binary name).
+    // The catalog uses "fsn-{name}" IDs; older internal code used bare IDs.
+    let known: Option<(&str, &str)> = match id {
+        "node"    | "fsn-node"                          => Some(("Node",    "fsn")),
+        "desktop" | "fsn-desktop" | "store" | "fsn-store" => Some(("Desktop", "fsd")),
+        "init"    | "fsn-init"                          => Some(("Init",    "fsn-init")),
+        "browser" | "fsn-browser"                       => Some(("Browser", "fsn-browser")),
+        _                                               => None,
     };
 
-    // Derive binary name from known FSN packages; fall back to id
-    let binary_name = match id {
-        "node"    => "fsn",
-        "desktop" => "fsd",
-        "init"    => "fsn-init",
-        other     => other,
+    let (title, binary_name): (String, String) = if let Some((t, b)) = known {
+        (t.to_string(), b.to_string())
+    } else {
+        // Strip "fsn-" prefix, capitalize remainder for the repo folder name.
+        let stripped = id.strip_prefix("fsn-").unwrap_or(id);
+        let cap: String = {
+            let mut c = stripped.chars();
+            match c.next() {
+                None    => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        };
+        (cap, id.to_string())
     };
 
     let repo = base.join(format!("FreeSynergy.{title}"));
     for profile in &["release", "debug"] {
-        let path = repo.join("target").join(profile).join(binary_name);
+        let path = repo.join("target").join(profile).join(&binary_name);
         if path.exists() {
             return Some(path.to_string_lossy().into_owned());
         }

@@ -1,6 +1,7 @@
 /// ShellHeader — 60px fixed header with menu bar, breadcrumbs and user avatar menu.
 use dioxus::prelude::*;
 use fsn_i18n;
+use crate::icons::{ICON_PROFILE, ICON_SETTINGS, ICON_SIGN_OUT, ICON_CHEVRON_RIGHT, ICON_CHEVRON_DOWN};
 use crate::notification::{NotificationBell, NotificationHistory};
 
 /// A single breadcrumb entry.
@@ -386,8 +387,8 @@ fn SubMenuRow(
                         color: var(--fsn-text-primary); gap: 24px;",
                 span { "{label}" }
                 span {
-                    style: "font-size: 11px; color: var(--fsn-text-muted); flex-shrink: 0;",
-                    "▶"
+                    style: "color: var(--fsn-text-muted); flex-shrink: 0; display: flex; align-items: center;",
+                    dangerous_inner_html: ICON_CHEVRON_RIGHT
                 }
             }
 
@@ -487,7 +488,7 @@ fn AvatarMenu(user_name: String, user_avatar: Option<String>) -> Element {
                     style: "font-size: 13px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
                     "{user_name}"
                 }
-                span { style: "font-size: 10px; color: var(--fsn-color-text-muted);", "▾" }
+                span { style: "color: var(--fsn-color-text-muted); display: flex; align-items: center;", dangerous_inner_html: ICON_CHEVRON_DOWN }
             }
 
             if *open.read() {
@@ -506,10 +507,10 @@ fn AvatarDropdown(on_close: EventHandler<MouseEvent>) -> Element {
                     border: 1px solid var(--fsn-color-border-default, #334155); \
                     border-radius: 8px; min-width: 160px; z-index: 300; \
                     box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 4px 0;",
-            AvatarMenuItem { icon: "👤", label: fsn_i18n::t("shell.avatar.profile"),  on_click: on_close.clone() }
-            AvatarMenuItem { icon: "⚙",  label: fsn_i18n::t("settings.title"),         on_click: on_close.clone() }
+            AvatarMenuItem { icon: ICON_PROFILE,   label: fsn_i18n::t("shell.avatar.profile"),  on_click: on_close.clone() }
+            AvatarMenuItem { icon: ICON_SETTINGS,  label: fsn_i18n::t("settings.title"),         on_click: on_close.clone() }
             hr { style: "border: none; border-top: 1px solid var(--fsn-color-border-default, #334155); margin: 4px 0;" }
-            AvatarMenuItem { icon: "⎋",  label: fsn_i18n::t("shell.avatar.sign_out"),  on_click: on_close }
+            AvatarMenuItem { icon: ICON_SIGN_OUT,  label: fsn_i18n::t("shell.avatar.sign_out"),  on_click: on_close }
         }
     }
 }
@@ -526,7 +527,7 @@ fn AvatarMenuItem(
                     background: none; border: none; cursor: pointer; font-size: 13px; text-align: left; \
                     color: var(--fsn-color-text-primary, #e2e8f0);",
             onclick: on_click,
-            span { style: "font-size: 14px;", "{icon}" }
+            span { style: "display: flex; align-items: center; flex-shrink: 0;", dangerous_inner_html: icon }
             span { "{label}" }
         }
     }

@@ -24,9 +24,10 @@ use crate::help_view::HelpApp;
 use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
-use crate::sidebar::{ShellSidebar, SidebarSection, default_sidebar_sections};
+use crate::sidebar::{ShellSidebar, default_sidebar_sections};
 use crate::taskbar::{AppEntry, default_apps};
 use crate::wallpaper::Wallpaper;
+use crate::icons::{ICON_EDIT, ICON_ADD, ICON_SETTINGS, ICON_CHEVRON_UP, ICON_CHEVRON_DOWN};
 use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
 use crate::window::{Window, WindowId, WindowManager};
 use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
@@ -164,7 +165,14 @@ pub fn Desktop() -> Element {
     let mut notifs          = use_signal(NotificationManager::default);
     let mut notif_history   = use_signal(NotificationHistory::default);
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
-    let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
+    // Sidebar refresh counter — increment to trigger a sidebar recompute after install.
+    // TODO: fsd-store should call `sidebar_refresh.write().add_assign(1)` after a
+    // successful install by consuming this context via `use_context::<Signal<u32>>()`.
+    let sidebar_refresh: Signal<u32> = use_context_provider(|| Signal::new(0u32));
+    let sidebar_sections = use_memo(move || {
+        let _ = sidebar_refresh.read(); // subscribe to refreshes
+        default_sidebar_sections()
+    });
     let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db(&db)));
     // B5: Animation, chrome opacity, and component style contexts
     let anim_enabled: Signal<bool>    = use_context_provider(|| Signal::new(true));
@@ -405,9 +413,9 @@ pub fn Desktop() -> Element {
                             coords.x,
                             coords.y,
                             vec![
-                                ContextMenuItem::new("edit-desktop", "Edit Desktop").with_icon("✏"),
-                                ContextMenuItem::new("add-widget",   "Add Widget").with_icon("＋"),
-                                ContextMenuItem::new("settings",     "Settings").with_icon("⚙"),
+                                ContextMenuItem::new("edit-desktop", "Edit Desktop").with_icon(ICON_EDIT),
+                                ContextMenuItem::new("add-widget",   "Add Widget").with_icon(ICON_ADD),
+                                ContextMenuItem::new("settings",     "Settings").with_icon(ICON_SETTINGS),
                             ],
                         ));
                     },
@@ -519,7 +527,8 @@ pub fn Desktop() -> Element {
                                         color: var(--fsn-color-text-muted); \
                                         cursor: pointer; opacity: 0.75; \
                                         transition: opacity 150ms;",
-                                "✏ Edit Desktop"
+                                span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_EDIT }
+                                "Edit Desktop"
                             }
                         }
                     }
@@ -544,7 +553,13 @@ pub fn Desktop() -> Element {
                                             padding: 7px 14px; \
                                             font-size: 13px; font-family: inherit; \
                                             cursor: pointer;",
-                                    if is_picker_open { "▲ Add Widget" } else { "▼ Add Widget" }
+                                    if is_picker_open {
+                                        span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_CHEVRON_UP }
+                                        "Add Widget"
+                                    } else {
+                                        span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_CHEVRON_DOWN }
+                                        "Add Widget"
+                                    }
                                 }
 
                                 // Widget picker panel (floats above toolbar)
@@ -607,7 +622,7 @@ pub fn Desktop() -> Element {
                                         font-size: 13px; font-family: inherit; \
                                         font-weight: 600; \
                                         cursor: pointer;",
-                                "✓ Done"
+                                "Done"
                             }
                         }
                     }
@@ -693,12 +708,12 @@ fn HomeWidgetCard(
                     button {
                         style: "width: 18px; height: 18px; flex-shrink: 0; \
                                 background: rgba(239,68,68,0.85); color: #fff; \
-                                border: none; border-radius: 50%; font-size: 11px; line-height: 1; \
+                                border: none; border-radius: 50%; \
                                 display: flex; align-items: center; justify-content: center; \
                                 cursor: pointer; padding: 0;",
                         onmousedown: move |e: MouseEvent| e.stop_propagation(),
                         onclick:     move |_| on_remove.call(id),
-                        "✕"
+                        span { dangerous_inner_html: crate::icons::ICON_CLOSE }
                     }
                 }
             }

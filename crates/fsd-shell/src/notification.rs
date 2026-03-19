@@ -2,6 +2,8 @@
 use dioxus::prelude::*;
 use fsn_i18n;
 
+use crate::icons::{ICON_BELL, ICON_CLOSE, ICON_NOTIF_INFO, ICON_NOTIF_SUCCESS, ICON_NOTIF_WARNING, ICON_NOTIF_ERROR};
+
 /// Severity level of a notification.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum NotificationKind {
@@ -24,10 +26,10 @@ impl NotificationKind {
 
     fn icon(&self) -> &'static str {
         match self {
-            Self::Info    => "ℹ",
-            Self::Success => "✓",
-            Self::Warning => "⚠",
-            Self::Error   => "✕",
+            Self::Info    => ICON_NOTIF_INFO,
+            Self::Success => ICON_NOTIF_SUCCESS,
+            Self::Warning => ICON_NOTIF_WARNING,
+            Self::Error   => ICON_NOTIF_ERROR,
         }
     }
 }
@@ -162,9 +164,9 @@ pub fn NotificationBell(
                     if !v { on_mark_read.call(()); }
                 },
                 style: "position: relative; background: none; border: none; cursor: pointer; \
-                        padding: 6px 8px; border-radius: 6px; font-size: 18px; \
+                        padding: 6px 8px; border-radius: 6px; \
                         color: var(--fsn-color-text-muted); display: flex; align-items: center;",
-                "🔔"
+                span { dangerous_inner_html: ICON_BELL }
                 if unread > 0 {
                     span {
                         style: "position: absolute; top: 2px; right: 2px; \
@@ -239,8 +241,8 @@ fn BellEntry(entry: HistoryEntry) -> Element {
         div {
             style: "display: flex; gap: 10px; padding: 10px 16px; background: {bg}; \
                     border-bottom: 1px solid var(--fsn-color-border-default);",
-            span { style: "font-size: 14px; color: {accent}; flex-shrink: 0; padding-top: 1px;",
-                "{icon}"
+            span { style: "color: {accent}; flex-shrink: 0; display: flex; align-items: center; padding-top: 1px;",
+                dangerous_inner_html: icon
             }
             div { style: "flex: 1; min-width: 0;",
                 div {
@@ -280,8 +282,8 @@ fn Toast(notification: Notification, on_dismiss: EventHandler<u64>) -> Element {
 
             // Accent icon
             span {
-                style: "font-size: 16px; color: {accent}; flex-shrink: 0; margin-top: 1px;",
-                "{icon}"
+                style: "color: {accent}; flex-shrink: 0; display: flex; align-items: center; margin-top: 1px;",
+                dangerous_inner_html: icon
             }
 
             // Content
@@ -309,11 +311,11 @@ fn Toast(notification: Notification, on_dismiss: EventHandler<u64>) -> Element {
             button {
                 style: "position: absolute; top: 6px; right: 8px; \
                         background: none; border: none; cursor: pointer; \
-                        color: var(--fsn-color-text-muted, #94a3b8); font-size: 14px; \
-                        line-height: 1; padding: 2px 4px;",
+                        color: var(--fsn-color-text-muted, #94a3b8); \
+                        display: flex; align-items: center; padding: 2px 4px;",
                 title: fsn_i18n::t("shell.notifications.dismiss"),
                 onclick: move |_| on_dismiss.call(id),
-                "×"
+                span { dangerous_inner_html: ICON_CLOSE }
             }
         }
     }

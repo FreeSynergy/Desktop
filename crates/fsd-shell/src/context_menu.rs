@@ -94,7 +94,7 @@ fn ContextMenuRow(
                 on_close.call(());
             },
             if let Some(icon) = item.icon {
-                span { style: "font-size: 14px; min-width: 18px;", "{icon}" }
+                span { style: "min-width: 18px; display: flex; align-items: center;", dangerous_inner_html: icon }
             }
             span { "{item.label}" }
         }

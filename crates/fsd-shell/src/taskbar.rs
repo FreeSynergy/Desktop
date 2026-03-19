@@ -2,6 +2,7 @@
 use chrono::Local;
 use dioxus::prelude::*;
 
+use crate::icons::{ICON_BELL, ICON_SYNC, ICON_NETWORK, ICON_STORE};
 use crate::window::WindowId;
 
 /// Homarr Dashboard Icons CDN base URL.
@@ -68,7 +69,7 @@ impl AppEntry {
 /// Only the Store is pinned by default; all other apps appear after installation.
 pub fn default_apps() -> Vec<AppEntry> {
     vec![
-        AppEntry { id: "store".into(), label_key: "Store".into(), icon: "📦".into(), icon_url: Some(we10x_icon_url("apps/scalable", "system-software-install")), group: Some("System".into()), pinned: true, windows: vec![] },
+        AppEntry { id: "store".into(), label_key: "Store".into(), icon: ICON_STORE.into(), icon_url: Some(we10x_icon_url("apps/scalable", "system-software-install")), group: Some("System".into()), pinned: true, windows: vec![] },
     ]
 }
 
@@ -128,9 +129,9 @@ fn SystemTray() -> Element {
         div {
             class: "fsd-tray",
             style: "display: flex; align-items: center; gap: 8px; padding: 0 8px; color: var(--fsn-color-text-inverse); font-size: 14px;",
-            span { title: "Sync OK", "⟳" }
-            span { title: "Network", "⬡" }
-            span { title: "Notifications", "🔔" }
+            span { title: "Sync OK",      style: "display: flex; align-items: center;", dangerous_inner_html: ICON_SYNC }
+            span { title: "Network",      style: "display: flex; align-items: center;", dangerous_inner_html: ICON_NETWORK }
+            span { title: "Notifications",style: "display: flex; align-items: center;", dangerous_inner_html: ICON_BELL }
         }
     }
 }

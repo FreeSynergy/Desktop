@@ -11,6 +11,7 @@
 /// Call `ensure_registered()` once at startup — it is idempotent.
 
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
+use crate::icons::{ICON_STORE, ICON_LANGUAGE, ICON_THEME, ICON_ICONS, ICON_CONTAINER, ICON_BOTS};
 
 /// Metadata for one built-in package.
 struct BuiltinPkg {
@@ -20,25 +21,6 @@ struct BuiltinPkg {
     icon:    &'static str,
     version: &'static str,
 }
-
-// ── Icons ─────────────────────────────────────────────────────────────────────
-
-const ICON_STORE: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>"#;
-
-/// Globe — Language Manager
-const ICON_LANGUAGE: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>"#;
-
-/// Palette — Theme Manager
-const ICON_THEME: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125A1.64 1.64 0 0 1 14.441 18h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="9" r="1" fill="currentColor" stroke="none"/></svg>"#;
-
-/// Image frame — Icons Manager
-const ICON_ICONS: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>"#;
-
-/// 3-D box — Container App Manager
-const ICON_CONTAINER: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>"#;
-
-/// CPU chip — Bots Manager
-const ICON_BOTS: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>"#;
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +51,22 @@ pub fn ensure_registered() {
     for id in LEGACY_IDS {
         if PackageRegistry::is_installed(id) {
             let _ = PackageRegistry::remove(id);
+        }
+    }
+
+    // Remove any non-builtin "app" entries whose binary no longer exists.
+    // These are stale entries from previous auto-registration code. Keeps the
+    // sidebar clean: only genuinely installed apps (with a file on disk) and
+    // built-in apps (which are part of the Desktop binary) are shown.
+    let builtin_ids: std::collections::HashSet<&str> =
+        BUILTIN_PKGS.iter().map(|p| p.id).collect();
+    for pkg in PackageRegistry::load() {
+        if pkg.kind == "app" && !builtin_ids.contains(pkg.id.as_str()) {
+            let has_binary = pkg.file_path.as_ref()
+                .map_or(false, |p| std::path::Path::new(p).exists());
+            if !has_binary {
+                let _ = PackageRegistry::remove(&pkg.id);
+            }
         }
     }
 
