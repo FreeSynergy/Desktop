@@ -6,6 +6,8 @@ use dioxus::prelude::*;
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
 use fsn_container::SystemctlManager;
 
+use crate::state::{notify_install_changed, INSTALL_COUNTER};
+
 // ── InstalledEntry ────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq)]
@@ -69,13 +71,10 @@ pub fn InstalledList(catalog_versions: Vec<(String, String)>) -> Element {
         }
     });
 
-    // Refresh registry packages every 3 seconds so newly installed packages
-    // appear immediately without requiring a restart.
-    use_future(move || async move {
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-            reg_pkgs.set(PackageRegistry::load());
-        }
+    // Refresh registry packages whenever INSTALL_COUNTER changes (install or remove event).
+    use_effect(move || {
+        let _ = INSTALL_COUNTER.read(); // subscribe — re-runs when counter changes
+        reg_pkgs.set(PackageRegistry::load());
     });
 
     rsx! {
@@ -102,9 +101,14 @@ pub fn InstalledList(catalog_versions: Vec<(String, String)>) -> Element {
                 RegRemoveDialog {
                     pkg: pkg.clone(),
                     on_confirm: move |_| {
-                        let id = pkg.id.clone();
-                        let _ = PackageRegistry::remove(&id);
-                        reg_pkgs.set(PackageRegistry::load());
+                        let id        = pkg.id.clone();
+                        let is_bundle = pkg.kind == "bundle";
+                        if is_bundle {
+                            let _ = PackageRegistry::remove_bundle(&id);
+                        } else {
+                            let _ = PackageRegistry::remove(&id);
+                        }
+                        notify_install_changed();
                         *reg_confirm.write() = None;
                     },
                     on_cancel: move |_| *reg_confirm.write() = None,
@@ -250,10 +254,24 @@ fn RegPackageRow(
     pkg: InstalledPackage,
     on_remove: EventHandler<InstalledPackage>,
 ) -> Element {
+    let is_bundle_member = pkg.installed_by.is_some();
+
     rsx! {
         tr {
             style: "border-bottom: 1px solid var(--fsn-color-border-default);",
-            td { style: "padding: 10px 8px; font-weight: 500; font-size: 13px;", "{pkg.name}" }
+            td { style: "padding: 10px 8px; font-weight: 500; font-size: 13px;",
+                "{pkg.name}"
+                if is_bundle_member {
+                    span {
+                        style: "margin-left: 6px; font-size: 10px; color: var(--fsn-color-text-muted); \
+                                background: var(--fsn-color-bg-overlay); \
+                                border: 1px solid var(--fsn-color-border-default); \
+                                padding: 1px 5px; border-radius: 999px;",
+                        {fsn_i18n::t_with("store.status.via_bundle",
+                            &[("bundle", pkg.installed_by.as_deref().unwrap_or(""))])}
+                    }
+                }
+            }
             td { style: "padding: 10px 8px;",
                 span {
                     style: "font-size: 11px; padding: 2px 8px; border-radius: 999px; \
@@ -267,15 +285,23 @@ fn RegPackageRow(
                 "v{pkg.version}"
             }
             td { style: "padding: 10px 8px; text-align: right;",
-                button {
-                    style: "padding: 4px 10px; background: var(--fsn-color-error, #ef4444); \
-                            color: white; border: none; border-radius: 4px; cursor: pointer; \
-                            font-size: 12px;",
-                    onclick: {
-                        let p = pkg.clone();
-                        move |_| on_remove.call(p.clone())
-                    },
-                    {fsn_i18n::t("actions.remove")}
+                if is_bundle_member {
+                    span {
+                        style: "font-size: 11px; color: var(--fsn-color-text-muted); \
+                                padding: 4px 8px;",
+                        {fsn_i18n::t("store.status.managed_by_bundle")}
+                    }
+                } else {
+                    button {
+                        style: "padding: 4px 10px; background: var(--fsn-color-error, #ef4444); \
+                                color: white; border: none; border-radius: 4px; cursor: pointer; \
+                                font-size: 12px;",
+                        onclick: {
+                            let p = pkg.clone();
+                            move |_| on_remove.call(p.clone())
+                        },
+                        {fsn_i18n::t("actions.remove")}
+                    }
                 }
             }
         }

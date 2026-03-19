@@ -9,6 +9,7 @@ use crate::install_wizard::{do_install, InstallPopup, InstallResult};
 use crate::missing_icon::MissingIcon;
 use crate::node_package::PackageKind;
 use crate::package_card::PackageEntry;
+use crate::state::notify_install_changed;
 
 // ── PackageDetail ─────────────────────────────────────────────────────────────
 
@@ -78,9 +79,15 @@ pub fn PackageDetail(
                                         color: white; border: none; \
                                         border-radius: var(--fsn-radius-md); cursor: pointer;",
                                 onclick: {
-                                    let pkg_id = package.id.clone();
+                                    let pkg_id   = package.id.clone();
+                                    let is_bundle = package.kind == PackageKind::Bundle;
                                     move |_| {
-                                        let _ = PackageRegistry::remove(&pkg_id);
+                                        if is_bundle {
+                                            let _ = PackageRegistry::remove_bundle(&pkg_id);
+                                        } else {
+                                            let _ = PackageRegistry::remove(&pkg_id);
+                                        }
+                                        notify_install_changed();
                                         installed.set(false);
                                         remove_confirm.set(false);
                                     }
@@ -183,14 +190,23 @@ pub fn PackageDetail(
                                 disabled: true,
                                 {fsn_i18n::t("store.status.installed")}
                             }
-                            button {
-                                style: "padding: 6px 16px; background: transparent; \
-                                        border: 1px solid var(--fsn-color-error, #ef4444); \
-                                        color: var(--fsn-color-error, #ef4444); \
-                                        border-radius: var(--fsn-radius-md); cursor: pointer; \
-                                        font-size: 12px;",
-                                onclick: move |_| remove_confirm.set(true),
-                                {fsn_i18n::t("actions.remove")}
+                            // Only show Remove if NOT installed via a bundle
+                            if package.installed_by.is_none() {
+                                button {
+                                    style: "padding: 6px 16px; background: transparent; \
+                                            border: 1px solid var(--fsn-color-error, #ef4444); \
+                                            color: var(--fsn-color-error, #ef4444); \
+                                            border-radius: var(--fsn-radius-md); cursor: pointer; \
+                                            font-size: 12px;",
+                                    onclick: move |_| remove_confirm.set(true),
+                                    {fsn_i18n::t("actions.remove")}
+                                }
+                            } else {
+                                span {
+                                    style: "font-size: 11px; color: var(--fsn-color-text-muted);",
+                                    {fsn_i18n::t_with("store.status.installed_via_bundle",
+                                        &[("bundle", package.installed_by.as_deref().unwrap_or(""))])}
+                                }
                             }
                         } else if *installing.read() {
                             button {
@@ -214,8 +230,11 @@ pub fn PackageDetail(
                                         installing.set(true);
                                         spawn(async move {
                                             let result = match do_install(pkg2, String::new()).await {
-                                                Ok(())  => InstallResult::Success,
-                                                Err(e)  => InstallResult::Failed(e),
+                                                Ok(()) => {
+                                                    notify_install_changed();
+                                                    InstallResult::Success
+                                                }
+                                                Err(e) => InstallResult::Failed(e),
                                             };
                                             installing.set(false);
                                             install_result.set(Some(result));
@@ -255,8 +274,9 @@ pub fn PackageDetail(
                         div { style: "display: flex; flex-direction: column; gap: 6px;",
                             for cap in &package.capabilities {
                                 {
-                                    let cap_id = cap.clone();
+                                    let cap_id      = cap.clone();
                                     let has_handler = on_select_package.is_some();
+                                    let is_member_installed = PackageRegistry::is_installed(&cap_id);
                                     rsx! {
                                         div {
                                             key: "{cap_id}",
@@ -279,8 +299,19 @@ pub fn PackageDetail(
                                                     handler.call(cap_id.clone());
                                                 }
                                             },
-                                            span { "✦" }
-                                            span { "{cap}" }
+                                            span {
+                                                style: "color: var(--fsn-color-text-muted);",
+                                                if is_member_installed { "✅" } else { "○" }
+                                            }
+                                            span { style: "flex: 1;", "{cap}" }
+                                            if is_member_installed {
+                                                span {
+                                                    style: "font-size: 11px; color: var(--fsn-color-success, #22c55e); \
+                                                            background: rgba(34,197,94,0.12); \
+                                                            padding: 1px 6px; border-radius: 999px;",
+                                                    {fsn_i18n::t("store.status.installed")}
+                                                }
+                                            }
                                         }
                                     }
                                 }

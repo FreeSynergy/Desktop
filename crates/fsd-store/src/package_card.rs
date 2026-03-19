@@ -24,6 +24,9 @@ pub struct PackageEntry {
     pub license: String,
     #[serde(default)]
     pub author: String,
+    /// Set if this package was installed as a member of a bundle (contains the bundle ID).
+    #[serde(default)]
+    pub installed_by: Option<String>,
 }
 
 use crate::missing_icon::MissingIcon;

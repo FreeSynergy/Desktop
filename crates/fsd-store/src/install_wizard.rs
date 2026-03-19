@@ -3,7 +3,8 @@ use dioxus::prelude::*;
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
 use fsn_store::StoreClient;
 
-use crate::node_package::PackageKind;
+use crate::browser::resolve_icon;
+use crate::node_package::{NodePackage, PackageKind};
 use crate::package_card::PackageEntry;
 
 // ── InstallResult ──────────────────────────────────────────────────────────────
@@ -19,6 +20,15 @@ pub enum InstallResult {
 
 /// Downloads and registers a package. Returns Ok on success.
 pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), String> {
+    do_install_inner(package, env_vars, None).await
+}
+
+/// Internal install: same as do_install but sets installed_by (for bundle members).
+async fn do_install_inner(
+    package:      PackageEntry,
+    env_vars:     String,
+    installed_by: Option<String>,
+) -> Result<(), String> {
     let home    = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let fsn_dir = std::path::PathBuf::from(&home).join(".local/share/fsn");
 
@@ -26,6 +36,10 @@ pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), S
         .map(|p| p.trim_end_matches('/').to_string());
 
     let file_path: Option<String> = match &package.kind {
+        PackageKind::Bundle => {
+            install_bundle_members(&package, &fsn_dir).await?;
+            None
+        }
         PackageKind::Container => {
             install_container(&package, store_path, &fsn_dir, &env_vars).await?
         }
@@ -71,14 +85,75 @@ pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), S
     };
 
     PackageRegistry::install(InstalledPackage {
-        id:        package.id.clone(),
-        name:      package.name.clone(),
-        kind:      package.kind.kind_str(),
-        version:   package.version.clone(),
-        icon:      String::new(),
+        id:           package.id.clone(),
+        name:         package.name.clone(),
+        kind:         package.kind.kind_str(),
+        version:      package.version.clone(),
+        icon:         String::new(),
         file_path,
+        installed_by,
     })
     .map_err(|e| format!("Registry error: {e}"))
+}
+
+/// Install all member packages of a bundle.
+///
+/// Fetches all catalogs, resolves each capability ID to a full PackageEntry,
+/// and installs the member if not already installed. Members installed this
+/// way are tagged with `installed_by = Some(bundle.id)`.
+async fn install_bundle_members(bundle: &PackageEntry, _fsn_dir: &std::path::Path) -> Result<(), String> {
+    let pkg_map = fetch_catalog_map().await;
+
+    for cap_id in &bundle.capabilities {
+        // Skip if already installed (individually or via another bundle)
+        if PackageRegistry::is_installed(cap_id) {
+            tracing::debug!("bundle member '{cap_id}' already installed — skipping");
+            continue;
+        }
+
+        match pkg_map.get(cap_id) {
+            Some(member) => {
+                tracing::info!("installing bundle member '{}' (via bundle '{}')", cap_id, bundle.id);
+                Box::pin(do_install_inner(member.clone(), String::new(), Some(bundle.id.clone()))).await?;
+            }
+            None => {
+                tracing::warn!("bundle member '{}' not found in any catalog — skipping", cap_id);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Fetch all catalogs (desktop, node, shared) and return a map of id → PackageEntry.
+async fn fetch_catalog_map() -> std::collections::HashMap<String, PackageEntry> {
+    let mut client = StoreClient::node_store();
+    let mut map    = std::collections::HashMap::new();
+
+    for namespace in &["desktop", "node", "shared"] {
+        if let Ok(catalog) = client.fetch_catalog::<NodePackage>(namespace, false).await {
+            for pkg in catalog.packages {
+                let icon = pkg.icon.and_then(|i| resolve_icon(&i));
+                map.insert(pkg.id.clone(), PackageEntry {
+                    id:               pkg.id,
+                    name:             pkg.name,
+                    description:      pkg.description,
+                    version:          pkg.version,
+                    category:         pkg.category,
+                    kind:             pkg.kind,
+                    capabilities:     pkg.capabilities,
+                    tags:             pkg.tags,
+                    icon,
+                    store_path:       pkg.path,
+                    installed:        false,
+                    update_available: false,
+                    license:          pkg.license,
+                    author:           pkg.author,
+                    installed_by:     None,
+                });
+            }
+        }
+    }
+    map
 }
 
 /// Install a binary app package.
@@ -91,7 +166,10 @@ pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), S
 ///   2. `~/Server/FreeSynergy.{Title}/target/release/{binary}` — release build
 ///   3. `~/Server/FreeSynergy.{Title}/target/debug/{binary}` — debug build
 async fn install_app_binary(package: &PackageEntry) -> Result<Option<String>, String> {
-    let is_dev = std::env::var("FSN_DEV").map(|v| v == "1").unwrap_or(false);
+    // Debug builds (cargo build / dx serve) are always dev mode.
+    // FSN_DEV=1 allows overriding in release builds (e.g. CI, staging).
+    let is_dev = cfg!(debug_assertions)
+        || std::env::var("FSN_DEV").map(|v| v == "1").unwrap_or(false);
     if !is_dev {
         // Production: would download from catalog distribution URL.
         // Not yet implemented — just register without a file path for now.

@@ -33,8 +33,11 @@ updates        = "Updates"
 settings       = "Settings"
 
 [store.status]
-installed        = "Installed ✓"
-update_available = "Update available"
+installed            = "Installed ✓"
+update_available     = "Update available"
+installed_via_bundle = "Part of bundle: {bundle}"
+via_bundle           = "via {bundle}"
+managed_by_bundle    = "managed by bundle"
 
 [store.section]
 capabilities  = "Capabilities"

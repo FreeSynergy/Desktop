@@ -202,17 +202,19 @@ pub fn PackageBrowser(
 
 
 fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
-    let installed_ids: std::collections::HashSet<String> = PackageRegistry::load()
+    let installed_pkgs = PackageRegistry::load();
+    let installed_map: std::collections::HashMap<String, Option<String>> = installed_pkgs
         .into_iter()
-        .map(|p| p.id)
+        .map(|p| (p.id, p.installed_by))
         .collect();
 
     let mut entries: Vec<PackageEntry> = catalog
         .packages
         .into_iter()
         .map(|p| {
-            let installed = installed_ids.contains(&p.id);
-            let icon = p.icon.and_then(|i| resolve_icon(&i));
+            let installed    = installed_map.contains_key(&p.id);
+            let installed_by = installed_map.get(&p.id).and_then(|v| v.clone());
+            let icon         = p.icon.and_then(|i| resolve_icon(&i));
             PackageEntry {
                 id:               p.id,
                 name:             p.name,
@@ -228,14 +230,16 @@ fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
                 update_available: false,
                 license:          p.license,
                 author:           p.author,
+                installed_by,
             }
         })
         .collect();
 
     // Add locales as Language packages
     for locale in catalog.locales {
-        let installed = installed_ids.contains(&locale.code)
+        let installed    = installed_map.contains_key(&locale.code)
             || BUILTIN_LANG_CODES.contains(&locale.code.as_str());
+        let installed_by = installed_map.get(&locale.code).and_then(|v| v.clone());
         entries.push(PackageEntry {
             id:               locale.code.clone(),
             name:             locale.name.clone(),
@@ -254,6 +258,7 @@ fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
             update_available: false,
             license:          "MIT".to_string(),
             author:           "Kal El".to_string(),
+            installed_by,
         });
     }
 

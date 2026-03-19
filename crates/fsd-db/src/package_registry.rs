@@ -23,6 +23,10 @@ pub struct InstalledPackage {
     pub icon: String,
     /// Absolute path to the downloaded file on disk, or `None` if no file was saved.
     pub file_path: Option<String>,
+    /// If set: this package was installed as a member of a bundle.
+    /// Contains the bundle's package ID. The package cannot be removed individually.
+    #[serde(default)]
+    pub installed_by: Option<String>,
 }
 
 /// Simple JSON-based registry at `~/.local/share/fsn/packages.json`.
@@ -78,6 +82,21 @@ impl PackageRegistry {
             }
         }
         packages.retain(|p| p.id != id);
+        let json = serde_json::to_string_pretty(&packages).map_err(|e| e.to_string())?;
+        std::fs::write(&path, json).map_err(|e| e.to_string())
+    }
+
+    /// Remove a bundle and all packages that were installed as members of that bundle.
+    pub fn remove_bundle(bundle_id: &str) -> Result<(), String> {
+        let path = Self::registry_path();
+        let mut packages = Self::load();
+        // Delete local files for the bundle and all its members
+        for pkg in packages.iter().filter(|p| p.id == bundle_id || p.installed_by.as_deref() == Some(bundle_id)) {
+            if let Some(ref file) = pkg.file_path {
+                let _ = std::fs::remove_file(file);
+            }
+        }
+        packages.retain(|p| p.id != bundle_id && p.installed_by.as_deref() != Some(bundle_id));
         let json = serde_json::to_string_pretty(&packages).map_err(|e| e.to_string())?;
         std::fs::write(&path, json).map_err(|e| e.to_string())
     }
