@@ -135,13 +135,6 @@ impl Config {
         self
     }
 
-    /// Set whether or not the file drop handler should be disabled.
-    /// On Windows the drop handler must be disabled for HTML drag and drop APIs to work.
-    pub fn with_disable_drag_drop_handler(mut self, disable: bool) -> Self {
-        self.disable_file_drop_handler = disable;
-        self
-    }
-
     /// Set the pre-rendered HTML content
     pub fn with_prerendered(mut self, content: String) -> Self {
         self.pre_rendered = Some(content);
@@ -288,13 +281,29 @@ impl Config {
         self
     }
 
-    /// Override the default navigation handler.
+    /// Set a custom navigation handler to control which URLs the WebView is allowed to navigate to.
     ///
-    /// By default, Dioxus Desktop opens all `http://` and `https://` URLs in the
-    /// system browser and blocks their navigation inside the WebView. Use this to
-    /// allow in-app navigation (e.g. when embedding a browser using `<iframe>`).
+    /// The handler receives the target URL as a `String` and must return `true` to allow navigation
+    /// or `false` to block it.
     ///
-    /// Return `true` to allow the navigation, `false` to block it.
+    /// When not set, the default behavior applies: internal `dioxus://` URLs are allowed, and
+    /// external `http://` or `https://` URLs are opened in the system browser via
+    /// [`webbrowser::open`](https://docs.rs/webbrowser) and blocked in the WebView.
+    ///
+    /// This is useful for applications that embed web content (e.g. via `<iframe>`) and need
+    /// fine-grained control over navigation, or that want to suppress the automatic
+    /// system-browser-open behavior.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use dioxus_desktop::Config;
+    /// let cfg = Config::new()
+    ///     .with_navigation_handler(|url| {
+    ///         // Allow dioxus internal URLs and a specific external domain
+    ///         url.starts_with("dioxus://") || url.starts_with("https://trusted.example.com")
+    ///     });
+    /// ```
     pub fn with_navigation_handler(
         mut self,
         handler: impl Fn(String) -> bool + 'static,
