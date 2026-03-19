@@ -4,9 +4,10 @@ use fsd_db::package_registry::PackageRegistry;
 use fsn_components::{LoadingOverlay, SpinnerSize};
 use fsn_store::{Catalog, StoreClient};
 
+use crate::install_wizard::do_install;
 use crate::node_package::{NodePackage, PackageKind};
 use crate::package_card::{PackageCard, PackageEntry};
-use crate::state::INSTALL_COUNTER;
+use crate::state::{notify_install_changed, INSTALL_COUNTER};
 
 /// Language codes that are always considered installed without needing a Store install.
 /// English is the only truly built-in language — it is the fallback for all i18n lookups
@@ -206,13 +207,35 @@ pub fn PackageBrowser(
                 div {
                     style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;",
                     for pkg in filtered {
-                        PackageCard {
-                            key: "{pkg.id}",
-                            package: pkg.clone(),
-                            on_details: {
-                                let p = pkg.clone();
-                                move |_| on_select.call(p.clone())
-                            },
+                        {
+                            let pkg_for_install = pkg.clone();
+                            let pkg_id_remove   = pkg.id.clone();
+                            let is_bundle       = pkg.kind == PackageKind::Bundle;
+                            rsx! {
+                                PackageCard {
+                                    key: "{pkg.id}",
+                                    package: pkg.clone(),
+                                    on_details: {
+                                        let p = pkg.clone();
+                                        move |_| on_select.call(p.clone())
+                                    },
+                                    on_install: Some(EventHandler::new(move |_| {
+                                        let pkg2 = pkg_for_install.clone();
+                                        spawn(async move {
+                                            let _ = do_install(pkg2, String::new()).await;
+                                            notify_install_changed();
+                                        });
+                                    })),
+                                    on_remove: Some(EventHandler::new(move |_| {
+                                        if is_bundle {
+                                            let _ = PackageRegistry::remove_bundle(&pkg_id_remove);
+                                        } else {
+                                            let _ = PackageRegistry::remove(&pkg_id_remove);
+                                        }
+                                        notify_install_changed();
+                                    })),
+                                }
+                            }
                         }
                     }
                 }

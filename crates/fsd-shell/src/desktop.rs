@@ -820,6 +820,25 @@ fn WidgetPickerRow(kind: WidgetKind, on_add: EventHandler<WidgetKind>) -> Elemen
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/// Returns the SVG icon (or emoji fallback) for a known built-in app ID.
+fn icon_for_app(app_id: &str) -> String {
+    use crate::icons::{
+        ICON_STORE, ICON_SETTINGS, ICON_CONTAINER, ICON_BOTS,
+        ICON_LANGUAGE, ICON_THEME, ICON_ICONS, ICON_MANAGERS,
+    };
+    match app_id {
+        "store"            => ICON_STORE.to_string(),
+        "settings"         => ICON_SETTINGS.to_string(),
+        "container"        => ICON_CONTAINER.to_string(),
+        "bot-manager"      => ICON_BOTS.to_string(),
+        "language-manager" => ICON_LANGUAGE.to_string(),
+        "theme-manager"    => ICON_THEME.to_string(),
+        "icons-manager"    => ICON_ICONS.to_string(),
+        "managers"         => ICON_MANAGERS.to_string(),
+        _                  => "🗗".to_string(),
+    }
+}
+
 fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, app_id: &str) {
     // Normalize catalog IDs: strip "fsn-" prefix so "fsn-browser" routes as "browser".
     let app_id = app_id.strip_prefix("fsn-").unwrap_or(app_id);
@@ -836,9 +855,11 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
     }
 
     let title_key = format!("app-{}", app_id);
+    // Use the app entry icon first; fall back to the built-in icon map so every
+    // app gets its own icon in the titlebar instead of the generic "🗗" fallback.
     let icon = apps.read().iter().find(|a| a.id == app_id)
         .map(|a| a.icon.clone())
-        .unwrap_or_else(|| "🗗".to_string());
+        .unwrap_or_else(|| icon_for_app(app_id));
     let window = Window::new(title_key).with_icon(icon);
     let win_id = window.id;
     wm.write().open(window);

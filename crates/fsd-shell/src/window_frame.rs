@@ -237,10 +237,10 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
             // ── Titlebar ───────────────────────────────────────────────────
             div {
                 class: "fsd-window__titlebar",
-                style: "display: flex; align-items: center; height: 36px; flex-shrink: 0; \
+                style: "display: flex; align-items: center; height: 40px; flex-shrink: 0; \
                         background: var(--fsn-color-bg-sidebar, #0f172a); \
                         border-radius: 7px 7px 0 0; padding: 0 8px; \
-                        cursor: grab; user-select: none; gap: 8px;",
+                        cursor: grab; user-select: none; gap: 8px; position: relative;",
 
                 onmousedown: move |evt: MouseEvent| {
                     evt.stop_propagation();
@@ -254,10 +254,11 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                     }
                 },
 
-                // App icon
+                // App icon — task 3: explicit color so SVG currentColor is always visible
                 if !win.icon.is_empty() {
                     span {
-                        style: "font-size: 16px; flex-shrink: 0; display: flex; align-items: center;",
+                        style: "font-size: 18px; flex-shrink: 0; display: flex; align-items: center; \
+                                color: var(--fsn-color-text-primary, #e2e8f0); z-index: 1;",
                         if win.icon.trim_start().starts_with("<svg") {
                             span { dangerous_inner_html: "{win.icon}" }
                         } else {
@@ -266,11 +267,19 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                     }
                 }
 
+                // Title — task 5: absolutely centered, larger font, human-readable name
                 span {
-                    style: "flex: 1; font-size: 13px; color: var(--fsn-color-text-primary, #e2e8f0); \
-                            font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
-                    "{win.title_key}"
+                    style: "position: absolute; left: 0; right: 0; text-align: center; \
+                            pointer-events: none; \
+                            font-size: 15px; font-weight: 600; \
+                            color: var(--fsn-color-text-primary, #e2e8f0); \
+                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \
+                            padding: 0 90px;",
+                    "{format_window_title(&win.title_key)}"
                 }
+
+                // Spacer pushes controls to the right
+                div { style: "flex: 1;" }
 
                 WindowControls {
                     closable: win.closable,
@@ -739,6 +748,44 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
                     }
                 },
             }
+        }
+    }
+}
+
+// ── format_window_title ────────────────────────────────────────────────────────
+
+/// Converts a raw `title_key` (e.g. "app-store", "app-language-manager") into a
+/// human-readable window title shown in the titlebar.
+fn format_window_title(title_key: &str) -> String {
+    let id = title_key.strip_prefix("app-").unwrap_or(title_key);
+    match id {
+        "store"            => "Store".to_string(),
+        "settings"         => "Settings".to_string(),
+        "container"        => "Container Manager".to_string(),
+        "bot-manager"      => "Bot Manager".to_string(),
+        "language-manager" => "Language Manager".to_string(),
+        "theme-manager"    => "Theme Manager".to_string(),
+        "icons-manager"    => "Icons Manager".to_string(),
+        "managers"         => "Managers".to_string(),
+        "profile"          => "Profile".to_string(),
+        "browser"          => "Browser".to_string(),
+        "lenses"           => "Lenses".to_string(),
+        "builder"          => "Builder".to_string(),
+        "tasks"            => "Tasks".to_string(),
+        "ai"               => "AI Assistant".to_string(),
+        "help"             => "Help".to_string(),
+        other              => {
+            // Convert kebab-case to Title Case as fallback for unknown apps.
+            other.split('-')
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None    => String::new(),
+                        Some(c) => c.to_uppercase().to_string() + chars.as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
         }
     }
 }
