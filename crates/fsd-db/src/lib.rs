@@ -3,7 +3,7 @@
 //! Manages four databases:
 //! - `fsn-desktop.db`: widget positions, active theme, shortcuts
 //! - `fsn-shared.db`: cross-program settings, i18n selection, audit log
-//! - `fsn-conductor.db`: service configurations, quadlets, variables
+//! - `fsn-container-app.db`: service configurations, quadlets, variables
 //! - `fsn-store.db`: installed packages, catalog cache, download queue
 //!
 //! Also holds SQL schema definitions for the Node-side databases (core, bus).
@@ -15,7 +15,7 @@
 //! db.shared().set_setting("language", "de").await?;
 //! ```
 
-pub mod conductor_db;
+pub mod container_app_db;
 pub mod desktop;
 pub mod entities;
 pub mod migration;
@@ -24,7 +24,7 @@ pub mod schemas;
 pub mod shared;
 pub mod store_db;
 
-pub use conductor_db::ConductorDb;
+pub use container_app_db::ContainerAppDb;
 pub use desktop::DesktopDb;
 pub use shared::SharedDb;
 pub use store_db::StoreDb;
@@ -35,7 +35,7 @@ use std::path::PathBuf;
 pub struct FsdDb {
     desktop:   DesktopDb,
     shared:    SharedDb,
-    conductor: ConductorDb,
+    container_app: ContainerAppDb,
     store:     StoreDb,
 }
 
@@ -44,14 +44,14 @@ impl FsdDb {
     pub async fn open() -> Result<Self, DbError> {
         let desktop   = DesktopDb::open().await?;
         let shared    = SharedDb::open().await?;
-        let conductor = ConductorDb::open().await?;
-        let store     = StoreDb::open().await?;
-        Ok(Self { desktop, shared, conductor, store })
+        let container_app = ContainerAppDb::open().await?;
+        let store         = StoreDb::open().await?;
+        Ok(Self { desktop, shared, container_app, store })
     }
 
     pub fn desktop(&self)   -> &DesktopDb   { &self.desktop   }
     pub fn shared(&self)    -> &SharedDb    { &self.shared    }
-    pub fn conductor(&self) -> &ConductorDb { &self.conductor }
+    pub fn container_app(&self) -> &ContainerAppDb { &self.container_app }
     pub fn store(&self)     -> &StoreDb     { &self.store     }
 
     /// Explicitly close all four connection pools.
@@ -61,7 +61,7 @@ impl FsdDb {
     pub async fn close(self) {
         let _ = self.desktop.close().await;
         let _ = self.shared.close().await;
-        let _ = self.conductor.close().await;
+        let _ = self.container_app.close().await;
         let _ = self.store.close().await;
     }
 }

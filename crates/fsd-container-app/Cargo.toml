@@ -1,16 +1,16 @@
 [package]
-name        = "fsd-conductor"
-description = "FreeSynergy Desktop – Conductor: container, service and bot management"
+name        = "fsd-container-app"
+description = "FreeSynergy Desktop – Container App: container, service and bot management"
 version.workspace   = true
 edition.workspace   = true
 license.workspace   = true
 
 [lib]
-name = "fsd_conductor"
+name = "fsd_container_app"
 path = "src/lib.rs"
 
 [[bin]]
-name = "fsd-conductor"
+name = "fsd-container-app"
 path = "src/main.rs"
 
 [features]

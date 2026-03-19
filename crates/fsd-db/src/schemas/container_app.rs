@@ -1,12 +1,12 @@
-//! `fsn-conductor.db` — Conductor-specific storage schema.
+//! `fsn-container-app.db` — Container App storage schema.
 //!
-//! Used by the Conductor program to persist:
+//! Used by the Container App to persist:
 //! - Service configurations (name, image, variables)
 //! - Generated Quadlet files
 //! - Extracted variables with type/role detection
 //! - Instance names assigned to services
 
-/// SQL to create all Conductor tables. Run at Conductor startup.
+/// SQL to create all Container App tables. Run at Container App startup.
 pub const SCHEMA: &str = r#"
 -- Service configurations imported from YAML or defined manually.
 CREATE TABLE IF NOT EXISTS services (

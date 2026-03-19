@@ -7,7 +7,7 @@
 /// ```rust,ignore
 /// // In a Dioxus component (desktop feature only):
 /// let handle = use_multiwindow();
-/// handle.open_conductor();
+/// handle.open_container_app();
 /// ```
 #[cfg(feature = "desktop")]
 use dioxus::desktop::{Config, LogicalSize, WindowBuilder};
@@ -61,7 +61,7 @@ impl MultiwindowHandle {
 
     // Non-desktop stub: no-ops so code compiles for web target too.
     #[cfg(not(feature = "desktop"))]
-    pub fn open_conductor(&self) {}
+    pub fn open_container_app(&self) {}
     #[cfg(not(feature = "desktop"))]
     pub fn open_settings(&self) {}
     #[cfg(not(feature = "desktop"))]

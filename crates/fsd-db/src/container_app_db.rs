@@ -1,4 +1,4 @@
-// `fsn-conductor.db` — Conductor-specific storage.
+// `fsn-container-app.db` — Container App-specific storage.
 //
 // Tables: services, subservices, variables, quadlets, validations
 // Schema is idempotent (CREATE TABLE IF NOT EXISTS).
@@ -8,15 +8,15 @@ use sea_orm::DatabaseConnection;
 use crate::{DbError, db_path, schemas};
 use fsn_db::{DbBackend, DbConnection};
 
-/// Database handle for `fsn-conductor.db`.
-pub struct ConductorDb {
+/// Database handle for `fsn-container-app.db`.
+pub struct ContainerAppDb {
     conn: DbConnection,
 }
 
-impl ConductorDb {
-    /// Open (or create) `~/.local/share/fsn/fsn-conductor.db`, applying the schema.
+impl ContainerAppDb {
+    /// Open (or create) `~/.local/share/fsn/fsn-container-app.db`, applying the schema.
     pub async fn open() -> Result<Self, DbError> {
-        let path = db_path("fsn-conductor.db");
+        let path = db_path("fsn-container-app.db");
         std::fs::create_dir_all(path.parent().unwrap_or(std::path::Path::new(".")))
             .map_err(DbError::Io)?;
         let conn = DbConnection::connect(DbBackend::Sqlite {
@@ -24,7 +24,7 @@ impl ConductorDb {
         })
         .await
         .map_err(|e| DbError::SeaOrm(e.to_string()))?;
-        conn.apply_schema(schemas::conductor::SCHEMA)
+        conn.apply_schema(schemas::container_app::SCHEMA)
             .await
             .map_err(|e| DbError::SeaOrm(e.to_string()))?;
         Ok(Self { conn })

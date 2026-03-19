@@ -6,7 +6,7 @@ use fsn_i18n;
 
 use fsd_browser::BrowserApp;
 use fsd_bots::BotManagerApp;
-use fsd_conductor::ConductorApp;
+use fsd_container_app::ContainerApp;
 use fsd_lenses::LensesApp;
 use fsd_managers::{ManagersApp, LanguageManagerPanel, IconsManagerPanel};
 use fsd_profile::ProfileApp;
@@ -77,7 +77,7 @@ fn os_resize_handles() -> Element {
 ///
 /// Called once at Desktop startup:
 /// 1. Loads built-in generic snippets (EN + DE) from fsn-i18n.
-/// 2. Each app crate registers its own app-specific strings (store.*, conductor.*, …).
+/// 2. Each app crate registers its own app-specific strings (store.*, container.*, …).
 /// 3. Overlays any user-installed language pack from disk (Store → Inventory).
 fn init_i18n() -> String {
     let lang = fsd_settings::load_active_language();
@@ -92,7 +92,7 @@ fn init_i18n() -> String {
     fsd_browser::register_i18n();
     fsd_lenses::register_i18n();
     fsd_managers::register_i18n();
-    fsd_conductor::register_i18n();
+    fsd_container_app::register_i18n();
     fsd_bots::register_i18n();
     fsd_theme_mgr::register_i18n();
     // shell.* + profile.* — registered inline below
@@ -871,7 +871,7 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
 }
 
 /// Wraps each app in the appropriate layout (A / B / C).
-/// Apps that manage their own internal sidebar (conductor, theme, bots) use LayoutA
+/// Apps that manage their own internal sidebar (container-app, theme, bots) use LayoutA
 /// so the full area is handed to them without an extra wrapper split.
 #[component]
 fn AppWindowContent(title_key: String) -> Element {
@@ -893,7 +893,7 @@ fn AppWindowContent(title_key: String) -> Element {
         },
         "app-container" => rsx! {
             AppShell { mode: AppMode::Window,
-                LayoutA { ConductorApp {} }
+                LayoutA { ContainerApp {} }
             }
         },
         "app-language-manager" | "app-manager-language" => rsx! {
@@ -913,7 +913,7 @@ fn AppWindowContent(title_key: String) -> Element {
         },
         "app-manager-container-app" => rsx! {
             AppShell { mode: AppMode::Window,
-                LayoutA { ConductorApp {} }
+                LayoutA { ContainerApp {} }
             }
         },
         "app-bot-manager" | "app-manager-bots" => rsx! {

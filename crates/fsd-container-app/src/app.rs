@@ -65,7 +65,7 @@ const ALL_SECTIONS: &[ContainerSection] = &[
 
 /// Root component of the Container App Manager.
 #[component]
-pub fn ConductorApp() -> Element {
+pub fn ContainerApp() -> Element {
     let mut active = use_signal(|| ContainerSection::Installed);
     let mut selected_service: Signal<Option<String>> = use_signal(|| None);
 
@@ -76,7 +76,7 @@ pub fn ConductorApp() -> Element {
     rsx! {
         style { "{FSN_SIDEBAR_CSS}" }
         div {
-            class: "fsd-conductor",
+            class: "fsd-container-app",
             style: "display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; \
                     background: var(--fsn-color-bg-base);",
 
@@ -107,7 +107,7 @@ pub fn ConductorApp() -> Element {
 
                 // ── Detail area ───────────────────────────────────────────────────
                 div {
-                    class: "fsd-conductor__detail fsd-page-enter",
+                    class: "fsd-container-app__detail fsd-page-enter",
                     style: "flex: 1; display: flex; overflow: hidden;",
 
                     match *active.read() {

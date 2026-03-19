@@ -20,7 +20,7 @@ Each `fsd-*` crate can run as a standalone window or embedded in the desktop she
 ```
 crates/
   fsd-shell/      → Desktop shell: taskbar, window manager, wallpaper
-  fsd-conductor/  → Container/Service/Bot management (formerly "Admin")
+  fsd-container-app/ → Container/Service/Bot management (formerly "Conductor")
   fsd-store/      → Package manager (discovery, install, updates)
   fsd-studio/     → Plugin/Module/i18n creator (+AI optional)
   fsd-settings/   → System settings (appearance, language, service roles)
@@ -80,7 +80,7 @@ grid-template-columns: {sidebar_width} 1fr;
 - `AppShell` — root wrapper, injects transition CSS, 3 modes: `Window | Standalone | Tui`
 - `ScreenWrapper` — max-width + padding + scroll
 - `LayoutA` — full-width column (fsd-store, fsd-studio)
-- `LayoutB` — sidebar (master) + detail pane (fsd-conductor, fsd-settings)
+- `LayoutB` — sidebar (master) + detail pane (fsd-container-app, fsd-settings)
 - `LayoutC` — centered card (fsd-profile, login)
 
 Page transitions: `.fsd-page-enter` (slideInRight), `.fsd-page-fade` (fadeInUp). Respects `prefers-reduced-motion`.

@@ -29,7 +29,7 @@ pub fn we10x_icon_url(subdir: &str, icon_name: &str) -> String {
 /// A registered application that can appear in the taskbar.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AppEntry {
-    /// Unique identifier (e.g. "conductor", "store").
+    /// Unique identifier (e.g. "container-app", "store").
     pub id: String,
     /// i18n key for the display name.
     pub label_key: String,

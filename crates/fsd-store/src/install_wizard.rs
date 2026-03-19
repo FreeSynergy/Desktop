@@ -290,7 +290,7 @@ fn find_local_build_binary(id: &str) -> Option<String> {
 /// Full container install:
 ///  1. Fetch compose file from store
 ///  2. Write compose + .env to ~/.local/share/fsn/services/<id>/
-///  3. Try `fsn conductor install <compose_path>` (adds Quadlet + systemd unit)
+///  3. Try `fsn container install <compose_path>` (adds Quadlet + systemd unit)
 ///  4. systemctl --user daemon-reload
 async fn install_container(
     package:    &PackageEntry,
@@ -324,11 +324,11 @@ async fn install_container(
         }
         None => {
             // No compose file in store — create a placeholder so the user can
-            // edit it manually and re-run `fsn conductor install`.
+            // edit it manually and re-run `fsn container install`.
             let dest = service_dir.join("compose.yml");
             std::fs::write(&dest, format!(
                 "# Compose file for {name}\n\
-                 # Edit this file and run: fsn conductor install {path}\n\
+                 # Edit this file and run: fsn container install {path}\n\
                  services:\n\
                  #  {id}:\n\
                  #    image: ...\n",
@@ -346,14 +346,14 @@ async fn install_container(
         std::fs::write(&env_path, env_vars).map_err(|e| e.to_string())?;
     }
 
-    // Try `fsn conductor install <compose_path>`
+    // Try `fsn container install <compose_path>`
     let compose_str = compose_path.to_string_lossy().into_owned();
-    let conductor_result = tokio::process::Command::new("fsn")
-        .args(["conductor", "install", &compose_str])
+    let container_result = tokio::process::Command::new("fsn")
+        .args(["container", "install", &compose_str])
         .output()
         .await;
 
-    match conductor_result {
+    match container_result {
         Ok(out) if out.status.success() => {
             // Reload systemd so the new Quadlet unit is picked up
             let _ = tokio::process::Command::new("systemctl")
@@ -364,14 +364,14 @@ async fn install_container(
         Ok(out) => {
             let stderr = String::from_utf8_lossy(&out.stderr);
             tracing::warn!(
-                "fsn conductor install returned non-zero: {stderr}. \
+                "fsn container install returned non-zero: {stderr}. \
                  Compose file saved to {compose_str} — run manually to finish setup."
             );
         }
         Err(_) => {
             tracing::warn!(
                 "`fsn` binary not found. Compose file saved to {compose_str}. \
-                 Run `fsn conductor install {compose_str}` manually to activate the service."
+                 Run `fsn container install {compose_str}` manually to activate the service."
             );
         }
     }

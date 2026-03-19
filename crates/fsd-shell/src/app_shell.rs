@@ -327,7 +327,7 @@ pub fn LayoutA(children: Element) -> Element {
 }
 
 /// Layout B — fixed sidebar (master) + scrollable detail pane.
-/// Used for: fsd-conductor, fsd-settings.
+/// Used for: fsd-container-app, fsd-settings.
 #[derive(Props, Clone, PartialEq)]
 pub struct LayoutBProps {
     #[props(default = 240)]

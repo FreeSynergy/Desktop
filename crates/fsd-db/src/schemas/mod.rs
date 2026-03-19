@@ -6,7 +6,7 @@
 
 pub mod browser;
 pub mod bus;
-pub mod conductor;
+pub mod container_app;
 pub mod core;
 pub mod lenses;
 pub mod store;
