@@ -225,12 +225,13 @@ async fn install_app_binary(package: &PackageEntry, installed_by: Option<&str>) 
         return Ok(None);
     }
 
-    Err(format!(
-        "Dev mode: no local build found for '{}'. \
-         Build the project first, or set FSN_BIN_{} to the binary path.",
+    tracing::warn!(
+        "[dev] No local build found for '{}' — registering without binary. \
+         Build the project or set FSN_BIN_{} to the binary path.",
         package.id,
         package.id.to_uppercase().replace('-', "_")
-    ))
+    );
+    Ok(None)
 }
 
 /// Try to locate a locally compiled binary for a package.
