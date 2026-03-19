@@ -820,6 +820,9 @@ fn WidgetPickerRow(kind: WidgetKind, on_add: EventHandler<WidgetKind>) -> Elemen
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, app_id: &str) {
+    // Normalize catalog IDs: strip "fsn-" prefix so "fsn-browser" routes as "browser".
+    let app_id = app_id.strip_prefix("fsn-").unwrap_or(app_id);
+
     let existing_id = apps
         .read()
         .iter()
