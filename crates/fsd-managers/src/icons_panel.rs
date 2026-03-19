@@ -43,9 +43,24 @@ pub fn IconsManagerPanel() -> Element {
                                     color: var(--fsn-color-text-primary);",
                             span { style: "font-size: 24px;", "🖼" }
                             div { style: "flex: 1;",
-                                div { style: "font-size: 14px; font-weight: 500;", "{set.name}" }
-                                div { style: "font-size: 11px; color: var(--fsn-color-text-muted);",
-                                    "ID: {set.id}"
+                                div { style: "display: flex; align-items: center; gap: 8px;",
+                                    span { style: "font-size: 14px; font-weight: 500;", "{set.name}" }
+                                    if set.builtin {
+                                        span {
+                                            style: "padding: 1px 6px; \
+                                                    background: var(--fsn-color-primary, #06b6d4); \
+                                                    color: #fff; \
+                                                    border-radius: 999px; font-size: 10px;",
+                                            "Built-in"
+                                        }
+                                    }
+                                }
+                                div { style: "font-size: 11px; color: var(--fsn-color-text-muted); margin-top: 2px;",
+                                    if !set.description.is_empty() {
+                                        "{set.description}"
+                                    } else {
+                                        "ID: {set.id}"
+                                    }
                                     if set.has_dark_variants {
                                         span {
                                             style: "margin-left: 8px; padding: 1px 6px; \

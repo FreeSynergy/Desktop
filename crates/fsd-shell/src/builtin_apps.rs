@@ -70,18 +70,18 @@ pub fn ensure_registered() {
         }
     }
 
+    // Always upsert built-in packages so icon changes in icons.rs are propagated
+    // to packages.json on the next startup — icons are never lost or stale.
     for pkg in BUILTIN_PKGS {
-        if !PackageRegistry::is_installed(pkg.id) {
-            let entry = InstalledPackage {
-                id:           pkg.id.to_string(),
-                name:         pkg.name.to_string(),
-                kind:         pkg.kind.to_string(),
-                version:      pkg.version.to_string(),
-                icon:         pkg.icon.to_string(),
-                file_path:    None,
-                installed_by: None,
-            };
-            let _ = PackageRegistry::install(entry);
-        }
+        let entry = InstalledPackage {
+            id:           pkg.id.to_string(),
+            name:         pkg.name.to_string(),
+            kind:         pkg.kind.to_string(),
+            version:      pkg.version.to_string(),
+            icon:         pkg.icon.to_string(),
+            file_path:    None,
+            installed_by: None,
+        };
+        let _ = PackageRegistry::install(entry);
     }
 }
