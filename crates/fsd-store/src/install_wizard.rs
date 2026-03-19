@@ -89,7 +89,7 @@ async fn do_install_inner(
         name:         package.name.clone(),
         kind:         package.kind.kind_str(),
         version:      package.version.clone(),
-        icon:         String::new(),
+        icon:         package.icon.clone().unwrap_or_default(),
         file_path,
         installed_by,
     })

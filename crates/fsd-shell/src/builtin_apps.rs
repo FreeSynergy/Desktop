@@ -1,17 +1,13 @@
-/// Built-in app and manager registry — pre-registers built-in packages at startup.
+/// Built-in app registry — pre-registers the Store at startup.
 ///
 /// The Store is always present as the entry point for installing everything else.
-/// The five built-in managers (Language, Theme, Icons, ContainerApp, Bots) are
-/// desktop components that exist without installation.
-///
-/// Built-in items are registered as PackageRegistry entries so that:
-///  - they appear in the sidebar (only registered packages are shown)
-///  - they show up as "Installed" in the Store browser
+/// Managers are NOT pre-registered — they must be installed explicitly via the Store,
+/// just like any other package. This keeps the sidebar clean on fresh installs.
 ///
 /// Call `ensure_registered()` once at startup — it is idempotent.
 
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
-use crate::icons::{ICON_STORE, ICON_LANGUAGE, ICON_THEME, ICON_ICONS, ICON_CONTAINER, ICON_BOTS};
+use crate::icons::ICON_STORE;
 
 /// Metadata for one built-in package.
 struct BuiltinPkg {
@@ -25,14 +21,8 @@ struct BuiltinPkg {
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 const BUILTIN_PKGS: &[BuiltinPkg] = &[
-    // Built-in app — always the entry point
-    BuiltinPkg { id: "store",            name: "Store",             kind: "app",     icon: ICON_STORE,     version: env!("CARGO_PKG_VERSION") },
-    // Built-in managers — IDs must match AppWindowContent cases ("app-{id}")
-    BuiltinPkg { id: "language-manager", name: "Language Manager",  kind: "manager", icon: ICON_LANGUAGE,  version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "theme-manager",    name: "Theme Manager",     kind: "manager", icon: ICON_THEME,     version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "icons-manager",    name: "Icons Manager",     kind: "manager", icon: ICON_ICONS,     version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "container",        name: "Container Manager", kind: "manager", icon: ICON_CONTAINER, version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "bot-manager",      name: "Bots Manager",      kind: "manager", icon: ICON_BOTS,      version: env!("CARGO_PKG_VERSION") },
+    // The Store is the only truly built-in entry point — always present.
+    BuiltinPkg { id: "store", name: "Store", kind: "app", icon: ICON_STORE, version: env!("CARGO_PKG_VERSION") },
 ];
 
 /// Old IDs that were renamed — remove these on startup to avoid stale sidebar entries.
