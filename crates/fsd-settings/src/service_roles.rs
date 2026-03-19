@@ -40,6 +40,7 @@ pub const KNOWN_ROLES: &[(&str, &str, &str, bool)] = &[
     ("monitoring", "Monitoring",      "Metrics, logs, and alerting",                          false),
     ("database",   "Database",        "Primary relational database",                          false),
     ("cache",      "Cache",           "Key-value cache",                                      false),
+    ("llm",        "AI / LLM",        "Local AI language model for text generation",          false),
 ];
 
 /// The currently configured service role assignments.

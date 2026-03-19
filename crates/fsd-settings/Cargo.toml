@@ -27,5 +27,7 @@ fsn-i18n             = { workspace = true }
 fsn-manager-language = { workspace = true }
 dioxus               = { workspace = true }
 serde                = { workspace = true }
+serde_json           = { workspace = true }
 toml                 = { workspace = true }
 tracing              = { workspace = true }
+reqwest              = { workspace = true }

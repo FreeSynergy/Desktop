@@ -46,6 +46,12 @@ btn_show_more      = "Weitere Sprachen installieren…"
 available_heading  = "Zur Installation verfügbar"
 all_installed      = "Alle verfügbaren Sprachen sind bereits installiert."
 applied            = "Sprache angewendet."
+install_hint       = "Sprachpakete aus dem Store durchsuchen und installieren."
+
+[settings.language.tabs]
+active  = "Aktive Sprache"
+install = "Installieren"
+edit    = "Bearbeiten / Erstellen"
 
 [settings.language.formats]
 title              = "Lokale Formate"
@@ -82,6 +88,15 @@ checking_ssh       = "Wird geprüft…"
 btn_export         = ".toml exportieren"
 btn_push           = "Commit & Push"
 btn_recheck_ssh    = "SSH erneut prüfen"
+ai_translate       = "KI-Übersetzung"
+ai_panel_title     = "KI-Übersetzungsassistent"
+ai_prompt_hint     = "Die KI ergänzt fehlende Übersetzungen. Anfrage bei Bedarf anpassen."
+ai_send            = "Senden"
+ai_thinking        = "Wird übersetzt…"
+ai_accept_all      = "Alle übernehmen"
+ai_proposals       = "{n} Vorschläge"
+ai_no_proposals    = "Keine übersetzbaren Schlüssel in der Antwort."
+ai_error           = "Fehler: {msg}"
 
 [settings.accounts]
 title              = "Konten"
