@@ -116,7 +116,7 @@ pub fn PackageCard(
                         }
                     } else {
                         button {
-                            style: "width: 100%; padding: 8px; background: var(--fsn-color-bg-overlay); border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); cursor: default; font-size: 13px;",
+                            style: "width: 100%; padding: 8px; background: var(--fsn-color-bg-overlay); border: 1px solid var(--fsn-color-border-default); border-radius: var(--fsn-radius-md); cursor: default; font-size: 13px; color: var(--fsn-color-text-muted);",
                             disabled: true,
                             {fsn_i18n::t("store.status.installed")}
                         }

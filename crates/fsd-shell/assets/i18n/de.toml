@@ -64,6 +64,11 @@ manager_icons           = "Icons"
 manager_container_app   = "Container-Apps"
 manager_bots            = "Bots"
 
+[shell.desktop]
+edit        = "Desktop bearbeiten"
+add_widget  = "Widget hinzufügen"
+settings    = "Einstellungen"
+
 [profile]
 title = "Profil"
 

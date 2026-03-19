@@ -412,9 +412,9 @@ pub fn Desktop() -> Element {
                             coords.x,
                             coords.y,
                             vec![
-                                ContextMenuItem::new("edit-desktop", "Edit Desktop").with_icon(ICON_EDIT),
-                                ContextMenuItem::new("add-widget",   "Add Widget").with_icon(ICON_ADD),
-                                ContextMenuItem::new("settings",     "Settings").with_icon(ICON_SETTINGS),
+                                ContextMenuItem::new("edit-desktop", fsn_i18n::t("shell.desktop.edit")).with_icon(ICON_EDIT),
+                                ContextMenuItem::new("add-widget",   fsn_i18n::t("shell.desktop.add_widget")).with_icon(ICON_ADD),
+                                ContextMenuItem::new("settings",     fsn_i18n::t("shell.desktop.settings")).with_icon(ICON_SETTINGS),
                             ],
                         ));
                     },
@@ -527,7 +527,7 @@ pub fn Desktop() -> Element {
                                         cursor: pointer; opacity: 0.75; \
                                         transition: opacity 150ms;",
                                 span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_EDIT }
-                                "Edit Desktop"
+                                {fsn_i18n::t("shell.desktop.edit")}
                             }
                         }
                     }

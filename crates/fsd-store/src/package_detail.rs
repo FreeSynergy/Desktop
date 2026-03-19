@@ -186,7 +186,7 @@ pub fn PackageDetail(
                                 style: "padding: 10px 24px; background: var(--fsn-color-bg-overlay); \
                                         border: 1px solid var(--fsn-color-border-default); \
                                         border-radius: var(--fsn-radius-md); cursor: default; \
-                                        font-size: 14px;",
+                                        font-size: 14px; color: var(--fsn-color-text-muted);",
                                 disabled: true,
                                 {fsn_i18n::t("store.status.installed")}
                             }
@@ -213,7 +213,7 @@ pub fn PackageDetail(
                                 style: "padding: 10px 24px; background: var(--fsn-color-bg-overlay); \
                                         border: 1px solid var(--fsn-color-border-default); \
                                         border-radius: var(--fsn-radius-md); cursor: default; \
-                                        font-size: 14px;",
+                                        font-size: 14px; color: var(--fsn-color-text-muted);",
                                 disabled: true,
                                 "⏳ Installing…"
                             }

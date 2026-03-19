@@ -4,14 +4,14 @@ use dioxus::prelude::*;
 #[derive(Clone, PartialEq, Debug)]
 pub struct ContextMenuItem {
     pub id: &'static str,
-    pub label: &'static str,
+    pub label: String,
     pub icon: Option<&'static str>,
     pub danger: bool,
 }
 
 impl ContextMenuItem {
-    pub fn new(id: &'static str, label: &'static str) -> Self {
-        Self { id, label, icon: None, danger: false }
+    pub fn new(id: &'static str, label: impl Into<String>) -> Self {
+        Self { id, label: label.into(), icon: None, danger: false }
     }
 
     pub fn with_icon(mut self, icon: &'static str) -> Self {
