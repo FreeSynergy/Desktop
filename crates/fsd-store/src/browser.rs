@@ -10,66 +10,6 @@ use crate::package_card::{PackageCard, PackageEntry};
 /// Language codes built into the desktop (always considered "installed").
 const BUILTIN_LANG_CODES: &[&str] = &["de", "en", "fr", "es", "it", "pt"];
 
-/// Built-in desktop managers — always available in the store catalog,
-/// even when the Node is offline. Install state is read from PackageRegistry.
-struct BuiltinManager {
-    id:          &'static str,
-    name:        &'static str,
-    description: &'static str,
-    icon:        &'static str,
-    category:    &'static str,
-    license:     &'static str,
-    author:      &'static str,
-}
-
-const BUILTIN_MANAGERS: &[BuiltinManager] = &[
-    BuiltinManager {
-        id:          "manager-language",
-        name:        "Language Manager",
-        description: "Install and switch interface language packs.",
-        icon:        "🌐",
-        category:    "managers.language",
-        license:     "MIT",
-        author:      "Kal El",
-    },
-    BuiltinManager {
-        id:          "manager-theme",
-        name:        "Theme Manager",
-        description: "Browse and apply desktop color themes.",
-        icon:        "🎨",
-        category:    "managers.theme",
-        license:     "MIT",
-        author:      "Kal El",
-    },
-    BuiltinManager {
-        id:          "manager-icons",
-        name:        "Icons Manager",
-        description: "Install custom icon sets for the desktop.",
-        icon:        "🖼",
-        category:    "managers.icons",
-        license:     "MIT",
-        author:      "Kal El",
-    },
-    BuiltinManager {
-        id:          "manager-container-app",
-        name:        "Container App Manager",
-        description: "Manage Podman container apps and services.",
-        icon:        "📦",
-        category:    "managers.container_app",
-        license:     "MIT",
-        author:      "Kal El",
-    },
-    BuiltinManager {
-        id:          "manager-bots",
-        name:        "Bots Manager",
-        description: "Configure and manage automation bots.",
-        icon:        "🤖",
-        category:    "managers.bots",
-        license:     "MIT",
-        author:      "Kal El",
-    },
-];
-
 /// Install-state filter for the package browser.
 #[derive(Clone, PartialEq, Debug)]
 pub enum InstallFilter {
@@ -113,17 +53,19 @@ pub fn PackageBrowser(
         use_future(move || {
             let mut packages = packages.clone();
             async move {
-                // Always include built-in managers first (no network needed).
-                let mut entries = builtin_manager_entries();
+                let mut client = StoreClient::node_store();
+                let mut entries = Vec::new();
 
-                match StoreClient::node_store().fetch_catalog::<NodePackage>("Node", false).await {
+                // Desktop catalog: managers
+                if let Ok(desktop) = client.fetch_catalog::<NodePackage>("desktop", false).await {
+                    entries.extend(catalog_to_entries(desktop));
+                }
+
+                match client.fetch_catalog::<NodePackage>("Node", false).await {
                     Ok(catalog) => {
                         entries.extend(catalog_to_entries(catalog));
-                        // Also load shared catalog (language packs, themes, etc.)
-                        if let Ok(shared) = StoreClient::node_store()
-                            .fetch_catalog::<NodePackage>("shared", false)
-                            .await
-                        {
+                        // Shared catalog: language packs, themes, widgets, etc.
+                        if let Ok(shared) = client.fetch_catalog::<NodePackage>("shared", false).await {
                             entries.extend(catalog_to_entries(shared));
                         }
                         error.set(None);
@@ -242,33 +184,6 @@ pub fn PackageBrowser(
     }
 }
 
-/// Builds PackageEntry items for all built-in desktop managers.
-/// Install state is read live from PackageRegistry so it updates after install.
-fn builtin_manager_entries() -> Vec<PackageEntry> {
-    let installed_ids: std::collections::HashSet<String> = PackageRegistry::load()
-        .into_iter()
-        .map(|p| p.id)
-        .collect();
-
-    BUILTIN_MANAGERS.iter().map(|m| {
-        PackageEntry {
-            id:               m.id.to_string(),
-            name:             m.name.to_string(),
-            description:      m.description.to_string(),
-            version:          "1.0.0".to_string(),
-            category:         m.category.to_string(),
-            kind:             PackageKind::Manager,
-            capabilities:     vec![],
-            tags:             vec!["manager".to_string(), "builtin".to_string()],
-            icon:             Some(m.icon.to_string()),
-            store_path:       None,
-            installed:        installed_ids.contains(m.id),
-            update_available: false,
-            license:          m.license.to_string(),
-            author:           m.author.to_string(),
-        }
-    }).collect()
-}
 
 fn catalog_to_entries(catalog: Catalog<NodePackage>) -> Vec<PackageEntry> {
     let installed_ids: std::collections::HashSet<String> = PackageRegistry::load()
