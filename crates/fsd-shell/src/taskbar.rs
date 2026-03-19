@@ -110,7 +110,14 @@ fn TaskbarApp(app: AppEntry, on_click: EventHandler<MouseEvent>) -> Element {
             title: "{app.label_key}",
             onclick: on_click,
 
-            span { style: "font-size: 18px;", "{app.icon}" }
+            span {
+                style: "font-size: 18px; display: flex; align-items: center; justify-content: center;",
+                if app.icon.trim_start().starts_with("<svg") {
+                    span { dangerous_inner_html: "{app.icon}" }
+                } else {
+                    "{app.icon}"
+                }
+            }
 
             // Running indicator dot
             if running {

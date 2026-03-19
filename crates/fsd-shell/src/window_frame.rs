@@ -254,6 +254,18 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                     }
                 },
 
+                // App icon
+                if !win.icon.is_empty() {
+                    span {
+                        style: "font-size: 16px; flex-shrink: 0; display: flex; align-items: center;",
+                        if win.icon.trim_start().starts_with("<svg") {
+                            span { dangerous_inner_html: "{win.icon}" }
+                        } else {
+                            "{win.icon}"
+                        }
+                    }
+                }
+
                 span {
                     style: "flex: 1; font-size: 13px; color: var(--fsn-color-text-primary, #e2e8f0); \
                             font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
@@ -481,7 +493,14 @@ fn WindowSidebar(props: WindowSidebarProps) -> Element {
                         let id2 = item.id.clone();
                         move |_| props.on_select.call(id2.clone())
                     },
-                    span { class: "fsn-win-sidebar__icon", "{item.icon}" }
+                    span {
+                        class: "fsn-win-sidebar__icon",
+                        if item.icon.trim_start().starts_with("<svg") {
+                            span { dangerous_inner_html: "{item.icon}" }
+                        } else {
+                            "{item.icon}"
+                        }
+                    }
                     span { class: "fsn-win-sidebar__label", "{item.label}" }
                 }
             }
@@ -685,7 +704,11 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
 
             div {
                 class: "fsn-win-icon__box",
-                "{icon}"
+                if icon.trim_start().starts_with("<svg") {
+                    span { dangerous_inner_html: "{icon}" }
+                } else {
+                    "{icon}"
+                }
                 span { class: "fsn-pulse-dot" }
             }
             span {
