@@ -78,7 +78,7 @@ async fn do_install_inner(
             }
         }
         PackageKind::App => {
-            install_app_binary(&package).await?
+            install_app_binary(&package, installed_by.as_deref()).await?
         }
         // Widget, Bot, Task, Bridge, Plugin — register without file download
         _ => None,
@@ -165,7 +165,10 @@ async fn fetch_catalog_map() -> std::collections::HashMap<String, PackageEntry> 
 ///   1. `FSN_BIN_{ID_UPPER}` env var — explicit override
 ///   2. `~/Server/FreeSynergy.{Title}/target/release/{binary}` — release build
 ///   3. `~/Server/FreeSynergy.{Title}/target/debug/{binary}` — debug build
-async fn install_app_binary(package: &PackageEntry) -> Result<Option<String>, String> {
+///
+/// `installed_by`: if Some, this is a bundle dependency — missing binaries are
+/// skipped with a warning instead of failing the whole installation.
+async fn install_app_binary(package: &PackageEntry, installed_by: Option<&str>) -> Result<Option<String>, String> {
     // Debug builds (cargo build / dx serve) are always dev mode.
     // FSN_DEV=1 allows overriding in release builds (e.g. CI, staging).
     let is_dev = cfg!(debug_assertions)
@@ -209,6 +212,17 @@ async fn install_app_binary(package: &PackageEntry) -> Result<Option<String>, St
             package.id, path, dest.display()
         );
         return Ok(Some(dest.to_string_lossy().into_owned()));
+    }
+
+    // Bundle dependency: skip gracefully so the rest of the bundle installs fine.
+    if installed_by.is_some() {
+        tracing::warn!(
+            "[dev] App '{}' has no local build — skipping as bundle dependency. \
+             Build it or set FSN_BIN_{} to install it.",
+            package.id,
+            package.id.to_uppercase().replace('-', "_")
+        );
+        return Ok(None);
     }
 
     Err(format!(
