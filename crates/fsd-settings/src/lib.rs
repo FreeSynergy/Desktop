@@ -2,6 +2,7 @@ pub mod app;
 pub mod appearance;
 pub mod service_roles;
 pub mod language;
+pub mod translation_editor;
 pub mod accounts;
 pub mod desktop_settings;
 pub mod shortcuts;

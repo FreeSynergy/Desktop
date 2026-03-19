@@ -47,6 +47,42 @@ available_heading  = "Zur Installation verfügbar"
 all_installed      = "Alle verfügbaren Sprachen sind bereits installiert."
 applied            = "Sprache angewendet."
 
+[settings.language.formats]
+title              = "Lokale Formate"
+store_note         = "Standards kommen aus dem Store (systemweit). Änderungen hier sind persönliche Überschreibungen, gespeichert im Inventory."
+fallback           = "Ausweichsprache"
+fallback_hint      = "Wird verwendet, wenn ein Schlüssel in der aktiven Sprache fehlt."
+date               = "Datumsformat"
+time               = "Zeitformat"
+number             = "Zahlenformat"
+auto_update        = "Sprachpakete"
+auto_update_hint   = "Hält installierte Pakete aktuell."
+auto_update_label  = "Sprachpakete automatisch aktualisieren"
+
+[settings.language.contrib]
+title              = "Übersetzungsbeiträge"
+description        = "Hilf dabei, FreeSynergy in deine Sprache zu übersetzen. Änderungen können exportiert oder direkt auf GitHub gepusht werden."
+ssh_ok             = "SSH-Schlüssel erkannt — Übersetzungen können direkt gepusht werden."
+ssh_none           = "Kein GitHub SSH-Schlüssel gefunden"
+ssh_none_hint      = "SSH-Schlüssel im Profil hinterlegen oder Übersetzungen als Datei exportieren."
+ssh_checking       = "SSH-Authentifizierung wird geprüft…"
+btn_recheck        = "Erneut prüfen"
+pick_language      = "Sprache für den Übersetzungseditor auswählen:"
+btn_new_lang       = "+ Neue Sprache"
+
+[settings.language.editor]
+title              = "Übersetzungseditor"
+progress           = "{done} von {total} Schlüsseln übersetzt"
+search_placeholder = "Schlüssel oder englischen Text suchen…"
+show_missing       = "Nur fehlende anzeigen"
+showing            = "{n} Schlüssel angezeigt"
+col_key            = "Schlüssel"
+no_ssh             = "Kein SSH-Schlüssel"
+checking_ssh       = "Wird geprüft…"
+btn_export         = ".toml exportieren"
+btn_push           = "Commit & Push"
+btn_recheck_ssh    = "SSH erneut prüfen"
+
 [settings.accounts]
 title              = "Konten"
 description        = "OIDC-Anbieter für Single Sign-On über alle Dienste konfigurieren."
