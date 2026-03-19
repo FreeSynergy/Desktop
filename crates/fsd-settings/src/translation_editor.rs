@@ -113,12 +113,12 @@ pub fn TranslationEditor(
     /// Called when the user closes/hides the editor.
     on_close:    EventHandler<()>,
 ) -> Element {
-    let mut entries      = use_signal(|| build_entries(&lang_code));
+    let entries      = use_signal(|| build_entries(&lang_code));
     let mut filter_empty = use_signal(|| false);
     let mut search_query = use_signal(String::new);
 
     // Git contributor status — start with cache, refresh in background.
-    let mut contrib = use_signal(|| {
+    let contrib = use_signal(|| {
         GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown)
     });
 
@@ -134,7 +134,7 @@ pub fn TranslationEditor(
     }
 
     // Push state.
-    let mut push_msg = use_signal(|| Option::<Result<String, String>>::None);
+    let push_msg = use_signal(|| Option::<Result<String, String>>::None);
 
     // Derived counts.
     let total      = entries.read().len();
@@ -355,7 +355,7 @@ pub fn TranslationEditor(
                         onclick: {
                             let entries    = entries.clone();
                             let lang_code  = lang_code.clone();
-                            let mut push_msg = push_msg.clone();
+                            let push_msg = push_msg.clone();
                             move |_| {
                                 let toml_str  = entries_to_toml(&entries.read());
                                 let lang_code = lang_code.clone();

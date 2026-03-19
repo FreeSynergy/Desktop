@@ -161,13 +161,13 @@ pub fn LanguageSettings() -> Element {
     // Inventory settings (user overrides on top of Store defaults).
     let mgr       = LanguageManager::new();
     let effective = mgr.effective_settings();
-    let mut inv   = use_signal(LocaleSettings::load_inventory);
+    let inv   = use_signal(LocaleSettings::load_inventory);
 
     // Translation editor: which language is open (None = editor closed).
     let mut editor_lang: Signal<Option<(String, String)>> = use_signal(|| None);
 
     // Git contributor status — start from cache, refresh in background.
-    let mut contrib = use_signal(|| {
+    let contrib = use_signal(|| {
         GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown)
     });
     {
