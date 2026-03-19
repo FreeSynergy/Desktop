@@ -518,7 +518,8 @@ pub fn Desktop() -> Element {
                             style: "position: absolute; bottom: 16px; right: 16px; z-index: 60;",
                             button {
                                 onclick: on_edit_desktop,
-                                style: "background: var(--fsn-color-bg-surface); \
+                                style: "display: flex; align-items: center; gap: 6px; \
+                                        background: var(--fsn-color-bg-surface); \
                                         border: 1px solid var(--fsn-color-border-default); \
                                         border-radius: 8px; \
                                         padding: 6px 14px; \
@@ -554,10 +555,10 @@ pub fn Desktop() -> Element {
                                             cursor: pointer;",
                                     if is_picker_open {
                                         span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_CHEVRON_UP }
-                                        "Add Widget"
+                                        {fsn_i18n::t("shell.desktop.add_widget")}
                                     } else {
                                         span { style: "display: flex; align-items: center;", dangerous_inner_html: ICON_CHEVRON_DOWN }
-                                        "Add Widget"
+                                        {fsn_i18n::t("shell.desktop.add_widget")}
                                     }
                                 }
 
@@ -605,7 +606,7 @@ pub fn Desktop() -> Element {
                                         font-size: 13px; font-family: inherit; \
                                         color: var(--fsn-color-text-muted); \
                                         cursor: pointer;",
-                                "Clear All"
+                                {fsn_i18n::t("shell.desktop.clear_all")}
                             }
 
                             // Spacer
@@ -621,7 +622,7 @@ pub fn Desktop() -> Element {
                                         font-size: 13px; font-family: inherit; \
                                         font-weight: 600; \
                                         cursor: pointer;",
-                                "Done"
+                                {fsn_i18n::t("shell.desktop.done")}
                             }
                         }
                     }

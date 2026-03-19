@@ -68,6 +68,8 @@ manager_bots            = "Bots"
 edit        = "Desktop bearbeiten"
 add_widget  = "Widget hinzufügen"
 settings    = "Einstellungen"
+clear_all   = "Alle entfernen"
+done        = "Fertig"
 
 [profile]
 title = "Profil"

@@ -68,6 +68,8 @@ manager_bots            = "Bots"
 edit        = "Edit Desktop"
 add_widget  = "Add Widget"
 settings    = "Settings"
+clear_all   = "Clear All"
+done        = "Done"
 
 [profile]
 title = "Profile"
