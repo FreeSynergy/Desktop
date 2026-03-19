@@ -35,7 +35,7 @@ installed            = "Installiert ✓"
 update_available     = "Update verfügbar"
 installed_via_bundle = "Teil von Bundle: {bundle}"
 via_bundle           = "via {bundle}"
-managed_by_bundle    = "wird vom Bundle verwaltet"
+managed_by_bundle    = "Wird vom Bundle verwaltet"
 
 [store.section]
 capabilities   = "Fähigkeiten"

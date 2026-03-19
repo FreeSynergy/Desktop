@@ -128,7 +128,15 @@ pub fn PackageCard(
                     strong { style: "display: block; font-size: 15px;", "{package.name}" }
                     span { style: "font-size: 12px; color: var(--fsn-color-text-muted);", "v{package.version} · {package.category}" }
                 }
-                if package.installed {
+                if let Some(ref bundle_id) = package.installed_by {
+                    span {
+                        title: "Managed by bundle: {bundle_id}",
+                        style: "margin-left: auto; font-size: 11px; color: var(--fsn-color-text-muted); \
+                                background: var(--fsn-color-bg-overlay); padding: 2px 8px; \
+                                border-radius: 999px; border: 1px solid var(--fsn-color-border-default);",
+                        {fsn_i18n::t("store.status.managed_by_bundle")}
+                    }
+                } else if package.installed {
                     span {
                         style: "margin-left: auto; font-size: 11px; color: var(--fsn-color-success, #22c55e); \
                                 background: rgba(34,197,94,0.12); padding: 2px 8px; border-radius: 999px;",
@@ -177,8 +185,16 @@ pub fn PackageCard(
                     {fsn_i18n::t("actions.details")}
                 }
 
-                // Action area
-                if package.installed {
+                // Action area — bundle-managed packages cannot be installed/removed individually
+                if package.installed_by.is_some() {
+                    span {
+                        style: "flex: 1; padding: 8px; font-size: 12px; text-align: center; \
+                                color: var(--fsn-color-text-muted); \
+                                border: 1px solid var(--fsn-color-border-default); \
+                                border-radius: var(--fsn-radius-md);",
+                        {fsn_i18n::t("store.status.managed_by_bundle")}
+                    }
+                } else if package.installed {
                     if package.update_available {
                         // Update button
                         button {

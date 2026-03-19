@@ -25,16 +25,10 @@ const BUILTIN_PKGS: &[BuiltinPkg] = &[
     BuiltinPkg { id: "store", name: "Store", kind: "app", icon: ICON_STORE, version: env!("CARGO_PKG_VERSION") },
 ];
 
-/// IDs to remove on startup — renamed entries and formerly auto-registered managers.
-/// Managers are no longer built-in; they must be installed explicitly via the Store.
+/// IDs to remove on startup — old renamed entries that have been superseded.
+/// Current store-installable packages (manager-*, etc.) must NOT appear here.
 const LEGACY_IDS: &[&str] = &[
-    // Old renamed IDs
-    "manager-language",
-    "manager-theme",
-    "manager-icons",
-    "manager-container-app",
-    "manager-bots",
-    // Previously auto-registered managers — remove so user must install explicitly
+    // Previously auto-registered managers under old IDs — superseded by store installs
     "language-manager",
     "theme-manager",
     "icons-manager",
