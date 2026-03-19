@@ -49,7 +49,7 @@ pub fn InstalledList(catalog_versions: Vec<(String, String)>) -> Element {
     let mut reg_pkgs: Signal<Vec<InstalledPackage>>   = use_signal(|| PackageRegistry::load());
     let mut reg_confirm: Signal<Option<InstalledPackage>> = use_signal(|| None);
 
-    // Fetch services every 10 seconds
+    // Fetch services every 5 seconds
     use_future(move || async move {
         let mgr = SystemctlManager::user();
         loop {
@@ -65,7 +65,16 @@ pub fn InstalledList(catalog_versions: Vec<(String, String)>) -> Element {
                 entries.set(rows);
                 error.set(None);
             }
-            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        }
+    });
+
+    // Refresh registry packages every 3 seconds so newly installed packages
+    // appear immediately without requiring a restart.
+    use_future(move || async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            reg_pkgs.set(PackageRegistry::load());
         }
     });
 
