@@ -7,8 +7,10 @@ use fsn_store::{Catalog, StoreClient};
 use crate::node_package::{NodePackage, PackageKind};
 use crate::package_card::{PackageCard, PackageEntry};
 
-/// Language codes built into the desktop (always considered "installed").
-const BUILTIN_LANG_CODES: &[&str] = &["de", "en", "fr", "es", "it", "pt"];
+/// Language codes that are always considered installed without needing a Store install.
+/// English is the only truly built-in language — it is the fallback for all i18n lookups
+/// and requires no installation. All other languages must be installed from the Store.
+const BUILTIN_LANG_CODES: &[&str] = &["en"];
 
 /// Install-state filter for the package browser.
 #[derive(Clone, PartialEq, Debug)]
