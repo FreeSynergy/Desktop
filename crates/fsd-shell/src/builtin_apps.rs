@@ -62,8 +62,11 @@ pub fn ensure_registered() {
         BUILTIN_PKGS.iter().map(|p| p.id).collect();
     for pkg in PackageRegistry::load() {
         if pkg.kind == "app" && !builtin_ids.contains(pkg.id.as_str()) {
+            // Only remove if a binary path was recorded but the file is now gone (stale).
+            // If file_path is None the package was installed without a local binary
+            // (production stub, container-backed, etc.) — keep it.
             let has_binary = pkg.file_path.as_ref()
-                .map_or(false, |p| std::path::Path::new(p).exists());
+                .map_or(true, |p| std::path::Path::new(p).exists());
             if !has_binary {
                 let _ = PackageRegistry::remove(&pkg.id);
             }

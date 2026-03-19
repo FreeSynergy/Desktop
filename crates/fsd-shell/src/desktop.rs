@@ -165,12 +165,11 @@ pub fn Desktop() -> Element {
     let mut notifs          = use_signal(NotificationManager::default);
     let mut notif_history   = use_signal(NotificationHistory::default);
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
-    // Sidebar refresh counter — increment to trigger a sidebar recompute after install.
-    // TODO: fsd-store should call `sidebar_refresh.write().add_assign(1)` after a
-    // successful install by consuming this context via `use_context::<Signal<u32>>()`.
+    // Sidebar refresh counter — kept for manual refresh calls from sub-apps.
     let sidebar_refresh: Signal<u32> = use_context_provider(|| Signal::new(0u32));
     let sidebar_sections = use_memo(move || {
-        let _ = sidebar_refresh.read(); // subscribe to refreshes
+        let _ = sidebar_refresh.read(); // subscribe to manual refreshes
+        let _ = fsd_store::INSTALL_COUNTER.read(); // subscribe to store install/remove events
         default_sidebar_sections()
     });
     let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db(&db)));
