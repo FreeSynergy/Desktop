@@ -8,7 +8,7 @@ use fsd_browser::BrowserApp;
 use fsd_bots::BotManagerApp;
 use fsd_conductor::ConductorApp;
 use fsd_lenses::LensesApp;
-use fsd_managers::ManagersApp;
+use fsd_managers::{ManagersApp, LanguageManagerPanel, IconsManagerPanel};
 use fsd_profile::ProfileApp;
 use fsd_settings::SettingsApp;
 use fsd_store::StoreApp;
@@ -866,6 +866,16 @@ fn AppWindowContent(title_key: String) -> Element {
                 LayoutA { BotManagerApp {} }
             }
         },
+        "app-language-manager" => rsx! {
+            AppShell { mode: AppMode::Window,
+                LayoutA { LanguageManagerPanel {} }
+            }
+        },
+        "app-icons-manager" => rsx! {
+            AppShell { mode: AppMode::Window,
+                LayoutA { IconsManagerPanel {} }
+            }
+        },
         "app-settings" => rsx! {
             AppShell { mode: AppMode::Window,
                 SettingsApp {}
@@ -924,9 +934,11 @@ fn app_id_to_label(id: &str) -> &str {
         "profile"       => "Profile",
         "ai"            => "AI Assistant",
         "help"          => "Help",
-        "container"     => "Container Manager",
-        "theme-manager" => "Theme Manager",
-        "bot-manager"   => "Bot Manager",
+        "container"        => "Container Manager",
+        "theme-manager"    => "Theme Manager",
+        "bot-manager"      => "Bot Manager",
+        "language-manager" => "Language Manager",
+        "icons-manager"    => "Icons Manager",
         other           => other,
     }
 }

@@ -44,18 +44,34 @@ const ICON_BOTS: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 
 const BUILTIN_PKGS: &[BuiltinPkg] = &[
     // Built-in app — always the entry point
-    BuiltinPkg { id: "store",                 name: "Store",               kind: "app",     icon: ICON_STORE,     version: env!("CARGO_PKG_VERSION") },
-    // Built-in managers — desktop components, always present
-    BuiltinPkg { id: "manager-language",      name: "Language Manager",    kind: "manager", icon: ICON_LANGUAGE,  version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "manager-theme",         name: "Theme Manager",       kind: "manager", icon: ICON_THEME,     version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "manager-icons",         name: "Icons Manager",       kind: "manager", icon: ICON_ICONS,     version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "manager-container-app", name: "Container App Mgr",   kind: "manager", icon: ICON_CONTAINER, version: env!("CARGO_PKG_VERSION") },
-    BuiltinPkg { id: "manager-bots",          name: "Bots Manager",        kind: "manager", icon: ICON_BOTS,      version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "store",            name: "Store",             kind: "app",     icon: ICON_STORE,     version: env!("CARGO_PKG_VERSION") },
+    // Built-in managers — IDs must match AppWindowContent cases ("app-{id}")
+    BuiltinPkg { id: "language-manager", name: "Language Manager",  kind: "manager", icon: ICON_LANGUAGE,  version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "theme-manager",    name: "Theme Manager",     kind: "manager", icon: ICON_THEME,     version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "icons-manager",    name: "Icons Manager",     kind: "manager", icon: ICON_ICONS,     version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "container",        name: "Container Manager", kind: "manager", icon: ICON_CONTAINER, version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "bot-manager",      name: "Bots Manager",      kind: "manager", icon: ICON_BOTS,      version: env!("CARGO_PKG_VERSION") },
+];
+
+/// Old IDs that were renamed — remove these on startup to avoid stale sidebar entries.
+const LEGACY_IDS: &[&str] = &[
+    "manager-language",
+    "manager-theme",
+    "manager-icons",
+    "manager-container-app",
+    "manager-bots",
 ];
 
 /// Pre-registers all built-in packages in the PackageRegistry (idempotent).
 /// Should be called once at Desktop startup before the sidebar is rendered.
 pub fn ensure_registered() {
+    // Remove stale legacy entries so renamed IDs don't produce duplicates.
+    for id in LEGACY_IDS {
+        if PackageRegistry::is_installed(id) {
+            let _ = PackageRegistry::remove(id);
+        }
+    }
+
     for pkg in BUILTIN_PKGS {
         if !PackageRegistry::is_installed(pkg.id) {
             let entry = InstalledPackage {

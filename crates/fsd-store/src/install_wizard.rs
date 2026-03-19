@@ -63,6 +63,9 @@ pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), S
                 }
             }
         }
+        PackageKind::App => {
+            install_app_binary(&package).await?
+        }
         // Widget, Bot, Task, Bridge, Plugin — register without file download
         _ => None,
     };
@@ -76,6 +79,111 @@ pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), S
         file_path,
     })
     .map_err(|e| format!("Registry error: {e}"))
+}
+
+/// Install a binary app package.
+///
+/// Production: download from the distribution URL in the catalog (not yet implemented).
+/// Dev mode (`FSN_DEV=1`): use the locally compiled Cargo binary instead.
+///
+/// Dev binary resolution order:
+///   1. `FSN_BIN_{ID_UPPER}` env var — explicit override
+///   2. `~/Server/FreeSynergy.{Title}/target/release/{binary}` — release build
+///   3. `~/Server/FreeSynergy.{Title}/target/debug/{binary}` — debug build
+async fn install_app_binary(package: &PackageEntry) -> Result<Option<String>, String> {
+    let is_dev = std::env::var("FSN_DEV").map(|v| v == "1").unwrap_or(false);
+    if !is_dev {
+        // Production: would download from catalog distribution URL.
+        // Not yet implemented — just register without a file path for now.
+        tracing::info!(
+            "App '{}' registered (no binary download in production yet).",
+            package.id
+        );
+        return Ok(None);
+    }
+
+    // Dev mode: find local Cargo build
+    if let Some(path) = find_local_build_binary(&package.id) {
+        let dest_dir = std::path::PathBuf::from(
+            std::env::var("HOME").unwrap_or_else(|_| ".".into())
+        ).join(".local/share/fsn/bin");
+        std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+
+        let binary_name = std::path::Path::new(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| package.id.clone());
+        let dest = dest_dir.join(&binary_name);
+
+        std::fs::copy(&path, &dest).map_err(|e| {
+            format!("Failed to copy local build '{}' to '{}': {e}", path, dest.display())
+        })?;
+
+        // Make executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+        }
+
+        tracing::info!(
+            "[dev] App '{}' installed from local build: {} → {}",
+            package.id, path, dest.display()
+        );
+        return Ok(Some(dest.to_string_lossy().into_owned()));
+    }
+
+    Err(format!(
+        "Dev mode: no local build found for '{}'. \
+         Build the project first, or set FSN_BIN_{} to the binary path.",
+        package.id,
+        package.id.to_uppercase().replace('-', "_")
+    ))
+}
+
+/// Try to locate a locally compiled binary for a package.
+///
+/// Checks (in order):
+///   1. `FSN_BIN_{ID_UPPER}` env var
+///   2. `~/Server/FreeSynergy.{Title}/target/release/{binary}`
+///   3. `~/Server/FreeSynergy.{Title}/target/debug/{binary}`
+fn find_local_build_binary(id: &str) -> Option<String> {
+    let env_key = format!("FSN_BIN_{}", id.to_uppercase().replace('-', "_"));
+    if let Ok(path) = std::env::var(&env_key) {
+        if std::path::Path::new(&path).exists() {
+            return Some(path);
+        }
+    }
+
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let base = std::path::PathBuf::from(&home).join("Server");
+
+    // Derive repo title (e.g. "node" → "Node", "desktop" → "Desktop")
+    let title: String = {
+        let mut c = id.chars();
+        match c.next() {
+            None => String::new(),
+            Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+        }
+    };
+
+    // Derive binary name from known FSN packages; fall back to id
+    let binary_name = match id {
+        "node"    => "fsn",
+        "desktop" => "fsd",
+        "init"    => "fsn-init",
+        other     => other,
+    };
+
+    let repo = base.join(format!("FreeSynergy.{title}"));
+    for profile in &["release", "debug"] {
+        let path = repo.join("target").join(profile).join(binary_name);
+        if path.exists() {
+            return Some(path.to_string_lossy().into_owned());
+        }
+    }
+
+    None
 }
 
 /// Full container install:

@@ -57,7 +57,9 @@ fsn-container      = { path = "../FreeSynergy.Lib.Ext/fsn-container" }
 fsn-plugin-sdk     = { path = "../FreeSynergy.Lib.Ext/fsn-plugin-sdk" }
 fsn-auth           = { path = "../FreeSynergy.Lib.Net/fsn-auth" }
 fsn-core           = { path = "../FreeSynergy.Lib/fsn-core" }
-fsn-components     = { path = "../FreeSynergy.Lib.UI/fsn-components" }
+fsn-components         = { path = "../FreeSynergy.Lib.UI/fsn-components" }
+fsn-manager-language   = { path = "../FreeSynergy.Managers/language" }
+fsn-manager-icons      = { path = "../FreeSynergy.Managers/icons" }
 fsn-render         = { path = "../FreeSynergy.Lib.UI/fsn-render" }
 fsn-db             = { path = "../FreeSynergy.Lib/fsn-db" }
 
