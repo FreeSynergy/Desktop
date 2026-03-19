@@ -33,14 +33,10 @@ fn main() {
                             .with_resizable(true),
                     )
                     .with_background_color((12, 18, 34, 255))
-                    // Allow iframes to load any external URL (needed for the Browser app).
-                    // The custom_head injects a permissive CSP so WebKit does not block
-                    // cross-origin frame navigation from the dioxus:// protocol context.
-                    .with_custom_head(
-                        r#"<meta http-equiv="Content-Security-Policy"
-                             content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
-                                      frame-src *;">"#.to_string()
-                    ),
+                    // Allow all WebView navigation so the Browser app can load external
+                    // URLs in iframes instead of opening the system browser.
+                    // Tracking PR: https://github.com/DioxusLabs/dioxus/pull/5390
+                    .with_navigation_handler(|_url: String| true),
             )
             .launch(fsd_shell::Desktop);
     }
