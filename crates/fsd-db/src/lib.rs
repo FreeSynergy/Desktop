@@ -53,6 +53,17 @@ impl FsdDb {
     pub fn shared(&self)    -> &SharedDb    { &self.shared    }
     pub fn conductor(&self) -> &ConductorDb { &self.conductor }
     pub fn store(&self)     -> &StoreDb     { &self.store     }
+
+    /// Explicitly close all four connection pools.
+    ///
+    /// Call this on clean shutdown to avoid heap corruption from SQLite FFI
+    /// teardown racing with the Tokio runtime shutdown.
+    pub async fn close(self) {
+        let _ = self.desktop.close().await;
+        let _ = self.shared.close().await;
+        let _ = self.conductor.close().await;
+        let _ = self.store.close().await;
+    }
 }
 
 /// Returns `~/.local/share/fsn/<name>` as the path for an FSN database.

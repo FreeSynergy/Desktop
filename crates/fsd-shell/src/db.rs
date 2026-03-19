@@ -1,62 +1,98 @@
 //! Database integration for the Desktop shell.
 //!
-//! Opens `fsn-desktop.db` and `fsn-shared.db` at startup and exposes
-//! helper functions for the Desktop component to read/write persistent state.
+//! Exposes [`DbContext`], a cheap-to-clone handle around a single shared [`FsdDb`]
+//! that is opened once at Desktop startup and injected into the Dioxus context tree.
 //!
-//! All functions are synchronous wrappers that block on a background Tokio task,
-//! since Dioxus component code cannot directly await.
+//! All functions receive the shared handle instead of opening a new connection pool
+//! on every call — this eliminates the `free(): corrupted unsorted chunks` crash
+//! caused by SQLite FFI teardown racing with partially-initialised pools that were
+//! spawned fire-and-forget.
 
-use fsd_db::{DesktopDb, SharedDb};
-use fsd_db::desktop::DbWidgetSlot;
+use std::sync::Arc;
+
+use fsd_db::{FsdDb, desktop::DbWidgetSlot};
 
 use crate::widgets::{WidgetKind, WidgetSlot};
 
-// ── Sync wrappers (called from Dioxus component init) ────────────────────────
+// ── DbContext ─────────────────────────────────────────────────────────────────
+
+/// Dioxus context holding the single shared database connection.
+///
+/// Opened once at Desktop startup via [`FsdDb::open`].
+/// [`Clone`] is cheap — it only increments an [`Arc`] reference count.
+#[derive(Clone)]
+pub struct DbContext(pub Arc<FsdDb>);
+
+// ── Sync load wrappers ────────────────────────────────────────────────────────
 
 /// Loads the active theme from `fsn-desktop.db`.
 /// Falls back to `"midnight-blue"` on any error.
-pub fn load_theme_from_db() -> String {
+pub fn load_theme_from_db(db: &FsdDb) -> String {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
-            match DesktopDb::open().await {
-                Ok(db) => db.active_theme().await.unwrap_or_else(|_| "midnight-blue".to_string()),
-                Err(_) => "midnight-blue".to_string(),
-            }
+            db.desktop().active_theme().await.unwrap_or_else(|_| "midnight-blue".to_string())
         })
     })
-}
-
-/// Saves the active theme to `fsn-desktop.db` (fire-and-forget via spawn).
-pub fn save_theme_to_db(name: String) {
-    tokio::spawn(async move {
-        if let Ok(db) = DesktopDb::open().await {
-            let _ = db.set_active_theme(&name).await;
-        }
-    });
 }
 
 /// Loads widget slots from `fsn-desktop.db`.
-/// Falls back to an empty vec on error (caller should use default layout then).
-pub fn load_widgets_from_db() -> Vec<WidgetSlot> {
+/// Returns an empty vec on error (caller falls back to the default layout).
+pub fn load_widgets_from_db(db: &FsdDb) -> Vec<WidgetSlot> {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
-            match DesktopDb::open().await {
-                Ok(db) => db.widget_slots().await
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(db_slot_to_widget)
-                    .collect(),
-                Err(_) => vec![],
-            }
+            db.desktop()
+                .widget_slots()
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(db_slot_to_widget)
+                .collect()
         })
     })
 }
 
-/// Saves widget slots to `fsn-desktop.db` (fire-and-forget via spawn).
-pub fn save_widgets_to_db(slots: Vec<WidgetSlot>) {
+/// Loads the i18n language selection from `fsn-shared.db`.
+/// Falls back to `"de"` on error.
+pub fn load_language_from_db(db: &FsdDb) -> String {
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            db.shared()
+                .get_setting_or("language", "de")
+                .await
+                .unwrap_or_else(|_| "de".to_string())
+        })
+    })
+}
+
+/// Loads the wallpaper CSS from `fsn-shared.db`.
+/// Returns an empty string if not set (caller uses the default).
+pub fn load_wallpaper_css_from_db(db: &FsdDb) -> String {
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            db.shared()
+                .get_setting_or("wallpaper_css", "")
+                .await
+                .unwrap_or_default()
+        })
+    })
+}
+
+// ── Async save wrappers (fire-and-forget via spawn) ───────────────────────────
+
+/// Saves the active theme to `fsn-desktop.db`.
+pub fn save_theme_to_db(db: Arc<FsdDb>, name: String) {
     tokio::spawn(async move {
-        if let Ok(db) = DesktopDb::open().await {
-            let db_slots: Vec<DbWidgetSlot> = slots.iter().enumerate().map(|(i, s)| DbWidgetSlot {
+        let _ = db.desktop().set_active_theme(&name).await;
+    });
+}
+
+/// Saves widget slots to `fsn-desktop.db`.
+pub fn save_widgets_to_db(db: Arc<FsdDb>, slots: Vec<WidgetSlot>) {
+    tokio::spawn(async move {
+        let db_slots: Vec<DbWidgetSlot> = slots
+            .iter()
+            .enumerate()
+            .map(|(i, s)| DbWidgetSlot {
                 id:         s.id,
                 kind:       s.kind.as_str(),
                 x:          s.x,
@@ -64,53 +100,23 @@ pub fn save_widgets_to_db(slots: Vec<WidgetSlot>) {
                 w:          s.w,
                 h:          s.h,
                 sort_order: i as u32,
-            }).collect();
-            let _ = db.save_widget_slots(&db_slots).await;
-        }
+            })
+            .collect();
+        let _ = db.desktop().save_widget_slots(&db_slots).await;
     });
 }
 
-/// Loads the i18n language selection from `fsn-shared.db`.
-/// Falls back to `"de"` on error.
-pub fn load_language_from_db() -> String {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(async {
-            match SharedDb::open().await {
-                Ok(db) => db.get_setting_or("language", "de").await.unwrap_or_else(|_| "de".to_string()),
-                Err(_) => "de".to_string(),
-            }
-        })
-    })
-}
-
-/// Saves the language selection to `fsn-shared.db` (fire-and-forget via spawn).
-pub fn save_language_to_db(lang: String) {
+/// Saves the language selection to `fsn-shared.db`.
+pub fn save_language_to_db(db: Arc<FsdDb>, lang: String) {
     tokio::spawn(async move {
-        if let Ok(db) = SharedDb::open().await {
-            let _ = db.set_setting("language", &lang).await;
-        }
+        let _ = db.shared().set_setting("language", &lang).await;
     });
 }
 
-/// Loads the wallpaper CSS from `fsn-shared.db`.
-/// Returns empty string if not set (caller uses default).
-pub fn load_wallpaper_css_from_db() -> String {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(async {
-            match SharedDb::open().await {
-                Ok(db) => db.get_setting_or("wallpaper_css", "").await.unwrap_or_default(),
-                Err(_) => String::new(),
-            }
-        })
-    })
-}
-
-/// Saves the wallpaper CSS to `fsn-shared.db` (fire-and-forget via spawn).
-pub fn save_wallpaper_css_to_db(css: String) {
+/// Saves the wallpaper CSS to `fsn-shared.db`.
+pub fn save_wallpaper_css_to_db(db: Arc<FsdDb>, css: String) {
     tokio::spawn(async move {
-        if let Ok(db) = SharedDb::open().await {
-            let _ = db.set_setting("wallpaper_css", &css).await;
-        }
+        let _ = db.shared().set_setting("wallpaper_css", &css).await;
     });
 }
 

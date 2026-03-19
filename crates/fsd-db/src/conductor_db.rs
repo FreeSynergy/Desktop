@@ -34,4 +34,9 @@ impl ConductorDb {
     pub fn db(&self) -> &DatabaseConnection {
         self.conn.inner()
     }
+
+    /// Explicitly close the connection pool.
+    pub async fn close(self) -> Result<(), DbError> {
+        self.conn.close().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+    }
 }

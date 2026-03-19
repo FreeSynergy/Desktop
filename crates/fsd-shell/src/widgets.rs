@@ -173,14 +173,14 @@ pub fn default_widget_layout() -> Vec<WidgetSlot> {
 }
 
 /// Loads widget layout from `fsn-desktop.db`. Falls back to default if empty.
-pub fn load_widget_layout() -> Vec<WidgetSlot> {
-    let slots = crate::db::load_widgets_from_db();
+pub fn load_widget_layout(db: &fsd_db::FsdDb) -> Vec<WidgetSlot> {
+    let slots = crate::db::load_widgets_from_db(db);
     if slots.is_empty() { default_widget_layout() } else { slots }
 }
 
 /// Persists the current widget layout to `fsn-desktop.db` (async, fire-and-forget).
-pub fn save_widget_layout(slots: &[WidgetSlot]) {
-    crate::db::save_widgets_to_db(slots.to_vec());
+pub fn save_widget_layout(db: std::sync::Arc<fsd_db::FsdDb>, slots: &[WidgetSlot]) {
+    crate::db::save_widgets_to_db(db, slots.to_vec());
 }
 
 // ── render_widget dispatch ─────────────────────────────────────────────────

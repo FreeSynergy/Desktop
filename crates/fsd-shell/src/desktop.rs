@@ -1,5 +1,6 @@
 /// Desktop — root layout: header + sidebar + content area.
 use std::collections::HashMap;
+use std::sync::Arc;
 use dioxus::prelude::*;
 use fsn_i18n;
 
@@ -124,6 +125,18 @@ pub fn Desktop() -> Element {
     // Must run before default_sidebar_sections() reads from the registry.
     crate::builtin_apps::ensure_registered();
 
+    // Open all databases once at startup and expose as a shared context.
+    // All db operations in this component (and children via crate::db) use this
+    // single Arc instead of opening a fresh connection pool per operation.
+    let db_ctx = use_context_provider(|| {
+        let db = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(fsd_db::FsdDb::open())
+        })
+        .expect("Failed to open FreeSynergy databases");
+        crate::db::DbContext(Arc::new(db))
+    });
+    let db = db_ctx.0.clone();
+
     // Initialize i18n once and expose the active language as a reactive context.
     // fsd-settings writes to this via LangContext when the user switches languages,
     // triggering a full re-render with the new language active.
@@ -133,14 +146,17 @@ pub fn Desktop() -> Element {
 
     // Wallpaper CSS is provided as context so child apps (e.g. AppearanceSettings) can update it.
     let wallpaper_bg: Signal<String> = use_context_provider(|| {
-        let saved = crate::db::load_wallpaper_css_from_db();
+        let saved = crate::db::load_wallpaper_css_from_db(&db);
         Signal::new(if saved.is_empty() { Wallpaper::default().to_css_background() } else { saved })
     });
     // Persist wallpaper whenever it changes.
-    use_effect(move || {
-        let css = wallpaper_bg.read().clone();
-        crate::db::save_wallpaper_css_to_db(css);
-    });
+    {
+        let db = db.clone();
+        use_effect(move || {
+            let css = wallpaper_bg.read().clone();
+            crate::db::save_wallpaper_css_to_db(db.clone(), css);
+        });
+    }
 
     let mut wm              = use_signal(WindowManager::default);
     let mut apps            = use_signal(default_apps);
@@ -149,7 +165,7 @@ pub fn Desktop() -> Element {
     let mut notif_history   = use_signal(NotificationHistory::default);
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
     let sidebar_sections: Signal<Vec<SidebarSection>> = use_signal(default_sidebar_sections);
-    let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db()));
+    let mut theme: Signal<String> = use_context_provider(|| Signal::new(crate::db::load_theme_from_db(&db)));
     // B5: Animation, chrome opacity, and component style contexts
     let anim_enabled: Signal<bool>    = use_context_provider(|| Signal::new(true));
     let chrome_opacity: Signal<f64>   = use_context_provider(|| Signal::new(0.80f64));
@@ -173,7 +189,8 @@ pub fn Desktop() -> Element {
     });
 
     // ── Widget layer state ─────────────────────────────────────────────────
-    let mut widget_layout   = use_signal(load_widget_layout);
+    let db_widgets = db.clone();
+    let mut widget_layout   = use_signal(move || load_widget_layout(&db_widgets));
     let mut edit_mode       = use_signal(|| false);
     let mut next_widget_id  = use_signal(|| 100u32);
     let mut picker_open     = use_signal(|| false);
@@ -200,9 +217,10 @@ pub fn Desktop() -> Element {
     };
 
     // ── Theme + menu action handler ────────────────────────────────────────
+    let db_menu = db.clone();
     let menu_action_handler = move |id: String| {
         match id.as_str() {
-            "theme-midnight-blue" => { theme.set("midnight-blue".to_string()); crate::db::save_theme_to_db("midnight-blue".to_string()); }
+            "theme-midnight-blue" => { theme.set("midnight-blue".to_string()); crate::db::save_theme_to_db(db_menu.clone(), "midnight-blue".to_string()); }
             "launcher"            => launcher.write().toggle(),
             "open-tasks"          => open_app(&mut wm, &mut apps, "tasks"),
             _ => {}
@@ -246,10 +264,11 @@ pub fn Desktop() -> Element {
     };
 
     // Exit edit mode and persist the current layout.
+    let db_done = db.clone();
     let on_done_editing = move |_: MouseEvent| {
         edit_mode.set(false);
         picker_open.set(false);
-        save_widget_layout(&widget_layout.read());
+        save_widget_layout(db_done.clone(), &widget_layout.read());
     };
 
     // Clear all widgets.

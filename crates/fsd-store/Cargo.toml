@@ -23,6 +23,7 @@ fsd-db         = { workspace = true }
 fsn-store      = { workspace = true }
 fsn-components = { workspace = true }
 fsn-i18n       = { workspace = true }
+toml           = { workspace = true }
 dioxus        = { workspace = true }
 serde         = { workspace = true }
 tokio         = { workspace = true }

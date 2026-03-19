@@ -119,6 +119,11 @@ impl SharedDb {
             .map_err(|e| DbError::SeaOrm(e.to_string()))?;
         Ok(rows.into_iter().map(AuditEntry::from).collect())
     }
+
+    /// Explicitly close the connection pool.
+    pub async fn close(self) -> Result<(), DbError> {
+        self.conn.close().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
