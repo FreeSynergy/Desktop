@@ -9,6 +9,7 @@ use crate::service_roles::ServiceRoles;
 use crate::accounts::AccountSettings;
 use crate::desktop_settings::DesktopSettings;
 use crate::shortcuts::ShortcutsSettings;
+use crate::repositories::RepositoriesSettings;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum SettingsSection {
@@ -18,41 +19,45 @@ pub enum SettingsSection {
     Accounts,
     Desktop,
     Shortcuts,
+    Repositories,
 }
 
 impl SettingsSection {
     /// Stable identifier used for routing — never translated.
     pub fn id(&self) -> &str {
         match self {
-            Self::Appearance   => "appearance",
-            Self::Language     => "language",
-            Self::ServiceRoles => "service_roles",
-            Self::Accounts     => "accounts",
-            Self::Desktop      => "desktop",
-            Self::Shortcuts    => "shortcuts",
+            Self::Appearance    => "appearance",
+            Self::Language      => "language",
+            Self::ServiceRoles  => "service_roles",
+            Self::Accounts      => "accounts",
+            Self::Desktop       => "desktop",
+            Self::Shortcuts     => "shortcuts",
+            Self::Repositories  => "repositories",
         }
     }
 
     /// Translated display label.
     pub fn label(&self) -> String {
         match self {
-            Self::Appearance   => fsn_i18n::t("settings.section.appearance"),
-            Self::Language     => fsn_i18n::t("settings.section.language"),
-            Self::ServiceRoles => fsn_i18n::t("settings.section.roles"),
-            Self::Accounts     => fsn_i18n::t("settings.section.accounts"),
-            Self::Desktop      => fsn_i18n::t("settings.section.desktop"),
-            Self::Shortcuts    => fsn_i18n::t("settings.section.shortcuts"),
+            Self::Appearance    => fsn_i18n::t("settings.section.appearance"),
+            Self::Language      => fsn_i18n::t("settings.section.language"),
+            Self::ServiceRoles  => fsn_i18n::t("settings.section.roles"),
+            Self::Accounts      => fsn_i18n::t("settings.section.accounts"),
+            Self::Desktop       => fsn_i18n::t("settings.section.desktop"),
+            Self::Shortcuts     => fsn_i18n::t("settings.section.shortcuts"),
+            Self::Repositories  => fsn_i18n::t("settings.section.repositories"),
         }
     }
 
     pub fn icon(&self) -> &str {
         match self {
-            Self::Appearance   => "🎨",
-            Self::Language     => "🌐",
-            Self::ServiceRoles => "🔗",
-            Self::Accounts     => "👤",
-            Self::Desktop      => "🖥",
-            Self::Shortcuts    => "⌨",
+            Self::Appearance    => "🎨",
+            Self::Language      => "🌐",
+            Self::ServiceRoles  => "🔗",
+            Self::Accounts      => "👤",
+            Self::Desktop       => "🖥",
+            Self::Shortcuts     => "⌨",
+            Self::Repositories  => "📦",
         }
     }
 
@@ -65,6 +70,7 @@ impl SettingsSection {
             "accounts"      => Some(Self::Accounts),
             "desktop"       => Some(Self::Desktop),
             "shortcuts"     => Some(Self::Shortcuts),
+            "repositories"  => Some(Self::Repositories),
             _               => None,
         }
     }
@@ -77,6 +83,7 @@ const ALL_SECTIONS: &[SettingsSection] = &[
     SettingsSection::Accounts,
     SettingsSection::Desktop,
     SettingsSection::Shortcuts,
+    SettingsSection::Repositories,
 ];
 
 /// Root Settings component.
@@ -123,12 +130,13 @@ pub fn SettingsApp() -> Element {
             div {
                 style: "flex: 1; overflow: auto;",
                 match *active.read() {
-                    SettingsSection::Appearance   => rsx! { AppearanceSettings {} },
-                    SettingsSection::Language     => rsx! { LanguageSettings {} },
-                    SettingsSection::ServiceRoles => rsx! { ServiceRoles {} },
-                    SettingsSection::Accounts     => rsx! { AccountSettings {} },
-                    SettingsSection::Desktop      => rsx! { DesktopSettings {} },
-                    SettingsSection::Shortcuts    => rsx! { ShortcutsSettings {} },
+                    SettingsSection::Appearance    => rsx! { AppearanceSettings {} },
+                    SettingsSection::Language      => rsx! { LanguageSettings {} },
+                    SettingsSection::ServiceRoles  => rsx! { ServiceRoles {} },
+                    SettingsSection::Accounts      => rsx! { AccountSettings {} },
+                    SettingsSection::Desktop       => rsx! { DesktopSettings {} },
+                    SettingsSection::Shortcuts     => rsx! { ShortcutsSettings {} },
+                    SettingsSection::Repositories  => rsx! { RepositoriesSettings {} },
                 }
             }
             } // end sidebar + content row
