@@ -23,6 +23,9 @@ description = "Select the active UI theme. Changes apply across all FreeSynergy 
 title       = "Icon Manager"
 description = "Available icon sets for the FreeSynergy interface."
 no_sets     = "No icon sets found. Check the FreeSynergy.Icons repository."
+sets_title  = "Icon Sets"
+select_set  = "Select an icon set from the sidebar."
+no_icons    = "No icons match your search."
 
 [managers.container_apps]
 title       = "Container App Manager"
