@@ -65,9 +65,11 @@ impl SidebarEntry for ManagerBundle {
 // ── Dynamic registry reads ───────────────────────────────────────────────────
 
 /// All installed apps (`kind = "app"`) as nav items.
+/// `fsn-desktop` is excluded — it is the shell itself, not an openable app.
 fn installed_app_items() -> Vec<SidebarNavItem> {
     PackageRegistry::by_kind("app")
         .iter()
+        .filter(|pkg| pkg.id != "fsn-desktop")
         .map(|pkg| pkg.nav_item())
         .collect()
 }
@@ -113,7 +115,7 @@ fn nav_item_to_fsn(item: &SidebarNavItem) -> FsnSidebarItem {
 }
 
 /// Shell sidebar navigation — collapsible (48px → 220px on hover), FsnSidebar style.
-/// Settings is always pinned at the bottom of the sidebar.
+/// Settings is pinned at the bottom only when the Desktop package is installed.
 #[component]
 pub fn ShellSidebar(
     sections:  Vec<SidebarSection>,
@@ -124,9 +126,11 @@ pub fn ShellSidebar(
         .flat_map(|s| s.items.iter().map(nav_item_to_fsn))
         .collect();
 
-    let pinned_items = vec![
-        FsnSidebarItem::new("settings", ICON_SETTINGS, fsn_i18n::t("shell.nav.settings")),
-    ];
+    let pinned_items: Vec<FsnSidebarItem> = if PackageRegistry::is_installed("fsn-desktop") {
+        vec![FsnSidebarItem::new("settings", ICON_SETTINGS, fsn_i18n::t("shell.nav.settings"))]
+    } else {
+        vec![]
+    };
 
     rsx! {
         FsnSidebar {
