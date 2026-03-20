@@ -60,6 +60,7 @@ fsn-core           = { path = "../FreeSynergy.Lib/fsn-core" }
 fsn-components         = { path = "../FreeSynergy.Lib.UI/fsn-components" }
 fsn-manager-language   = { path = "../FreeSynergy.Managers/language" }
 fsn-manager-icons      = { path = "../FreeSynergy.Managers/icons" }
+fsn-manager-cursor     = { path = "../FreeSynergy.Managers/cursor" }
 fsn-render         = { path = "../FreeSynergy.Lib.UI/fsn-render" }
 fsn-db             = { path = "../FreeSynergy.Lib/fsn-db" }
 

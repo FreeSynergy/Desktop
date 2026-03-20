@@ -23,4 +23,5 @@ fsn-components       = { workspace = true }
 fsn-i18n             = { workspace = true }
 fsn-manager-language = { workspace = true }
 fsn-manager-icons    = { workspace = true }
+fsn-manager-cursor   = { workspace = true }
 dioxus               = { workspace = true }
