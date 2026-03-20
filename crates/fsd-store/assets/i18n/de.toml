@@ -18,6 +18,7 @@ updatable = "Aktualisierbar"
 [store.tab]
 all            = "Alle"
 apps           = "Apps"
+managers       = "Manager"
 container_apps = "Container-Apps"
 languages      = "Sprachen"
 themes         = "Designs"

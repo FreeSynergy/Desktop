@@ -7,7 +7,7 @@
 /// Call `ensure_registered()` once at startup — it is idempotent.
 
 use fsd_db::package_registry::{InstalledPackage, PackageRegistry};
-use crate::icons::ICON_STORE;
+use crate::icons::{ICON_DESKTOP, ICON_STORE};
 
 /// Metadata for one built-in package.
 struct BuiltinPkg {
@@ -21,8 +21,12 @@ struct BuiltinPkg {
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 const BUILTIN_PKGS: &[BuiltinPkg] = &[
-    // The Store is the only truly built-in entry point — always present.
-    BuiltinPkg { id: "store", name: "Store", kind: "app", icon: ICON_STORE, version: env!("CARGO_PKG_VERSION") },
+    // Store — always the entry point, always present.
+    BuiltinPkg { id: "store",       name: "Store",                kind: "app", icon: ICON_STORE,   version: env!("CARGO_PKG_VERSION") },
+    // Desktop — registered here so the Store correctly shows it as installed when
+    // running inside the Desktop. When the Store runs as a standalone CLI this
+    // function is never called, so fsn-desktop stays unregistered there. ✓
+    BuiltinPkg { id: "fsn-desktop", name: "FreeSynergy Desktop",  kind: "app", icon: ICON_DESKTOP, version: env!("CARGO_PKG_VERSION") },
 ];
 
 /// IDs to remove on startup — old renamed entries that have been superseded.
