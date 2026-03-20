@@ -20,6 +20,8 @@ pub enum PackageKind {
     MessengerAdapter,
     Bridge,
     Task,
+    /// A native binary service (non-container, e.g. Mistral.rs).
+    Binary,
     /// A bundle of multiple packages installed together.
     Bundle,
 }
@@ -29,6 +31,7 @@ impl PackageKind {
     pub const ALL: &'static [PackageKind] = &[
         PackageKind::App,
         PackageKind::Container,
+        PackageKind::Binary,
         PackageKind::Manager,
         PackageKind::Language,
         PackageKind::Theme,
@@ -42,17 +45,18 @@ impl PackageKind {
 
     pub fn label(&self) -> &'static str {
         match self {
-            PackageKind::App             => "App",
-            PackageKind::Container       => "Container-App",
-            PackageKind::Manager         => "Manager",
-            PackageKind::Language        => "Language",
-            PackageKind::Theme           => "Theme",
-            PackageKind::Widget          => "Widget",
-            PackageKind::BotCommand      => "Bot Command",
+            PackageKind::App              => "App",
+            PackageKind::Container        => "Container-App",
+            PackageKind::Binary           => "Binary",
+            PackageKind::Manager          => "Manager",
+            PackageKind::Language         => "Language",
+            PackageKind::Theme            => "Theme",
+            PackageKind::Widget           => "Widget",
+            PackageKind::BotCommand       => "Bot Command",
             PackageKind::MessengerAdapter => "Messenger Adapter",
-            PackageKind::Bridge          => "Bridge",
-            PackageKind::Task            => "Task",
-            PackageKind::Bundle          => "Bundle",
+            PackageKind::Bridge           => "Bridge",
+            PackageKind::Task             => "Task",
+            PackageKind::Bundle           => "Bundle",
         }
     }
 
@@ -60,6 +64,7 @@ impl PackageKind {
         match self {
             PackageKind::App        => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>"#,
             PackageKind::Container  => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/><circle cx="6" cy="5" r="1" fill="currentColor"/><circle cx="6" cy="12" r="1" fill="currentColor"/><circle cx="6" cy="19" r="1" fill="currentColor"/></svg>"#,
+            PackageKind::Binary     => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4-2 4 2 4-2 4 2"/><path d="M4 12l4-2 4 2 4-2 4 2"/><path d="M4 18l4-2 4 2 4-2 4 2"/></svg>"#,
             PackageKind::Manager    => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>"#,
             PackageKind::Language   => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>"#,
             PackageKind::Theme      => r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.19 0 .37-.01.56-.02a1 1 0 0 0 .94-1V19a2 2 0 0 1 2-2h3a2 2 0 0 0 2-2v-1c0-5.52-4.48-10-10-10z"/></svg>"#,
@@ -77,6 +82,7 @@ impl PackageKind {
         match self {
             PackageKind::App              => "app".into(),
             PackageKind::Container        => "container".into(),
+            PackageKind::Binary           => "binary".into(),
             PackageKind::Manager          => "manager".into(),
             PackageKind::Language         => "language".into(),
             PackageKind::Theme            => "theme".into(),
