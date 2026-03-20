@@ -113,7 +113,7 @@ pub fn LogViewer(service: String) -> Element {
                 }
 
                 button {
-                    style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px;",
+                    style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--fsn-text-primary);",
                     onclick: move |_| entries.set(vec![]),
                     {fsn_i18n::t("actions.clear")}
                 }

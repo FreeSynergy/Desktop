@@ -349,7 +349,7 @@ fn ServiceActions(
 
             // Select service for log view
             button {
-                style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px;",
+                style: "padding: 4px 8px; background: var(--fsn-bg-surface); border: 1px solid var(--fsn-border); border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--fsn-text-primary);",
                 title: fsn_i18n::t("container.section.logs"),
                 onclick: {
                     let n = name.clone();
