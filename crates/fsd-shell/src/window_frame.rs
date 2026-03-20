@@ -303,7 +303,7 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                         dragging.set(true);
                     }
                 },
-                ondblclick: move |evt: MouseEvent| {
+                ondoubleclick: move |evt: MouseEvent| {
                     evt.stop_propagation();
                     props.on_maximize.call(id);
                 },
