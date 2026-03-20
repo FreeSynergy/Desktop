@@ -473,6 +473,7 @@ fn build_resource(yaml: &str, compose: ComposeFile) -> Result<ContainerAppResour
             dependencies: vec![],
             signature: None,
             status: ValidationStatus::Incomplete,
+            source: None,
         },
         compose_yaml: yaml.to_owned(),
         services,

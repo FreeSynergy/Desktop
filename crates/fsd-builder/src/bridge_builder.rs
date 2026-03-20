@@ -248,6 +248,7 @@ fn build_bridge_resource(
             dependencies: vec![],
             signature: None,
             status: ValidationStatus::Incomplete,
+            source: None,
         },
         target_role: Role::new(role),
         target_service: service.to_owned(),
