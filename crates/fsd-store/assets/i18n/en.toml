@@ -46,6 +46,26 @@ capabilities  = "Capabilities"
 package_info  = "Package Info"
 store_packages = "Store Packages"
 
+[store.section_tab]
+server  = "Server"
+apps    = "Apps"
+desktop = "Desktop"
+
+[store.sidebar]
+bundles   = "Bundles"
+server    = "Server"
+bridges   = "Bridges"
+apps      = "Apps"
+bots      = "Bots"
+themes    = "Themes"
+widgets   = "Widgets"
+cursors   = "Cursors"
+icons     = "Icons"
+languages = "Languages"
+installed = "Installed"
+updates   = "Updates"
+settings  = "Settings"
+
 [store.dialog]
 remove_title         = "Remove {name}?"
 remove_body          = "This will unregister the package and delete any downloaded files."

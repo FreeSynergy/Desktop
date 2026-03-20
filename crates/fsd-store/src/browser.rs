@@ -54,11 +54,15 @@ pub fn resolve_icon(icon: &str) -> Option<String> {
     ))
 }
 
-/// Package browser component. `kind` filters by package type (None = show all).
+/// Package browser component.
+///
+/// `kinds` filters by package type — empty slice means show all.
+/// Multiple kinds are OR-combined.
 #[component]
 pub fn PackageBrowser(
     search: String,
-    kind: Option<PackageKind>,
+    #[props(default)]
+    kinds: Vec<PackageKind>,
     on_select: EventHandler<PackageEntry>,
 ) -> Element {
     let packages: Signal<Vec<PackageEntry>> = use_signal(Vec::new);
@@ -136,7 +140,7 @@ pub fn PackageBrowser(
                     || p.category.to_lowercase().contains(word.as_str())
                     || p.tags.iter().any(|t| t.to_lowercase().contains(word.as_str()))
             });
-            let matches_kind    = kind.as_ref().map_or(true, |k| &p.kind == k);
+            let matches_kind    = kinds.is_empty() || kinds.contains(&p.kind);
             let matches_install = match &cur_filter {
                 InstallFilter::All       => true,
                 InstallFilter::Installed => p.installed,

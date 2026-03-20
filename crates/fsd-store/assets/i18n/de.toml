@@ -44,6 +44,26 @@ capabilities   = "Fähigkeiten"
 package_info   = "Paket-Info"
 store_packages = "Store-Pakete"
 
+[store.section_tab]
+server  = "Server"
+apps    = "Apps"
+desktop = "Desktop"
+
+[store.sidebar]
+bundles   = "Bundles"
+server    = "Server"
+bridges   = "Bridges"
+apps      = "Apps"
+bots      = "Bots"
+themes    = "Designs"
+widgets   = "Widgets"
+cursors   = "Mauszeiger"
+icons     = "Icons"
+languages = "Sprachen"
+installed = "Installiert"
+updates   = "Updates"
+settings  = "Einstellungen"
+
 [store.dialog]
 remove_title         = "{name} entfernen?"
 remove_body          = "Das Paket wird aus dem Registry entfernt und heruntergeladene Dateien werden gelöscht."

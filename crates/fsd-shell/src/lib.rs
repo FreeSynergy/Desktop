@@ -17,6 +17,7 @@ pub mod sidebar;
 pub mod split_view;
 pub mod taskbar;
 pub mod wallpaper;
+pub mod system_info;
 pub mod web_desktop;
 pub mod window;
 pub mod window_frame;
@@ -37,6 +38,7 @@ pub use web_desktop::{WebDesktop, WebTaskbarState};
 pub use window::{Window, WindowButton, WindowContent, WindowId, WindowManager, WindowSize};
 pub use window_frame::WindowFrame;
 pub use spinner::{LoadingOverlay, LoadingSpinner, SpinnerSize};
+pub use system_info::{Architecture, Platform, RunMode, SystemInfo, SYSTEM_INFO};
 pub use widgets::{
     ClockWidget, SystemInfoWidget, QuickNotesWidget, PlaceholderWidget,
     WidgetKind, WidgetSlot, render_widget, load_widget_layout, save_widget_layout,
