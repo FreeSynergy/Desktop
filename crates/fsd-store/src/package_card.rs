@@ -247,16 +247,17 @@ pub fn PackageCard(
                                     onclick: move |_| show_dropdown.set(false),
                                 }
                                 div {
-                                    style: "position: absolute; bottom: calc(100% + 4px); right: 0; \
+                                    style: "position: absolute; top: calc(100% + 4px); right: 0; \
                                             background: var(--fsn-color-bg-surface); \
                                             border: 1px solid var(--fsn-color-border-default); \
                                             border-radius: var(--fsn-radius-md); \
                                             box-shadow: 0 4px 16px rgba(0,0,0,0.3); \
                                             min-width: 140px; overflow: hidden; z-index: 801;",
                                     button {
-                                        style: "width: 100%; padding: 9px 14px; background: transparent; \
+                                        style: "width: 100%; padding: 9px 14px; \
+                                                background: var(--fsn-color-error, #ef4444); \
                                                 border: none; text-align: left; cursor: pointer; font-size: 13px; \
-                                                color: var(--fsn-color-error, #ef4444);",
+                                                color: white;",
                                         onclick: move |evt: MouseEvent| {
                                             evt.stop_propagation();
                                             show_dropdown.set(false);

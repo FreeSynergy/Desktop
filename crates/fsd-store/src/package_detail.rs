@@ -338,51 +338,6 @@ pub fn PackageDetail(
                     }
                 }
 
-                // Completeness checklist
-                div { style: "margin-bottom: 32px;",
-                    h3 {
-                        style: "font-size: 14px; font-weight: 600; \
-                                text-transform: uppercase; letter-spacing: 0.06em; \
-                                color: var(--fsn-color-text-muted); margin: 0 0 12px 0;",
-                        "Completeness"
-                    }
-                    div {
-                        style: "background: var(--fsn-color-bg-surface); \
-                                border: 1px solid var(--fsn-color-border-default); \
-                                border-radius: var(--fsn-radius-md); overflow: hidden;",
-                        CompletenessRow {
-                            label: "Icon".to_string(),
-                            ok: package.icon.is_some(),
-                        }
-                        CompletenessRow {
-                            label: "Description".to_string(),
-                            ok: !package.description.is_empty(),
-                        }
-                        CompletenessRow {
-                            label: "Tags".to_string(),
-                            ok: !package.tags.is_empty(),
-                        }
-                        if package.kind == PackageKind::Language {
-                            CompletenessRow {
-                                label: "License".to_string(),
-                                ok: false,
-                                // Language packs don't require a license field — show N/A
-                                na: true,
-                            }
-                        } else {
-                            CompletenessRow {
-                                label: "License".to_string(),
-                                ok: !package.license.is_empty(),
-                                na: false,
-                            }
-                        }
-                        CompletenessRow {
-                            label: "Author".to_string(),
-                            ok: !package.author.is_empty(),
-                        }
-                    }
-                }
-
                 // Metadata table
                 div {
                     h3 {
@@ -397,7 +352,17 @@ pub fn PackageDetail(
                                 border-radius: var(--fsn-radius-md); overflow: hidden;",
                         MetaRow { label: fsn_i18n::t("labels.id"),      value: package.id.clone() }
                         MetaRow { label: fsn_i18n::t("labels.version"), value: package.version.clone() }
+                        MetaRow { label: "Type".to_string(),            value: package.kind.label().to_string() }
                         MetaRow { label: "Category".to_string(),        value: package.category.clone() }
+                        if !package.author.is_empty() {
+                            MetaRow { label: "Author".to_string(), value: package.author.clone() }
+                        }
+                        if !package.license.is_empty() {
+                            MetaRow { label: "License".to_string(), value: package.license.clone() }
+                        }
+                        if let Some(ref path) = package.store_path {
+                            MetaRow { label: "Path".to_string(), value: path.clone() }
+                        }
                     }
                 }
             }
@@ -418,37 +383,6 @@ fn CapabilityBadge(label: String) -> Element {
                     border-radius: var(--fsn-radius-md); font-size: 13px;",
             span { "✦" }
             span { "{label}" }
-        }
-    }
-}
-
-// ── CompletenessRow ───────────────────────────────────────────────────────────
-
-#[component]
-fn CompletenessRow(
-    label: String,
-    ok:    bool,
-    #[props(default = false)]
-    na:    bool,
-) -> Element {
-    let (icon, color) = if na {
-        ("N/A", "var(--fsn-color-text-muted)")
-    } else if ok {
-        ("✅", "var(--fsn-color-success, #22c55e)")
-    } else {
-        ("❌", "var(--fsn-color-error, #ef4444)")
-    };
-
-    rsx! {
-        div {
-            style: "display: flex; padding: 9px 16px; \
-                    border-bottom: 1px solid var(--fsn-color-border-default); \
-                    font-size: 13px; align-items: center; gap: 10px;",
-            span {
-                style: "min-width: 100px; color: var(--fsn-color-text-muted);",
-                "{label}"
-            }
-            span { style: "color: {color};", "{icon}" }
         }
     }
 }
