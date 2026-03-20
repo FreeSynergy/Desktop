@@ -7,6 +7,8 @@
 /// - Close: if has_unsaved_changes → UnsavedChangesDialog
 /// - Window sidebar: icons only, expands to icon+label on hover
 /// - Scrollable content area (.fsn-scrollable)
+/// - Double-click on titlebar → maximize / restore previous size+position
+/// - Right-side help panel: ? icon always visible, slides open on hover/click
 use dioxus::prelude::*;
 
 use crate::window::{Window, WindowButton, WindowId, WindowSize};
@@ -62,6 +64,54 @@ pub const FSNOBJ_CSS: &str = r#"
 }
 .fsn-win-sidebar__icon { font-size: 16px; min-width: 20px; text-align: center; flex-shrink: 0; }
 .fsn-win-sidebar__label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Right-side help panel ──────────────────────────── */
+.fsn-help-panel {
+    width: 44px;
+    background: var(--fsn-bg-sidebar, #0a0f1a);
+    border-left: 1px solid var(--fsn-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 300ms ease;
+    flex-shrink: 0;
+}
+.fsn-help-panel:hover,
+.fsn-help-panel--open { width: 300px; }
+.fsn-help-panel__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--fsn-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 120ms;
+}
+.fsn-help-panel__icon:hover { color: var(--fsn-color-primary, #06b6d4); }
+.fsn-help-panel__body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 12px 16px;
+    min-width: 0;
+}
+.fsn-help-panel__title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fsn-color-primary, #06b6d4);
+    margin: 0 0 8px;
+    white-space: nowrap;
+}
+.fsn-help-panel__text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--fsn-text-secondary);
+}
 
 /* ── Resize handle cursors ──────────────────────────── */
 .fsn-resize-n,  .fsn-resize-s  { cursor: ns-resize; }
@@ -253,6 +303,10 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                         dragging.set(true);
                     }
                 },
+                ondblclick: move |evt: MouseEvent| {
+                    evt.stop_propagation();
+                    props.on_maximize.call(id);
+                },
 
                 // App icon — task 3: explicit color so SVG currentColor is always visible
                 if !win.icon.is_empty() {
@@ -295,7 +349,7 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                 }
             }
 
-            // ── Body: sidebar + content ────────────────────────────────────
+            // ── Body: sidebar + content + help-panel ──────────────────────
             div {
                 style: "display: flex; flex: 1; min-height: 0; overflow: hidden;",
 
@@ -321,6 +375,9 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                             overflow-y: auto; overflow-x: hidden;",
                     {props.children}
                 }
+
+                // Right-side help panel
+                HelpPanel { help_topic: win.help_topic.clone() }
             }
 
             // ── Footer buttons ─────────────────────────────────────────────
@@ -747,6 +804,64 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
                         props.on_move.call(*icon_pos.read());
                     }
                 },
+            }
+        }
+    }
+}
+
+// ── HelpPanel ─────────────────────────────────────────────────────────────────
+
+/// Right-side help panel — always visible as a 44px strip with a `?` icon.
+/// On hover or click it expands (300ms CSS transition) to show context-sensitive
+/// help text for the current window.
+///
+/// Per spec konzepte/ui-standards.md:
+/// - Collapsed: only the `?` icon visible (~44px), identical width to collapsed sidebar
+/// - Expanded:  scrollable help text (300ms animation, same as sidebar)
+/// - Content comes from the program's own help files (`.ftl`, category `help`)
+#[component]
+fn HelpPanel(help_topic: Option<String>) -> Element {
+    let mut open = use_signal(|| false);
+    let panel_class = if *open.read() {
+        "fsn-help-panel fsn-help-panel--open"
+    } else {
+        "fsn-help-panel"
+    };
+
+    rsx! {
+        div {
+            class: "{panel_class}",
+
+            // ? icon — always visible, click toggles
+            div {
+                class: "fsn-help-panel__icon",
+                title: "Help",
+                onclick: move |_| open.toggle(),
+                "?"
+            }
+
+            // Content — only rendered when panel is open (avoids layout cost)
+            if *open.read() {
+                div {
+                    class: "fsn-help-panel__body fsn-scrollable",
+                    match &help_topic {
+                        Some(topic) => rsx! {
+                            p { class: "fsn-help-panel__title", "{topic}" }
+                            p {
+                                class: "fsn-help-panel__text",
+                                "Help content for this context is provided by the program's \
+                                 own .ftl help files. See the documentation for details."
+                            }
+                        },
+                        None => rsx! {
+                            p {
+                                class: "fsn-help-panel__text",
+                                style: "color: var(--fsn-text-muted); font-style: italic;",
+                                "No help available for this window."
+                            }
+                        },
+                    }
+                }
             }
         }
     }

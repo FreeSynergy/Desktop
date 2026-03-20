@@ -30,7 +30,7 @@ crates/
 
 ## Library Dependencies (FreeSynergy.Lib)
 
-All shared libraries live in `../FreeSynergy.Lib/`. Never duplicate their logic here.
+All shared libraries live in `../FreeSynergy.Libs/`. Never duplicate their logic here.
 
 | Library         | Purpose |
 |---|---|
