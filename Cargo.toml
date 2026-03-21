@@ -96,6 +96,9 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Allocator — replaces glibc allocator to avoid WebKitGTK heap-corruption on window close
+mimalloc = { version = "0.1", default-features = false }
+
 # ── Local patches ─────────────────────────────────────────────────────────────
 # Remove once dioxus-desktop exposes with_navigation_handler in a published release.
 # Tracking: https://github.com/DioxusLabs/dioxus/pull/5390

@@ -1,3 +1,8 @@
+// Replace the system allocator to avoid WebKitGTK heap-corruption on window close.
+// See: https://github.com/DioxusLabs/dioxus/issues (free(): corrupted unsorted chunks)
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use tracing_subscriber::EnvFilter;
 
 fn main() {
