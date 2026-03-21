@@ -20,7 +20,7 @@ use crate::ai_view::AiApp;
 use crate::app_shell::{AppMode, AppShell, GLOBAL_CSS, LayoutA, LayoutC};
 use fsn_components::FSN_SIDEBAR_CSS;
 use crate::context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
-use crate::help_view::HelpApp;
+use crate::help_view::{HelpApp, HelpSidebarPanel, HelpSidebarToggle};
 use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
@@ -184,6 +184,9 @@ pub fn Desktop() -> Element {
     // Any sub-app can request opening another app by setting this to Some(app_id).
     let mut app_open_req: Signal<Option<String>> = use_context_provider(|| Signal::new(None));
 
+    // Help sidebar (right panel) — collapsed by default.
+    let mut help_open: Signal<bool> = use_signal(|| false);
+
     // Browser URL request: Lenses (and Conductor) can push a URL here to open it in the Browser.
     let _browser_url_req: fsd_browser::app::BrowserUrlRequest =
         use_context_provider(|| Signal::new(None));
@@ -191,6 +194,11 @@ pub fn Desktop() -> Element {
     // ── Virtual desktops ───────────────────────────────────────────────────
     let mut active_desktop: Signal<usize> = use_signal(|| 0usize);
     let desktop_count: usize = 2; // configurable in settings; 2 = default per spec
+    // Wipe animation: direction + monotonic key so each switch triggers a fresh animation.
+    // "left"  = new tab has higher index (slide new content in from the right)
+    // "right" = new tab has lower index  (slide new content in from the left)
+    let mut slide_dir: Signal<&'static str> = use_signal(|| "");
+    let mut slide_anim_key: Signal<u32> = use_signal(|| 0u32);
 
     // Handle app-open requests from sub-apps (e.g. Conductor's "Install Service" → Store).
     use_effect(move || {
@@ -417,7 +425,42 @@ pub fn Desktop() -> Element {
                     DesktopTabBar {
                         count: desktop_count,
                         active: *active_desktop.read(),
-                        on_switch: move |idx: usize| active_desktop.set(idx),
+                        on_switch: move |idx: usize| {
+                            let cur = *active_desktop.read();
+                            if idx != cur {
+                                slide_dir.set(if idx > cur { "left" } else { "right" });
+                                let next_key = *slide_anim_key.read() + 1;
+                                slide_anim_key.set(next_key);
+                                active_desktop.set(idx);
+                            }
+                        },
+                    }
+
+                    {
+                        const WIPE_CSS: &str = r#"
+@keyframes fsnWipeFromRight {
+    0%   { transform: translateX(100%); }
+    40%  { transform: translateX(0); }
+    60%  { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+@keyframes fsnWipeFromLeft {
+    0%   { transform: translateX(-100%); }
+    40%  { transform: translateX(0); }
+    60%  { transform: translateX(0); }
+    100% { transform: translateX(100%); }
+}
+.fsn-wipe-overlay {
+    position: absolute; inset: 0; z-index: 9998; pointer-events: none;
+    background: var(--fsn-bg-base);
+}
+.fsn-wipe-overlay--left  { animation: fsnWipeFromRight 320ms cubic-bezier(0.4,0,0.2,1) forwards; }
+.fsn-wipe-overlay--right { animation: fsnWipeFromLeft  320ms cubic-bezier(0.4,0,0.2,1) forwards; }
+@media (prefers-reduced-motion: reduce) {
+    .fsn-wipe-overlay--left, .fsn-wipe-overlay--right { animation: none; display: none; }
+}
+"#;
+                        rsx! { style { "{WIPE_CSS}" } }
                     }
 
                     div {
@@ -655,8 +698,41 @@ pub fn Desktop() -> Element {
                             }
                         }
                     }
+                    // ── Help sidebar toggle (shown when sidebar is closed) ──
+                    if !*help_open.read() {
+                        HelpSidebarToggle {
+                            on_open: move |_| help_open.set(true),
+                        }
+                    }
+
+                    // ── Wipe animation overlay ─────────────────────────────
+                    // Keyed by switch counter so each tab-switch triggers a fresh animation.
+                    {
+                        let dir = *slide_dir.read();
+                        let key = *slide_anim_key.read();
+                        if !dir.is_empty() {
+                            let cls = if dir == "left" {
+                                "fsn-wipe-overlay fsn-wipe-overlay--left"
+                            } else {
+                                "fsn-wipe-overlay fsn-wipe-overlay--right"
+                            };
+                            rsx! {
+                                div { key: "{key}", class: "{cls}" }
+                            }
+                        } else {
+                            rsx! {}
+                        }
+                    }
+
                     } // end inner relative desktop area
                 } // end desktop column (tab bar + inner)
+
+                // ── Help sidebar (right, collapsible) ──────────────────────
+                HelpSidebarPanel {
+                    open: *help_open.read(),
+                    on_close: move |_| help_open.set(false),
+                }
+
             } // end flex row (sidebar + desktop)
         }
     }

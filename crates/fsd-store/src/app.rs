@@ -73,7 +73,6 @@ impl StoreSection {
     pub fn sidebar_items(&self) -> Vec<FsnSidebarItem> {
         match self {
             Self::Server => vec![
-                FsnSidebarItem::new("bundles", ICON_BUNDLE,  fsn_i18n::t("store.sidebar.bundles")),
                 FsnSidebarItem::new("server",  ICON_SERVER,  fsn_i18n::t("store.sidebar.server")),
                 FsnSidebarItem::new("bridges", ICON_BRIDGE,  fsn_i18n::t("store.sidebar.bridges")),
             ],
@@ -85,7 +84,6 @@ impl StoreSection {
                 FsnSidebarItem::new("updates",  ICON_UPDATES, fsn_i18n::t("store.sidebar.updates")),
             ],
             Self::Desktop => vec![
-                FsnSidebarItem::new("bundles",  ICON_BUNDLE,  fsn_i18n::t("store.sidebar.bundles")),
                 FsnSidebarItem::new("themes",   ICON_THEME,   fsn_i18n::t("store.sidebar.themes")),
                 FsnSidebarItem::new("widgets",  ICON_WIDGET,  fsn_i18n::t("store.sidebar.widgets")),
                 FsnSidebarItem::new("cursors",  ICON_CURSOR,  fsn_i18n::t("store.sidebar.cursors")),
