@@ -20,12 +20,13 @@ use crate::ai_view::AiApp;
 use crate::app_shell::{AppMode, AppShell, GLOBAL_CSS, LayoutA, LayoutC};
 use fsn_components::FSN_SIDEBAR_CSS;
 use crate::context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
-use crate::help_view::{HelpApp, HelpSidebarPanel, HelpSidebarToggle};
+use crate::help_view::{HelpApp, HelpSidebarPanel};
 use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
 use crate::sidebar::{ShellSidebar, default_sidebar_sections};
 use crate::taskbar::{AppEntry, default_apps};
+use fsd_db::package_registry::PackageRegistry;
 use crate::wallpaper::Wallpaper;
 use crate::icons::{ICON_EDIT, ICON_ADD, ICON_SETTINGS, ICON_CHEVRON_UP, ICON_CHEVRON_DOWN};
 use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
@@ -184,8 +185,8 @@ pub fn Desktop() -> Element {
     // Any sub-app can request opening another app by setting this to Some(app_id).
     let mut app_open_req: Signal<Option<String>> = use_context_provider(|| Signal::new(None));
 
-    // Help sidebar (right panel) — collapsed by default.
-    let mut help_open: Signal<bool> = use_signal(|| false);
+    // Notification callbacks for AI health changes (used by HelpSidebarPanel).
+    // Declared here so they can capture the `notifs` signal.
 
     // Browser URL request: Lenses (and Conductor) can push a URL here to open it in the Browser.
     let _browser_url_req: fsd_browser::app::BrowserUrlRequest =
@@ -698,13 +699,6 @@ pub fn Desktop() -> Element {
                             }
                         }
                     }
-                    // ── Help sidebar toggle (shown when sidebar is closed) ──
-                    if !*help_open.read() {
-                        HelpSidebarToggle {
-                            on_open: move |_| help_open.set(true),
-                        }
-                    }
-
                     // ── Wipe animation overlay ─────────────────────────────
                     // Keyed by switch counter so each tab-switch triggers a fresh animation.
                     {
@@ -727,10 +721,22 @@ pub fn Desktop() -> Element {
                     } // end inner relative desktop area
                 } // end desktop column (tab bar + inner)
 
-                // ── Help sidebar (right, collapsible) ──────────────────────
+                // ── Help sidebar (right, hover-expandable) ─────────────────
                 HelpSidebarPanel {
-                    open: *help_open.read(),
-                    on_close: move |_| help_open.set(false),
+                    on_ai_offline: Some(EventHandler::new(move |_| {
+                        notifs.write().push(
+                            crate::notification::NotificationKind::Warning,
+                            "AI Assistant offline",
+                            Some("The AI service is not responding.".into()),
+                        );
+                    })),
+                    on_ai_online: Some(EventHandler::new(move |_| {
+                        notifs.write().push(
+                            crate::notification::NotificationKind::Success,
+                            "AI Assistant online",
+                            Some("The AI assistant is now available.".into()),
+                        );
+                    })),
                 }
 
             } // end flex row (sidebar + desktop)
@@ -960,17 +966,40 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
     }
 
     let title_key = format!("app-{}", app_id);
-    // Use the app entry icon first; fall back to the built-in icon map so every
-    // app gets its own icon in the titlebar instead of the generic "🗗" fallback.
+
+    // Icon priority: existing AppEntry → PackageRegistry (project icon) → built-in map → fallback.
+    // This ensures the window titlebar always shows the same icon as the left sidebar.
     let icon = apps.read().iter().find(|a| a.id == app_id)
         .map(|a| a.icon.clone())
+        .or_else(|| {
+            PackageRegistry::load()
+                .into_iter()
+                .find(|p| p.id == app_id)
+                .map(|p| p.icon)
+                .filter(|s| !s.is_empty())
+        })
         .unwrap_or_else(|| icon_for_app(app_id));
-    let window = Window::new(title_key).with_icon(icon).with_desktop(desktop_idx);
+
+    let window = Window::new(title_key).with_icon(icon.clone()).with_desktop(desktop_idx);
     let win_id = window.id;
     wm.write().open(window);
 
-    if let Some(app) = apps.write().iter_mut().find(|a| a.id == app_id) {
-        app.windows.push(win_id);
+    // Ensure every opened app has an AppEntry so the taskbar can show it.
+    let app_exists = apps.read().iter().any(|a| a.id == app_id);
+    if app_exists {
+        if let Some(app) = apps.write().iter_mut().find(|a| a.id == app_id) {
+            app.windows.push(win_id);
+        }
+    } else {
+        apps.write().push(AppEntry {
+            id:        app_id.to_string(),
+            label_key: app_id_to_label(app_id).to_string(),
+            icon,
+            icon_url:  None,
+            group:     None,
+            pinned:    false,
+            windows:   vec![win_id],
+        });
     }
     tracing::info!("Opened app: {}", app_id);
 }

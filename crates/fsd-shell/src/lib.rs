@@ -26,7 +26,7 @@ pub use ai_view::AiApp;
 pub use app_shell::{AppMode, AppShell, LayoutA, LayoutB, LayoutC, ScreenWrapper};
 pub use desktop::Desktop;
 pub use header::{Breadcrumb, ShellHeader};
-pub use help_view::{HelpApp, HelpSidebarPanel, HelpSidebarToggle};
+pub use help_view::{HelpApp, HelpSidebarPanel};
 pub use launcher::{AppLauncher, LauncherState};
 pub use multiwindow::{MultiwindowHandle, use_multiwindow};
 pub use context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};

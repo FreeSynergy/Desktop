@@ -212,12 +212,19 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     // ── Unsaved-changes dialog state ──────────────────────────────────────────
     let mut close_requested: Signal<bool> = use_signal(|| false);
 
+    // ── Hover-raise state ─────────────────────────────────────────────────────
+    // While the mouse is over the VISIBLE part of this window the z_index is
+    // temporarily boosted (+1000). A click (on_focus) makes it permanently active
+    // (highest z_index via WindowManager). Hover never calls on_focus.
+    let mut hovered: Signal<bool> = use_signal(|| false);
+
     let (px, py)   = *pos.read();
     let (pw, ph)   = *dim.read();
     let is_dragging = *dragging.read();
     let is_resizing = resize.read().dir.is_some();
     let has_overlay = is_dragging || is_resizing;
     let is_max      = win.maximized;
+    let effective_z = if *hovered.read() { win.z_index + 1000 } else { win.z_index };
 
     // ── Frame style ───────────────────────────────────────────────────────────
     let frame_style = if is_max {
@@ -248,7 +255,7 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
              box-shadow: var(--fsn-window-shadow); \
              pointer-events: all; \
              z-index: {}; overflow: visible;",
-            win.z_index
+            effective_z
         )
     };
 
@@ -273,7 +280,11 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
         div {
             class: "fsd-window",
             style: "{frame_style}",
+            // Click → permanent focus (z_index set to max by WindowManager)
             onmousedown: move |_| props.on_focus.call(id),
+            // Hover → temporary z_index boost (local only, no WindowManager call)
+            onmouseenter: move |_| hovered.set(true),
+            onmouseleave: move |_| { if !has_overlay { hovered.set(false); } },
 
             // ── Resize handles (only when not maximized) ───────────────────
             if !is_max {

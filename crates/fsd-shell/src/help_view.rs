@@ -263,64 +263,135 @@ pub struct ChatMsg {
     pub content: String,
 }
 
-/// Collapsed toggle button — a small tab on the right edge of the desktop.
+/// Collapsible right-side help panel for the Desktop shell.
+///
+/// Collapsed (44 px): shows a vertical "❓ Help" tab on the right edge.
+/// Hover over the tab or panel: expands leftward with a 300 ms CSS transition.
+/// Width is resizable by dragging the left edge of the expanded panel.
+/// AI chat section height is resizable by dragging the divider above it.
+/// AI availability is checked periodically via HTTP ping; the section is hidden
+/// when the AI service is not responding, and a notification is emitted on change.
 #[component]
-pub fn HelpSidebarToggle(on_open: EventHandler<()>) -> Element {
-    rsx! {
-        div {
-            style: "position: absolute; right: 0; top: 50%; transform: translateY(-50%); \
-                    z-index: 50;",
-            button {
-                onclick: move |_| on_open.call(()),
-                style: "writing-mode: vertical-rl; text-orientation: mixed; \
-                        background: var(--fsn-bg-elevated); \
-                        border: 1px solid var(--fsn-border); \
-                        border-right: none; \
-                        border-radius: 8px 0 0 8px; \
-                        padding: 12px 6px; \
-                        color: var(--fsn-text-secondary); \
-                        font-size: 11px; font-family: inherit; \
-                        cursor: pointer; \
-                        display: flex; align-items: center; gap: 6px;",
-                "❓ Help"
-            }
-        }
-    }
-}
-
-/// Collapsible right-side help panel.
-/// When `open` is false the panel has zero width and is invisible.
-/// When an AI engine is running the panel splits into help (top) + chat (bottom).
-#[component]
-pub fn HelpSidebarPanel(open: bool, on_close: EventHandler<()>) -> Element {
+pub fn HelpSidebarPanel(
+    #[props(default)]
+    on_ai_offline: Option<EventHandler<()>>,
+    #[props(default)]
+    on_ai_online: Option<EventHandler<()>>,
+) -> Element {
     let mut tab = use_signal(|| SidebarTab::Topics);
 
-    // Check AI status once per render — lightweight PID-file check.
-    let ai_url = fsd_ai::ai_api_url();
-    let ai_active = ai_url.is_some();
+    // ── Panel geometry ────────────────────────────────────────────────────
+    let mut panel_width:  Signal<f64> = use_signal(|| 280.0);
+    let mut ai_height:    Signal<f64> = use_signal(|| 260.0);
+    let mut hovered:      Signal<bool> = use_signal(|| false);
 
-    // Chat state
-    let mut messages: Signal<Vec<ChatMsg>> = use_signal(Vec::new);
-    let mut input   = use_signal(String::new);
-    let mut thinking = use_signal(|| false);
+    // Width-resize state (dragging the left edge)
+    let mut resizing_w:   Signal<bool> = use_signal(|| false);
+    let mut resize_w_sx:  Signal<f64>  = use_signal(|| 0.0);
+    let mut resize_w_sw:  Signal<f64>  = use_signal(|| 280.0);
 
-    if !open {
-        return rsx! {};
+    // AI-section height resize state (dragging the divider)
+    let mut resizing_ai:  Signal<bool> = use_signal(|| false);
+    let mut resize_ai_sy: Signal<f64>  = use_signal(|| 0.0);
+    let mut resize_ai_sh: Signal<f64>  = use_signal(|| 260.0);
+
+    // ── AI health ─────────────────────────────────────────────────────────
+    // true  = AI responded to HTTP ping within 3 s
+    // false = no response / not running
+    let mut ai_online:     Signal<bool> = use_signal(|| false);
+    let mut ai_was_online: Signal<bool> = use_signal(|| false);
+
+    // Background task: ping every 30 s, emit callbacks on state change.
+    {
+        let on_offline = on_ai_offline.clone();
+        let on_online  = on_ai_online.clone();
+        use_future(move || async move {
+            loop {
+                let url = fsd_ai::ai_api_url();
+                let is_now = if let Some(ref api) = url {
+                    reqwest::Client::new()
+                        .get(format!("{api}/models"))
+                        .timeout(std::time::Duration::from_secs(3))
+                        .send()
+                        .await
+                        .is_ok()
+                } else {
+                    false
+                };
+
+                let was = *ai_was_online.read();
+                ai_online.set(is_now);
+                if is_now != was {
+                    ai_was_online.set(is_now);
+                    if is_now {
+                        if let Some(ref cb) = on_online  { cb.call(()); }
+                    } else if was {
+                        if let Some(ref cb) = on_offline { cb.call(()); }
+                    }
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            }
+        });
     }
+
+    // ── Chat state ────────────────────────────────────────────────────────
+    let mut messages: Signal<Vec<ChatMsg>> = use_signal(Vec::new);
+    let mut input     = use_signal(String::new);
+    let mut thinking  = use_signal(|| false);
+    let ai_url        = fsd_ai::ai_api_url();
+
+    // ── Derived values ────────────────────────────────────────────────────
+    let is_ai_online  = *ai_online.read();
+    let is_resizing   = *resizing_w.read() || *resizing_ai.read();
+    let is_open       = *hovered.read() || is_resizing;
+    let pw            = *panel_width.read();
+    let aih           = *ai_height.read();
+    // At 44 px (collapsed) the body is hidden by overflow; full width when open.
+    let effective_w   = if is_open { pw + 44.0 } else { 44.0 };
 
     const PANEL_CSS: &str = r#"
 .fsn-help-sidebar {
-    width: 280px; flex-shrink: 0;
-    display: flex; flex-direction: column;
+    flex-shrink: 0; display: flex; flex-direction: row;
+    overflow: hidden;
+    transition: width 300ms ease;
+}
+/* ── Body (left part, hidden when collapsed) ── */
+.fsn-help-sidebar__body {
+    flex: 1; display: flex; flex-direction: row; min-width: 0; overflow: hidden;
+}
+.fsn-help-sidebar__drag-edge {
+    width: 6px; flex-shrink: 0; cursor: ew-resize;
+    background: transparent;
+    transition: background 120ms;
+}
+.fsn-help-sidebar__drag-edge:hover { background: var(--fsn-border-focus); }
+.fsn-help-sidebar__inner {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
     background: var(--fsn-bg-surface);
     border-left: 1px solid var(--fsn-border);
-    overflow: hidden;
+    min-width: 0;
 }
+/* ── Collapsed tab strip (right, always visible) ── */
+.fsn-help-sidebar__tab-strip {
+    width: 44px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--fsn-bg-surface);
+    border-left: 1px solid var(--fsn-border);
+    gap: 6px; cursor: default; user-select: none;
+}
+.fsn-help-sidebar__tab-strip span {
+    writing-mode: vertical-rl; text-orientation: mixed;
+    font-size: 11px; color: var(--fsn-text-secondary);
+    letter-spacing: 0.06em;
+}
+/* ── Header ── */
 .fsn-help-sidebar__header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 14px; border-bottom: 1px solid var(--fsn-border);
     flex-shrink: 0; background: var(--fsn-bg-elevated);
 }
+/* ── Tabs ── */
 .fsn-help-sidebar__tabs {
     display: flex; border-bottom: 1px solid var(--fsn-border); flex-shrink: 0;
 }
@@ -332,14 +403,20 @@ pub fn HelpSidebarPanel(open: bool, on_close: EventHandler<()>) -> Element {
     transition: color 120ms, border-color 120ms;
 }
 .fsn-help-sidebar__tab--active {
-    color: var(--fsn-primary);
-    border-bottom-color: var(--fsn-primary);
+    color: var(--fsn-primary); border-bottom-color: var(--fsn-primary);
 }
+/* ── Content ── */
 .fsn-help-sidebar__content { flex: 1; overflow-y: auto; min-height: 0; }
+/* ── AI resize divider ── */
+.fsn-help-sidebar__ai-resize {
+    height: 6px; flex-shrink: 0; cursor: ns-resize;
+    background: var(--fsn-border);
+    transition: background 120ms;
+}
+.fsn-help-sidebar__ai-resize:hover { background: var(--fsn-border-focus); }
+/* ── AI chat section ── */
 .fsn-help-sidebar__ai {
-    flex-shrink: 0; border-top: 1px solid var(--fsn-border);
-    display: flex; flex-direction: column;
-    height: 260px; /* fixed chat height */
+    flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
 }
 .fsn-help-sidebar__ai-title {
     padding: 6px 12px; font-size: 11px; font-weight: 600;
@@ -348,8 +425,8 @@ pub fn HelpSidebarPanel(open: bool, on_close: EventHandler<()>) -> Element {
     flex-shrink: 0;
 }
 .fsn-help-sidebar__chat-msgs {
-    flex: 1; overflow-y: auto; padding: 8px 12px; display: flex;
-    flex-direction: column; gap: 6px; min-height: 0;
+    flex: 1; overflow-y: auto; padding: 8px 12px;
+    display: flex; flex-direction: column; gap: 6px; min-height: 0;
 }
 .fsn-help-sidebar__chat-input-row {
     display: flex; gap: 6px; padding: 8px 10px;
@@ -371,151 +448,241 @@ pub fn HelpSidebarPanel(open: bool, on_close: EventHandler<()>) -> Element {
 
     rsx! {
         style { "{PANEL_CSS}" }
-        div { class: "fsn-help-sidebar",
 
-            // ── Header ──────────────────────────────────────────────────────
-            div { class: "fsn-help-sidebar__header",
-                span {
-                    style: "font-size: 14px; font-weight: 600; color: var(--fsn-text-primary);",
-                    "Help"
-                }
-                if ai_active {
-                    span {
-                        style: "font-size: 10px; background: var(--fsn-success-bg); \
-                                color: var(--fsn-success); border-radius: 4px; padding: 2px 6px; \
-                                border: 1px solid var(--fsn-success);",
-                        "AI"
-                    }
-                }
-                button {
-                    onclick: move |_| on_close.call(()),
-                    style: "background: none; border: none; cursor: pointer; padding: 4px; \
-                            color: var(--fsn-text-muted); font-size: 16px; line-height: 1;",
-                    "×"
-                }
+        // ── Width-resize overlay (fullscreen, active while dragging left edge) ─
+        if *resizing_w.read() {
+            div {
+                style: "position: fixed; inset: 0; z-index: 99999; \
+                        pointer-events: all; cursor: ew-resize;",
+                onmousemove: move |evt: MouseEvent| {
+                    let c = evt.data().client_coordinates();
+                    // dragging left = bigger panel (start_x - current_x = positive delta)
+                    let dx = *resize_w_sx.read() - c.x;
+                    let new_w = (*resize_w_sw.read() + dx).max(180.0).min(600.0);
+                    panel_width.set(new_w);
+                },
+                onmouseup: move |_| resizing_w.set(false),
             }
+        }
 
-            // ── Tab strip ───────────────────────────────────────────────────
-            div { class: "fsn-help-sidebar__tabs",
-                button {
-                    class: if *tab.read() == SidebarTab::Topics {
-                        "fsn-help-sidebar__tab fsn-help-sidebar__tab--active"
-                    } else { "fsn-help-sidebar__tab" },
-                    onclick: move |_| tab.set(SidebarTab::Topics),
-                    "📚 Topics"
-                }
-                button {
-                    class: if *tab.read() == SidebarTab::Shortcuts {
-                        "fsn-help-sidebar__tab fsn-help-sidebar__tab--active"
-                    } else { "fsn-help-sidebar__tab" },
-                    onclick: move |_| tab.set(SidebarTab::Shortcuts),
-                    "⌨ Shortcuts"
-                }
+        // ── AI-height resize overlay ───────────────────────────────────────
+        if *resizing_ai.read() {
+            div {
+                style: "position: fixed; inset: 0; z-index: 99999; \
+                        pointer-events: all; cursor: ns-resize;",
+                onmousemove: move |evt: MouseEvent| {
+                    let c = evt.data().client_coordinates();
+                    // dragging down = bigger AI section
+                    let dy = c.y - *resize_ai_sy.read();
+                    let new_h = (*resize_ai_sh.read() + dy).max(100.0).min(450.0);
+                    ai_height.set(new_h);
+                },
+                onmouseup: move |_| resizing_ai.set(false),
             }
+        }
 
-            // ── Content ─────────────────────────────────────────────────────
-            div { class: "fsn-help-sidebar__content fsn-scrollable",
-                match *tab.read() {
-                    SidebarTab::Topics    => rsx! { SidebarTopicsView {} },
-                    SidebarTab::Shortcuts => rsx! { SidebarShortcutsView {} },
+        div {
+            class: "fsn-help-sidebar",
+            style: "width: {effective_w}px;",
+            onmouseenter: move |_| hovered.set(true),
+            onmouseleave: move |_| {
+                if !*resizing_w.read() && !*resizing_ai.read() {
+                    hovered.set(false);
                 }
-            }
+            },
 
-            // ── AI Chat (only when AI engine is running) ─────────────────────
-            if ai_active {
-                div { class: "fsn-help-sidebar__ai",
-                    div { class: "fsn-help-sidebar__ai-title", "AI Assistant" }
+            // ── Body: left edge drag + inner content ───────────────────────
+            // Hidden by overflow:hidden when effective_w == 44 px.
+            div { class: "fsn-help-sidebar__body",
 
-                    // Message list
-                    div { class: "fsn-help-sidebar__chat-msgs fsn-scrollable",
-                        if messages.read().is_empty() {
-                            p {
-                                style: "color: var(--fsn-text-muted); font-size: 12px; \
-                                        text-align: center; margin: 12px 0;",
-                                "Ask me anything about FreeSynergy…"
+                // Left-edge drag handle — resize panel width
+                div {
+                    class: "fsn-help-sidebar__drag-edge",
+                    onmousedown: move |evt: MouseEvent| {
+                        evt.stop_propagation();
+                        let c = evt.data().client_coordinates();
+                        resize_w_sx.set(c.x);
+                        resize_w_sw.set(*panel_width.read());
+                        resizing_w.set(true);
+                    },
+                }
+
+                div { class: "fsn-help-sidebar__inner",
+
+                    // ── Header ──────────────────────────────────────────────
+                    div { class: "fsn-help-sidebar__header",
+                        span {
+                            style: "font-size: 14px; font-weight: 600; \
+                                    color: var(--fsn-text-primary);",
+                            "Help"
+                        }
+                        if is_ai_online {
+                            span {
+                                style: "font-size: 10px; background: var(--fsn-success-bg); \
+                                        color: var(--fsn-success); border-radius: 4px; \
+                                        padding: 2px 6px; border: 1px solid var(--fsn-success);",
+                                "AI"
                             }
                         }
-                        for msg in messages.read().iter() {
-                            {
-                                let is_user = msg.role == "user";
-                                let (bg, align, color) = if is_user {
-                                    ("var(--fsn-primary)", "flex-end", "#fff")
-                                } else {
-                                    ("var(--fsn-bg-elevated)", "flex-start", "var(--fsn-text-primary)")
-                                };
-                                rsx! {
-                                    div {
-                                        style: "display: flex; justify-content: {align};",
-                                        div {
-                                            style: "max-width: 90%; padding: 6px 10px; border-radius: 8px; \
-                                                    background: {bg}; color: {color}; \
-                                                    font-size: 12px; line-height: 1.5; white-space: pre-wrap;",
-                                            "{msg.content}"
+                    }
+
+                    // ── Tab strip ────────────────────────────────────────────
+                    div { class: "fsn-help-sidebar__tabs",
+                        button {
+                            class: if *tab.read() == SidebarTab::Topics {
+                                "fsn-help-sidebar__tab fsn-help-sidebar__tab--active"
+                            } else { "fsn-help-sidebar__tab" },
+                            onclick: move |_| tab.set(SidebarTab::Topics),
+                            "📚 Topics"
+                        }
+                        button {
+                            class: if *tab.read() == SidebarTab::Shortcuts {
+                                "fsn-help-sidebar__tab fsn-help-sidebar__tab--active"
+                            } else { "fsn-help-sidebar__tab" },
+                            onclick: move |_| tab.set(SidebarTab::Shortcuts),
+                            "⌨ Shortcuts"
+                        }
+                    }
+
+                    // ── Content ──────────────────────────────────────────────
+                    div { class: "fsn-help-sidebar__content fsn-scrollable",
+                        match *tab.read() {
+                            SidebarTab::Topics    => rsx! { SidebarTopicsView {} },
+                            SidebarTab::Shortcuts => rsx! { SidebarShortcutsView {} },
+                        }
+                    }
+
+                    // ── AI section (only when AI is online) ──────────────────
+                    if is_ai_online {
+                        // Divider — drag to resize AI section height
+                        div {
+                            class: "fsn-help-sidebar__ai-resize",
+                            onmousedown: move |evt: MouseEvent| {
+                                evt.stop_propagation();
+                                let c = evt.data().client_coordinates();
+                                resize_ai_sy.set(c.y);
+                                resize_ai_sh.set(*ai_height.read());
+                                resizing_ai.set(true);
+                            },
+                        }
+
+                        div {
+                            class: "fsn-help-sidebar__ai",
+                            style: "height: {aih}px;",
+
+                            div { class: "fsn-help-sidebar__ai-title", "AI Assistant" }
+
+                            div { class: "fsn-help-sidebar__chat-msgs fsn-scrollable",
+                                if messages.read().is_empty() {
+                                    p {
+                                        style: "color: var(--fsn-text-muted); font-size: 12px; \
+                                                text-align: center; margin: 12px 0;",
+                                        "Ask me anything about FreeSynergy…"
+                                    }
+                                }
+                                for msg in messages.read().iter() {
+                                    {
+                                        let is_user = msg.role == "user";
+                                        let (bg, align, color) = if is_user {
+                                            ("var(--fsn-primary)", "flex-end", "#fff")
+                                        } else {
+                                            ("var(--fsn-bg-elevated)", "flex-start",
+                                             "var(--fsn-text-primary)")
+                                        };
+                                        rsx! {
+                                            div {
+                                                style: "display: flex; justify-content: {align};",
+                                                div {
+                                                    style: "max-width: 90%; padding: 6px 10px; \
+                                                            border-radius: 8px; background: {bg}; \
+                                                            color: {color}; font-size: 12px; \
+                                                            line-height: 1.5; white-space: pre-wrap;",
+                                                    "{msg.content}"
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }
-                        if *thinking.read() {
-                            div {
-                                style: "display: flex; align-items: center; gap: 4px; \
-                                        color: var(--fsn-text-muted); font-size: 11px;",
-                                "AI is thinking…"
-                            }
-                        }
-                    }
-
-                    // Input row
-                    div { class: "fsn-help-sidebar__chat-input-row",
-                        input {
-                            r#type: "text",
-                            class: "fsn-help-sidebar__chat-input",
-                            placeholder: "Ask a question…",
-                            value: "{input.read()}",
-                            oninput: move |e| input.set(e.value()),
-                            onkeydown: {
-                                let api = ai_url.clone();
-                                move |e: KeyboardEvent| {
-                                    if e.key() == Key::Enter && !input.read().is_empty() && !*thinking.read() {
-                                        let text = input.read().clone();
-                                        input.set(String::new());
-                                        thinking.set(true);
-                                        messages.write().push(ChatMsg { role: "user", content: text.clone() });
-                                        let url = api.clone().unwrap_or_default();
-                                        let msgs_clone = messages.read().clone();
-                                        spawn(async move {
-                                            let reply = chat_request(&url, &msgs_clone).await;
-                                            messages.write().push(ChatMsg { role: "assistant", content: reply });
-                                            thinking.set(false);
-                                        });
+                                if *thinking.read() {
+                                    div {
+                                        style: "display: flex; align-items: center; gap: 4px; \
+                                                color: var(--fsn-text-muted); font-size: 11px;",
+                                        "AI is thinking…"
                                     }
                                 }
-                            },
-                        }
-                        button {
-                            class: "fsn-help-sidebar__chat-send",
-                            disabled: *thinking.read() || input.read().is_empty(),
-                            onclick: {
-                                let api = ai_url.clone();
-                                move |_| {
-                                    if input.read().is_empty() || *thinking.read() { return; }
-                                    let text = input.read().clone();
-                                    input.set(String::new());
-                                    thinking.set(true);
-                                    messages.write().push(ChatMsg { role: "user", content: text.clone() });
-                                    let url = api.clone().unwrap_or_default();
-                                    let msgs_clone = messages.read().clone();
-                                    spawn(async move {
-                                        let reply = chat_request(&url, &msgs_clone).await;
-                                        messages.write().push(ChatMsg { role: "assistant", content: reply });
-                                        thinking.set(false);
-                                    });
+                            }
+
+                            div { class: "fsn-help-sidebar__chat-input-row",
+                                input {
+                                    r#type: "text",
+                                    class: "fsn-help-sidebar__chat-input",
+                                    placeholder: "Ask a question…",
+                                    value: "{input.read()}",
+                                    oninput: move |e| input.set(e.value()),
+                                    onkeydown: {
+                                        let api = ai_url.clone();
+                                        move |e: KeyboardEvent| {
+                                            if e.key() == Key::Enter
+                                                && !input.read().is_empty()
+                                                && !*thinking.read()
+                                            {
+                                                let text = input.read().clone();
+                                                input.set(String::new());
+                                                thinking.set(true);
+                                                messages.write().push(ChatMsg {
+                                                    role: "user", content: text.clone()
+                                                });
+                                                let url = api.clone().unwrap_or_default();
+                                                let msgs = messages.read().clone();
+                                                spawn(async move {
+                                                    let reply = chat_request(&url, &msgs).await;
+                                                    messages.write().push(ChatMsg {
+                                                        role: "assistant", content: reply
+                                                    });
+                                                    thinking.set(false);
+                                                });
+                                            }
+                                        }
+                                    },
                                 }
-                            },
-                            "↵"
+                                button {
+                                    class: "fsn-help-sidebar__chat-send",
+                                    disabled: *thinking.read() || input.read().is_empty(),
+                                    onclick: {
+                                        let api = ai_url.clone();
+                                        move |_| {
+                                            if input.read().is_empty() || *thinking.read() {
+                                                return;
+                                            }
+                                            let text = input.read().clone();
+                                            input.set(String::new());
+                                            thinking.set(true);
+                                            messages.write().push(ChatMsg {
+                                                role: "user", content: text.clone()
+                                            });
+                                            let url = api.clone().unwrap_or_default();
+                                            let msgs = messages.read().clone();
+                                            spawn(async move {
+                                                let reply = chat_request(&url, &msgs).await;
+                                                messages.write().push(ChatMsg {
+                                                    role: "assistant", content: reply
+                                                });
+                                                thinking.set(false);
+                                            });
+                                        }
+                                    },
+                                    "↵"
+                                }
+                            }
                         }
                     }
                 }
+            }
+
+            // ── Tab strip (always visible, right edge) ─────────────────────
+            div { class: "fsn-help-sidebar__tab-strip",
+                span { "❓" }
+                span { "Help" }
             }
         }
     }
