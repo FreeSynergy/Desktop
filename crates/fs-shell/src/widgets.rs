@@ -99,9 +99,9 @@ impl WidgetKind {
 
     /// All widget kinds including store-installed Custom widgets.
     pub fn all_with_custom() -> Vec<WidgetKind> {
-        use fs_db_desktop::package_registry::PackageRegistry;
+        use fs_db_desktop::package_registry::{PackageKind, PackageRegistry};
         let mut kinds = Self::all();
-        for pkg in PackageRegistry::by_kind("widget") {
+        for pkg in PackageRegistry::by_kind(PackageKind::Widget) {
             kinds.push(WidgetKind::Custom(pkg.id));
         }
         kinds

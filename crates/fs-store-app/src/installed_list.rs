@@ -3,7 +3,7 @@
 /// Section 1: fs-*.service units via systemctl --user.
 /// Section 2: All packages registered in PackageRegistry (languages, themes, widgets, …).
 use dioxus::prelude::*;
-use fs_db_desktop::package_registry::{InstalledPackage, PackageRegistry};
+use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_container::SystemctlManager;
 
 use crate::state::{notify_install_changed, INSTALL_COUNTER};
@@ -102,7 +102,7 @@ pub fn InstalledList(catalog_versions: Vec<(String, String)>) -> Element {
                     pkg: pkg.clone(),
                     on_confirm: move |_| {
                         let id        = pkg.id.clone();
-                        let is_bundle = pkg.kind == "bundle";
+                        let is_bundle = pkg.kind == PackageKind::Bundle;
                         if is_bundle {
                             let _ = PackageRegistry::remove_bundle(&id);
                         } else {

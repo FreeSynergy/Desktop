@@ -87,7 +87,7 @@ async fn do_install_inner(
     PackageRegistry::install(InstalledPackage {
         id:           package.id.clone(),
         name:         package.name.clone(),
-        kind:         package.kind.kind_str(),
+        kind:         package.kind.clone(),
         version:      package.version.clone(),
         icon:         package.icon.clone().unwrap_or_default(),
         file_path,

@@ -1,7 +1,7 @@
 /// ShellSidebar — left-side navigation panel for the desktop shell.
 /// Uses the FsSidebar CSS class (icons-only 48px, expands to 220px on hover).
 use dioxus::prelude::*;
-use fs_db_desktop::package_registry::{InstalledPackage, PackageRegistry};
+use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_components::{FsSidebarItem, FsSidebar};
 use fs_i18n;
 
@@ -67,7 +67,7 @@ impl SidebarEntry for ManagerBundle {
 /// All installed apps (`kind = "app"`) as nav items.
 /// `fs-desktop` is excluded — it is the shell itself, not an openable app.
 fn installed_app_items() -> Vec<SidebarNavItem> {
-    PackageRegistry::by_kind("app")
+    PackageRegistry::by_kind(PackageKind::App)
         .iter()
         .filter(|pkg| pkg.id != "fs-desktop")
         .map(|pkg| pkg.nav_item())
@@ -76,7 +76,7 @@ fn installed_app_items() -> Vec<SidebarNavItem> {
 
 /// Managers bundle — only returned when at least one manager is installed.
 fn installed_manager_bundle() -> Option<SidebarNavItem> {
-    let managers = PackageRegistry::by_kind("manager");
+    let managers = PackageRegistry::by_kind(PackageKind::Manager);
     if managers.is_empty() {
         None
     } else {

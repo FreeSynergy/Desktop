@@ -8,7 +8,7 @@ use fs_i18n;
 /// Falls back to a local signal when running standalone.
 #[component]
 pub fn AppearanceSettings() -> Element {
-    use fs_db_desktop::package_registry::PackageRegistry;
+    use fs_db_desktop::package_registry::{PackageKind, PackageRegistry};
     use fs_theme::{prefix_theme_css, validate_theme_vars};
     let theme_ctx: Option<Signal<String>> = try_use_context();
     let wallpaper_ctx: Option<Signal<String>> = try_use_context();
@@ -22,7 +22,7 @@ pub fn AppearanceSettings() -> Element {
     let mut editor_saved  = use_signal(|| false);
 
     // Store-installed themes
-    let mut store_themes = use_signal(|| PackageRegistry::by_kind("theme"));
+    let mut store_themes = use_signal(|| PackageRegistry::by_kind(PackageKind::Theme));
     let mut theme_remove_confirm: Signal<Option<String>> = use_signal(|| None);
 
     // Animation + Window-Chrome toggles (B5)
@@ -201,7 +201,7 @@ pub fn AppearanceSettings() -> Element {
                                         let id = theme_id.clone();
                                         move |_| {
                                             let _ = PackageRegistry::remove(&id);
-                                            store_themes.set(PackageRegistry::by_kind("theme"));
+                                            store_themes.set(PackageRegistry::by_kind(PackageKind::Theme));
                                             *theme_remove_confirm.write() = None;
                                         }
                                     },

@@ -5,7 +5,7 @@
 ///   Install: browse and install language packs from the Store
 ///   Edit:    create or contribute translations (+ LLM-assisted when an LLM role is configured)
 use dioxus::prelude::*;
-use fs_db_desktop::package_registry::{InstalledPackage, PackageRegistry};
+use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_i18n;
 use fs_manager_language::{
     DateFormat, LanguageManager, LocaleSettings, NumberFormat, TimeFormat,
@@ -96,7 +96,7 @@ fn load_installed() -> Vec<LangEntry> {
         .collect();
 
     let builtin_codes: Vec<&str> = BUILTIN_LANGUAGES.iter().map(|(c, _)| *c).collect();
-    for pkg in PackageRegistry::by_kind("language") {
+    for pkg in PackageRegistry::by_kind(PackageKind::Language) {
         if !builtin_codes.contains(&pkg.id.as_str()) {
             entries.push(LangEntry { code: pkg.id, name: pkg.name, builtin: false });
         }
@@ -129,7 +129,7 @@ async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
     PackageRegistry::install(InstalledPackage {
         id:           locale.code.clone(),
         name:         locale.name.clone(),
-        kind:         "language".into(),
+        kind:         PackageKind::Language,
         version:      locale.version.clone(),
         icon:         String::new(),
         file_path,

@@ -6,14 +6,14 @@
 ///
 /// Call `ensure_registered()` once at startup — it is idempotent.
 
-use fs_db_desktop::package_registry::{InstalledPackage, PackageRegistry};
+use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use crate::icons::{ICON_DESKTOP, ICON_STORE};
 
 /// Metadata for one built-in package.
 struct BuiltinPkg {
     id:      &'static str,
     name:    &'static str,
-    kind:    &'static str,
+    kind:    PackageKind,
     icon:    &'static str,
     version: &'static str,
 }
@@ -22,11 +22,11 @@ struct BuiltinPkg {
 
 const BUILTIN_PKGS: &[BuiltinPkg] = &[
     // Store — always the entry point, always present.
-    BuiltinPkg { id: "store",       name: "Store",                kind: "app", icon: ICON_STORE,   version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "store",      name: "Store",               kind: PackageKind::App, icon: ICON_STORE,   version: env!("CARGO_PKG_VERSION") },
     // Desktop — registered here so the Store correctly shows it as installed when
     // running inside the Desktop. When the Store runs as a standalone CLI this
     // function is never called, so fs-desktop stays unregistered there. ✓
-    BuiltinPkg { id: "fs-desktop", name: "FreeSynergy Desktop",  kind: "app", icon: ICON_DESKTOP, version: env!("CARGO_PKG_VERSION") },
+    BuiltinPkg { id: "fs-desktop", name: "FreeSynergy Desktop", kind: PackageKind::App, icon: ICON_DESKTOP, version: env!("CARGO_PKG_VERSION") },
 ];
 
 /// IDs to remove on startup — old renamed entries that have been superseded.
@@ -57,7 +57,7 @@ pub fn ensure_registered() {
     let builtin_ids: std::collections::HashSet<&str> =
         BUILTIN_PKGS.iter().map(|p| p.id).collect();
     for pkg in PackageRegistry::load() {
-        if pkg.kind == "app" && !builtin_ids.contains(pkg.id.as_str()) {
+        if pkg.kind == PackageKind::App && !builtin_ids.contains(pkg.id.as_str()) {
             // Only remove if a binary path was recorded but the file is now gone (stale).
             // If file_path is None the package was installed without a local binary
             // (production stub, container-backed, etc.) — keep it.
@@ -75,7 +75,7 @@ pub fn ensure_registered() {
         let entry = InstalledPackage {
             id:           pkg.id.to_string(),
             name:         pkg.name.to_string(),
-            kind:         pkg.kind.to_string(),
+            kind:         pkg.kind.clone(),
             version:      pkg.version.to_string(),
             icon:         pkg.icon.to_string(),
             file_path:    None,

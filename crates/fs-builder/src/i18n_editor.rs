@@ -1,7 +1,7 @@
 /// i18n editor — view and edit installed FSN language files (ui.toml).
 use dioxus::prelude::*;
 use fs_i18n;
-use fs_db_desktop::package_registry::PackageRegistry;
+use fs_db_desktop::package_registry::{PackageKind, PackageRegistry};
 
 /// Built-in language codes (always shown, even without a registry entry).
 const BUILTIN_LANGUAGES: &[(&str, &str)] = &[
@@ -30,7 +30,7 @@ fn load_lang_options() -> Vec<LangOption> {
         .collect();
 
     let builtin_codes: Vec<&str> = BUILTIN_LANGUAGES.iter().map(|(c, _)| *c).collect();
-    for pkg in PackageRegistry::by_kind("language") {
+    for pkg in PackageRegistry::by_kind(PackageKind::Language) {
         if !builtin_codes.contains(&pkg.id.as_str()) {
             opts.push(LangOption { code: pkg.id, name: pkg.name });
         }
