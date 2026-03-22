@@ -35,7 +35,11 @@ pub use sidebar::{ShellSidebar, SidebarSection, SidebarNavItem};
 pub use split_view::{SplitState, SplitView};
 pub use taskbar::Taskbar;
 pub use web_desktop::{WebDesktop, WebTaskbarState};
-pub use window::{Window, WindowButton, WindowContent, WindowId, WindowManager, WindowSize};
+pub use window::{
+    FsWindow, OpenWindow, Window, WindowButton, WindowContent,
+    WindowHost, WindowId, WindowManager, WindowRenderFn, WindowSize,
+    WindowSidebarItem,
+};
 
 // Re-export desktop launch abstraction so fs-app can use fs_shell::launch_desktop.
 #[cfg(feature = "desktop")]

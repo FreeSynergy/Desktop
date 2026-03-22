@@ -30,7 +30,7 @@ use fs_db_desktop::package_registry::PackageRegistry;
 use crate::wallpaper::Wallpaper;
 use crate::icons::{ICON_EDIT, ICON_ADD, ICON_SETTINGS, ICON_CHEVRON_UP, ICON_CHEVRON_DOWN};
 use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
-use crate::window::{Window, WindowId, WindowManager};
+use crate::window::{OpenWindow, Window, WindowId, WindowManager, WindowRenderFn};
 use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
 
 /// Eight invisible fixed-position resize handles around the OS window border.
@@ -525,7 +525,6 @@ pub fn Desktop() -> Element {
                                             on_focus: on_focus_window,
                                             on_minimize: on_minimize_window,
                                             on_maximize: on_maximize_window,
-                                            AppWindowContent { title_key: window.title_key.clone() }
                                         }
                                     }
                                 }
@@ -980,9 +979,10 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
         })
         .unwrap_or_else(|| icon_for_app(app_id));
 
-    let window = Window::new(title_key).with_icon(icon.clone()).with_desktop(desktop_idx);
-    let win_id = window.id;
-    wm.write().open(window);
+    let meta   = Window::new(title_key).with_icon(icon.clone()).with_desktop(desktop_idx);
+    let win_id = meta.id;
+    let render = render_fn_for(app_id);
+    wm.write().open(OpenWindow::new(meta, render));
 
     // Ensure every opened app has an AppEntry so the taskbar can show it.
     let app_exists = apps.read().iter().any(|a| a.id == app_id);
@@ -1004,106 +1004,60 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
     tracing::info!("Opened app: {}", app_id);
 }
 
-/// Wraps each app in the appropriate layout (A / B / C).
-/// Apps that manage their own internal sidebar (container-app, theme, bots) use LayoutA
-/// so the full area is handed to them without an extra wrapper split.
-#[component]
-fn AppWindowContent(title_key: String) -> Element {
-    match title_key.as_str() {
-        "app-tasks" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { TasksApp {} }
-            }
-        },
-        "app-store" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { StoreApp {} }
-            }
-        },
-        "app-builder" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { BuilderApp {} }
-            }
-        },
-        "app-container" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { Container {} }
-            }
-        },
-        "app-language-manager" | "app-manager-language" => rsx! {
-            AppShell { mode: AppMode::Window,
-                fs_settings::LanguageSettings {}
-            }
-        },
-        "app-icons-manager" | "app-manager-icons" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { IconsManagerPanel {} }
-            }
-        },
-        "app-theme-manager" | "app-manager-theme" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { ThemeManagerApp {} }
-            }
-        },
-        "app-manager-container-app" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { Container {} }
-            }
-        },
-        "app-bot-manager" | "app-manager-bots" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { BotManagerApp {} }
-            }
-        },
-        // Per-instance bot icons (app-bot-<name>) — all open the BotManager.
-        // In Phase P the BotManager will accept a pre-selected bot name via Context.
-        t if t.starts_with("app-bot-") => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { BotManagerApp {} }
-            }
-        },
-        "app-settings" => rsx! {
-            AppShell { mode: AppMode::Window,
-                SettingsApp {}
-            }
-        },
-        "app-managers" => rsx! {
-            AppShell { mode: AppMode::Window,
-                ManagersApp {}
-            }
-        },
-        "app-profile" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutC { ProfileApp {} }
-            }
-        },
-        "app-browser" => rsx! {
-            AppShell { mode: AppMode::Window,
-                BrowserApp {}
-            }
-        },
-        "app-lenses" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LensesApp {}
-            }
-        },
-        "app-ai" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { AiApp {} }
-            }
-        },
-        "app-help" => rsx! {
-            AppShell { mode: AppMode::Window,
-                LayoutA { HelpApp {} }
-            }
-        },
-        _ => rsx! {
-            div {
-                style: "color: var(--fs-color-text-muted, #94a3b8); font-size: 13px; \
-                        display: flex; align-items: center; justify-content: center; height: 200px;",
-                "Unknown app: {title_key}"
-            }
-        },
+/// Returns the `WindowRenderFn` for `app_id` (the part *after* the `"fs-"` prefix,
+/// e.g. `"store"`, `"tasks"`, `"bot-manager"`).
+///
+/// Each function is a zero-arg Dioxus component that owns its full layout — the
+/// same component that would run in a standalone OS window. This replaces the old
+/// `AppWindowContent` match block: the render fn is stored once in `OpenWindow`
+/// when the window is opened, so dispatch happens at open-time, not on every render.
+fn render_fn_for(app_id: &str) -> WindowRenderFn {
+    // Per-instance bot icons all open the BotManager view (Phase P: pre-select via Context).
+    if app_id.starts_with("bot-") && app_id != "bot-manager" {
+        return render_bot_manager;
+    }
+    match app_id {
+        "tasks"                                       => render_tasks,
+        "store"                                       => render_store,
+        "builder"                                     => render_builder,
+        "container" | "manager-container-app"         => render_container,
+        "language-manager" | "manager-language"       => render_language_manager,
+        "icons-manager"    | "manager-icons"          => render_icons_manager,
+        "theme-manager"    | "manager-theme"          => render_theme_manager,
+        "bot-manager"      | "manager-bots"           => render_bot_manager,
+        "settings"                                    => render_settings,
+        "managers"                                    => render_managers,
+        "profile"                                     => render_profile,
+        "browser"                                     => render_browser,
+        "lenses"                                      => render_lenses,
+        "ai"                                          => render_ai,
+        "help"                                        => render_help,
+        _                                             => render_unknown,
+    }
+}
+
+fn render_tasks()            -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { TasksApp {} } } } }
+fn render_store()            -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { StoreApp {} } } } }
+fn render_builder()          -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { BuilderApp {} } } } }
+fn render_container()        -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { Container {} } } } }
+fn render_language_manager() -> Element { rsx! { AppShell { mode: AppMode::Window, fs_settings::LanguageSettings {} } } }
+fn render_icons_manager()    -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { IconsManagerPanel {} } } } }
+fn render_theme_manager()    -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { ThemeManagerApp {} } } } }
+fn render_bot_manager()      -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { BotManagerApp {} } } } }
+fn render_settings()         -> Element { rsx! { AppShell { mode: AppMode::Window, SettingsApp {} } } }
+fn render_managers()         -> Element { rsx! { AppShell { mode: AppMode::Window, ManagersApp {} } } }
+fn render_profile()          -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutC { ProfileApp {} } } } }
+fn render_browser()          -> Element { rsx! { AppShell { mode: AppMode::Window, BrowserApp {} } } }
+fn render_lenses()           -> Element { rsx! { AppShell { mode: AppMode::Window, LensesApp {} } } }
+fn render_ai()               -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { AiApp {} } } } }
+fn render_help()             -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { HelpApp {} } } } }
+fn render_unknown()          -> Element {
+    rsx! {
+        div {
+            style: "color: var(--fs-color-text-muted, #94a3b8); font-size: 13px; \
+                    display: flex; align-items: center; justify-content: center; height: 200px;",
+            "Unknown app"
+        }
     }
 }
 

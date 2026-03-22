@@ -11,7 +11,7 @@
 /// - Right-side help panel: ? icon always visible, slides open on hover/click
 use dioxus::prelude::*;
 
-use crate::window::{Window, WindowButton, WindowId, WindowSize};
+use crate::window::{OpenWindow, Window, WindowButton, WindowId, WindowRenderFn, WindowSize};
 
 // ── CSS constants ─────────────────────────────────────────────────────────────
 
@@ -157,12 +157,11 @@ pub const FSNOBJ_CSS: &str = r#"
 
 #[derive(Props, Clone, PartialEq)]
 pub struct WindowFrameProps {
-    pub window:      Window,
+    pub window:      OpenWindow,
     pub on_close:    EventHandler<WindowId>,
     pub on_focus:    EventHandler<WindowId>,
     pub on_minimize: EventHandler<WindowId>,
     pub on_maximize: EventHandler<WindowId>,
-    pub children:    Element,
 }
 
 // ── Resize direction ──────────────────────────────────────────────────────────
@@ -379,12 +378,13 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                     }
                 }
 
-                // Content
+                // Content — rendered via WindowContent so the app gets its own
+                // Dioxus scope (stable signal lifetime, proper memoisation).
                 div {
                     class: if win.scrollable { "fs-window__content fs-scrollable" } else { "fs-window__content" },
                     style: "flex: 1; padding: 16px; min-width: 0; \
                             overflow-y: auto; overflow-x: hidden;",
-                    {props.children}
+                    WindowContent { render: props.window.render }
                 }
 
                 // Right-side help panel
@@ -742,7 +742,7 @@ fn WindowFooterButton(button: WindowButton, on_close: EventHandler<bool>) -> Ele
 
 #[derive(Props, Clone, PartialEq)]
 pub struct MinimizedWindowIconProps {
-    pub window:     Window,
+    pub window:     OpenWindow,
     pub pos_x:      f64,
     pub pos_y:      f64,
     pub on_restore: EventHandler<WindowId>,
@@ -876,6 +876,20 @@ fn HelpPanel(help_topic: Option<String>) -> Element {
             }
         }
     }
+}
+
+// ── WindowContent ─────────────────────────────────────────────────────────────
+
+/// Thin wrapper that calls a `WindowRenderFn` inside its own Dioxus scope.
+///
+/// Wrapping the render call in a component (rather than calling the fn directly)
+/// gives the app a stable scope: `use_signal` and other hooks inside the app live
+/// in `WindowContent`'s scope and survive re-renders of the surrounding `WindowFrame`.
+/// Because `render` is a bare function pointer (`Copy + PartialEq`), Dioxus can
+/// memoize this component and will not re-create the app scope on every frame.
+#[component]
+fn WindowContent(render: WindowRenderFn) -> Element {
+    (render)()
 }
 
 // ── format_window_title ────────────────────────────────────────────────────────
