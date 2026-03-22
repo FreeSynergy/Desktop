@@ -255,7 +255,7 @@ fn find_local_build_binary(id: &str) -> Option<String> {
     // The catalog uses "fs-{name}" IDs; older internal code used bare IDs.
     let known: Option<(&str, &str)> = match id {
         "node"    | "fs-node"                          => Some(("Node",    "fsn")),
-        "desktop" | "fs-desktop" | "store" | "fs-store" => Some(("Desktop", "fsd")),
+        "desktop" | "fs-desktop" | "store" | "fs-store" => Some(("Desktop", "fs-desktop")),
         "init"    | "fs-init"                          => Some(("Init",    "fs-init")),
         "browser" | "fs-browser"                       => Some(("Browser", "fs-browser")),
         _                                               => None,
