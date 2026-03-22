@@ -6,6 +6,7 @@ pub mod translation_editor;
 pub mod accounts;
 pub mod desktop_settings;
 pub mod shortcuts;
+pub mod package_settings;
 
 /// Register app-specific i18n strings for fs-settings (`settings.*` keys).
 /// Called once at desktop startup before any component renders.
@@ -16,11 +17,12 @@ pub fn register_i18n() {
     let _ = fs_i18n::add_toml_lang("de", DE);
 }
 
-pub use app::SettingsApp;
+pub use app::{SettingsApp, SettingsAppProps};
 pub use language::{load_active_language, LangContext, LanguageSettings};
 pub use service_roles::{ServiceRoles, ServiceRole, KNOWN_ROLES};
 pub use desktop_settings::{DesktopConfig, DisplayMode, SidebarConfig, SidebarPosition, TaskbarPosition};
 pub use shortcuts::{ActionDef, ShortcutsConfig, register_actions, resolve_shortcut};
+pub use package_settings::{PackageSettingsEntry, PackageSettingsView};
 
 /// Returns the path to a named config file in `~/.config/fsn/`.
 ///

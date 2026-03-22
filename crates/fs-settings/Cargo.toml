@@ -19,11 +19,12 @@ desktop  = ["dioxus/desktop", "fs-components/desktop"]
 web      = ["dioxus/web",     "fs-components/web"]
 
 [dependencies]
-fs-db-desktop = { workspace = true }
+fs-db-desktop       = { workspace = true }
 fs-components       = { workspace = true }
 fs-store            = { workspace = true }
 fs-theme            = { workspace = true }
 fs-i18n             = { workspace = true }
+fs-pkg              = { workspace = true }
 fs-manager-language = { workspace = true }
 dioxus               = { workspace = true }
 serde                = { workspace = true }

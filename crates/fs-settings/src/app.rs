@@ -9,6 +9,7 @@ use crate::service_roles::ServiceRoles;
 use crate::accounts::AccountSettings;
 use crate::desktop_settings::DesktopSettings;
 use crate::shortcuts::ShortcutsSettings;
+use crate::package_settings::{PackageSettingsEntry, PackageSettingsView};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum SettingsSection {
@@ -18,6 +19,7 @@ pub enum SettingsSection {
     Accounts,
     Desktop,
     Shortcuts,
+    Packages,
 }
 
 impl SettingsSection {
@@ -30,6 +32,7 @@ impl SettingsSection {
             Self::Accounts     => "accounts",
             Self::Desktop      => "desktop",
             Self::Shortcuts    => "shortcuts",
+            Self::Packages     => "packages",
         }
     }
 
@@ -42,6 +45,7 @@ impl SettingsSection {
             Self::Accounts     => fs_i18n::t("settings.section.accounts").into(),
             Self::Desktop      => fs_i18n::t("settings.section.desktop").into(),
             Self::Shortcuts    => fs_i18n::t("settings.section.shortcuts").into(),
+            Self::Packages     => fs_i18n::t("settings.section.packages").into(),
         }
     }
 
@@ -53,6 +57,7 @@ impl SettingsSection {
             Self::Accounts     => "👤",
             Self::Desktop      => "🖥",
             Self::Shortcuts    => "⌨",
+            Self::Packages     => "📦",
         }
     }
 
@@ -65,32 +70,13 @@ impl SettingsSection {
             "accounts"      => Some(Self::Accounts),
             "desktop"       => Some(Self::Desktop),
             "shortcuts"     => Some(Self::Shortcuts),
+            "packages"      => Some(Self::Packages),
             _               => None,
         }
     }
 }
 
-/// Trait that gives a settings section the ability to render itself.
-///
-/// Extend settings without touching `SettingsApp` — implement this trait.
-pub trait SettingsPanel {
-    fn render(&self) -> Element;
-}
-
-impl SettingsPanel for SettingsSection {
-    fn render(&self) -> Element {
-        match self {
-            Self::Appearance   => rsx! { AppearanceSettings {} },
-            Self::Language     => rsx! { LanguageSettings {} },
-            Self::ServiceRoles => rsx! { ServiceRoles {} },
-            Self::Accounts     => rsx! { AccountSettings {} },
-            Self::Desktop      => rsx! { DesktopSettings {} },
-            Self::Shortcuts    => rsx! { ShortcutsSettings {} },
-        }
-    }
-}
-
-const ALL_SECTIONS: &[SettingsSection] = &[
+const STANDARD_SECTIONS: &[SettingsSection] = &[
     SettingsSection::Appearance,
     SettingsSection::Language,
     SettingsSection::ServiceRoles,
@@ -99,14 +85,39 @@ const ALL_SECTIONS: &[SettingsSection] = &[
     SettingsSection::Shortcuts,
 ];
 
+/// Props for the root Settings component.
+///
+/// All fields are optional — `SettingsApp` works standalone without any props.
+/// When the Desktop provides `packages`, a "Packages" section appears in the sidebar.
+#[derive(Props, Clone, PartialEq, Default)]
+pub struct SettingsAppProps {
+    /// Installed packages whose settings should be surfaced in the Packages section.
+    /// When empty (default), the Packages section is hidden.
+    #[props(default)]
+    pub packages: Vec<PackageSettingsEntry>,
+
+    /// Callback fired when the user saves a package setting.
+    /// Receives `(package_id, field_key, new_value)`.
+    #[props(default)]
+    pub on_package_save: Option<EventHandler<(String, String, String)>>,
+}
+
 /// Root Settings component.
+///
+/// Pass `packages` + `on_package_save` props to enable the Packages section.
 #[component]
-pub fn SettingsApp() -> Element {
+pub fn SettingsApp(props: SettingsAppProps) -> Element {
+    let has_packages = !props.packages.is_empty();
     let mut active = use_signal(|| SettingsSection::Appearance);
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_SECTIONS.iter()
+    let mut sidebar_items: Vec<FsSidebarItem> = STANDARD_SECTIONS.iter()
         .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
+
+    if has_packages {
+        let s = SettingsSection::Packages;
+        sidebar_items.push(FsSidebarItem::new(s.id(), s.icon(), s.label()));
+    }
 
     rsx! {
         style { "{FS_SIDEBAR_CSS}" }
@@ -128,23 +139,55 @@ pub fn SettingsApp() -> Element {
             div {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
-            // Collapsible sidebar navigation
-            FsSidebar {
-                items:     sidebar_items,
-                active_id: active.read().id().to_string(),
-                on_select: move |id: String| {
-                    if let Some(section) = SettingsSection::from_id(&id) {
-                        active.set(section);
-                    }
-                },
-            }
+                // Collapsible sidebar navigation
+                FsSidebar {
+                    items:     sidebar_items,
+                    active_id: active.read().id().to_string(),
+                    on_select: move |id: String| {
+                        if let Some(section) = SettingsSection::from_id(&id) {
+                            active.set(section);
+                        }
+                    },
+                }
 
-            // Content
-            div {
-                style: "flex: 1; overflow: auto;",
-                { active.read().render() }
-            }
+                // Content
+                div {
+                    style: "flex: 1; overflow: auto;",
+                    if *active.read() == SettingsSection::Packages {
+                        if has_packages {
+                            PackageSettingsView {
+                                packages: props.packages.clone(),
+                                on_save: props.on_package_save.clone()
+                                    .unwrap_or_else(|| EventHandler::new(|_| {})),
+                            }
+                        }
+                    } else {
+                        { active.read().render_panel() }
+                    }
+                }
             } // end sidebar + content row
+        }
+    }
+}
+
+/// Trait that gives a settings section the ability to render itself.
+///
+/// Extend settings without touching `SettingsApp` — implement this trait.
+pub trait SettingsPanel {
+    fn render_panel(&self) -> Element;
+}
+
+impl SettingsPanel for SettingsSection {
+    fn render_panel(&self) -> Element {
+        match self {
+            Self::Appearance   => rsx! { AppearanceSettings {} },
+            Self::Language     => rsx! { LanguageSettings {} },
+            Self::ServiceRoles => rsx! { ServiceRoles {} },
+            Self::Accounts     => rsx! { AccountSettings {} },
+            Self::Desktop      => rsx! { DesktopSettings {} },
+            Self::Shortcuts    => rsx! { ShortcutsSettings {} },
+            // Packages is rendered inline in SettingsApp (needs props data).
+            Self::Packages     => rsx! { div {} },
         }
     }
 }
