@@ -80,7 +80,8 @@ pub const FSNOBJ_CSS: &str = r#"
     transition: width 300ms ease;
     flex-shrink: 0;
 }
-.fs-help-panel:hover,
+/* Only expand on explicit click (--open class), NOT on :hover.
+   Hover-only expansion showed empty panel with no content → confusing. */
 .fs-help-panel--open { width: 300px; }
 .fs-help-panel__icon {
     width: 44px;
@@ -92,9 +93,13 @@ pub const FSNOBJ_CSS: &str = r#"
     color: var(--fs-text-secondary);
     cursor: pointer;
     flex-shrink: 0;
-    transition: color 120ms;
+    transition: color 120ms, background 120ms;
+    border-radius: var(--fs-radius-sm, 6px);
 }
-.fs-help-panel__icon:hover { color: var(--fs-color-primary, #06b6d4); }
+.fs-help-panel__icon:hover {
+    color: var(--fs-primary, #4d8bf5);
+    background: var(--fs-bg-hover, #243352);
+}
 .fs-help-panel__body {
     flex: 1;
     overflow-y: auto;
@@ -227,7 +232,9 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let is_resizing = resize.read().dir.is_some();
     let has_overlay = is_dragging || is_resizing;
     let is_max      = win.maximized;
-    let effective_z = if *hovered.read() { win.z_index + 1000 } else { win.z_index };
+    // Hover temporarily brings this window above all others.
+    // Use a very large offset so it always wins regardless of base z_index.
+    let effective_z = if *hovered.read() { win.z_index + 1_000_000 } else { win.z_index };
 
     // ── Frame style ───────────────────────────────────────────────────────────
     let frame_style = if is_max {

@@ -25,11 +25,20 @@
 ///
 /// The user can change the layout in Desktop settings (e.g. "help left or right?",
 /// "main sidebar left or right?"). The layout is stored per-user, not per-window.
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU32, Ordering};
 
 use dioxus::prelude::Element;
 
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Monotonically increasing z-index counter.
+/// Every `open_window` and `focus_window` call gets a unique, increasing value,
+/// so the most recently opened/focused window always has the highest base z_index.
+static WINDOW_Z: AtomicU32 = AtomicU32::new(1);
+
+fn next_z() -> u32 {
+    WINDOW_Z.fetch_add(1, Ordering::Relaxed)
+}
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
@@ -398,9 +407,8 @@ pub struct WindowManager {
 
 impl WindowHost for WindowManager {
     fn open_window(&mut self, window: OpenWindow) {
-        let z = self.windows.len() as u32;
         let mut w = window;
-        w.meta.z_index = z;
+        w.meta.z_index = next_z();
         self.windows.push(w);
     }
 
@@ -409,9 +417,8 @@ impl WindowHost for WindowManager {
     }
 
     fn focus_window(&mut self, id: WindowId) {
-        let max_z = self.windows.len() as u32;
         if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
-            w.meta.z_index  = max_z;
+            w.meta.z_index   = next_z();
             w.meta.minimized = false;
         }
     }
