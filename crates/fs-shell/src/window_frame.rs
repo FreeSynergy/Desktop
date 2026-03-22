@@ -5,16 +5,18 @@
 //! - Resize from all 8 handles (5px tolerance via CSS handles)
 //! - Minimize → icon on desktop (handled in desktop.rs)
 //! - Close: if has_unsaved_changes → UnsavedChangesDialog
-//! - Window sidebar: icons only, expands to icon+label on hover
+//! - Window sidebar: universal FsSidebar (left, overlay, hover-expand)
 //! - Scrollable content area (.fs-scrollable)
 //! - Double-click on titlebar → maximize / restore previous size+position
-//! - Right-side help panel: ? icon always visible, slides open on hover/click
+//! - Right-side help panel: universal HelpSidebarPanel (same as Desktop shell)
 // WindowRenderFn is a fn pointer; #[component] derives PartialEq on props structs
 // that include it — comparison is benign here since the same fn ptr is always passed.
 #![allow(unpredictable_function_pointer_comparisons)]
 
 use dioxus::prelude::*;
+use fs_components::{FsSidebar, FsSidebarItem, SidebarSide};
 
+use crate::help_view::HelpSidebarPanel;
 use crate::window::{OpenWindow, WindowButton, WindowId, WindowRenderFn, WindowSize};
 
 // ── CSS constants ─────────────────────────────────────────────────────────────
@@ -37,90 +39,6 @@ pub const FSNOBJ_CSS: &str = r#"
     top: -3px; right: -3px;
 }
 
-/* ── Window sidebar ─────────────────────────────────── */
-.fs-win-sidebar {
-    width: 44px;
-    background: var(--fs-bg-sidebar, #0a0f1a);
-    border-right: 1px solid var(--fs-border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: width 180ms ease;
-    flex-shrink: 0;
-}
-.fs-win-sidebar:hover { width: 200px; }
-.fs-win-sidebar__item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    cursor: pointer;
-    color: var(--fs-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    border-radius: 0;
-    transition: background 120ms, color 120ms;
-}
-.fs-win-sidebar__item:hover,
-.fs-win-sidebar__item--active {
-    background: var(--fs-sidebar-active-bg);
-    color: var(--fs-sidebar-active);
-}
-.fs-win-sidebar__icon { font-size: 16px; min-width: 20px; text-align: center; flex-shrink: 0; }
-.fs-win-sidebar__label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
-
-/* ── Right-side help panel ──────────────────────────── */
-.fs-help-panel {
-    width: 44px;
-    background: var(--fs-bg-sidebar, #0a0f1a);
-    border-left: 1px solid var(--fs-border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: width 300ms ease;
-    flex-shrink: 0;
-}
-/* Only expand on explicit click (--open class), NOT on :hover.
-   Hover-only expansion showed empty panel with no content → confusing. */
-.fs-help-panel--open { width: 300px; }
-.fs-help-panel__icon {
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: var(--fs-text-secondary);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: color 120ms, background 120ms;
-    border-radius: var(--fs-radius-sm, 6px);
-}
-.fs-help-panel__icon:hover {
-    color: var(--fs-primary, #4d8bf5);
-    background: var(--fs-bg-hover, #243352);
-}
-.fs-help-panel__body {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 8px 12px 16px;
-    min-width: 0;
-}
-.fs-help-panel__title {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--fs-color-primary, #06b6d4);
-    margin: 0 0 8px;
-    white-space: nowrap;
-}
-.fs-help-panel__text {
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--fs-text-secondary);
-}
 
 /* ── Resize handle cursors ──────────────────────────── */
 .fs-resize-n,  .fs-resize-s  { cursor: ns-resize; }
@@ -388,35 +306,37 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
             }
 
             // ── Body: sidebar + content + help-panel ──────────────────────
+            // position: relative so the absolute-positioned FsSidebar panels anchor here.
             div {
-                style: "display: flex; flex: 1; min-height: 0; overflow: hidden;",
+                style: "display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative;",
 
-                // Sidebar (only if items defined)
+                // Left navigation sidebar — universal FsSidebar, same component as the shell.
+                // Only rendered when the window provides sidebar items.
                 if has_sidebar {
-                    WindowSidebar {
-                        items: win.sidebar_items.clone(),
-                        active_id: win.active_sidebar_id.clone(),
-                        on_select: {
-                            let id2 = id;
-                            move |_item_id: String| {
-                                // Parent can react by updating Window.active_sidebar_id via WM
-                                let _ = id2;
-                            }
-                        }
+                    FsSidebar {
+                        items: win.sidebar_items.iter()
+                            .map(|i| FsSidebarItem::new(i.id.clone(), i.icon.clone(), i.label.clone()))
+                            .collect::<Vec<_>>(),
+                        active_id: win.active_sidebar_id.clone().unwrap_or_default(),
+                        on_select: move |_item_id: String| {},
+                        side: SidebarSide::Left,
                     }
                 }
 
-                // Content — rendered via WindowContent so the app gets its own
-                // Dioxus scope (stable signal lifetime, proper memoisation).
+                // Content — padding clears the 44px tab-strips on each side.
                 div {
                     class: if win.scrollable { "fs-window__content fs-scrollable" } else { "fs-window__content" },
-                    style: "flex: 1; padding: 16px; min-width: 0; \
-                            overflow-y: auto; overflow-x: hidden;",
+                    style: {
+                        let pl = if has_sidebar { "52px" } else { "20px" };
+                        format!("flex: 1; padding: 20px 52px 20px {pl}; min-width: 0; \
+                                 overflow-y: auto; overflow-x: hidden;")
+                    },
                     WindowContent { render }
                 }
 
-                // Right-side help panel
-                HelpPanel { help_topic: win.help_topic.clone() }
+                // Right-side help panel — same HelpSidebarPanel as the desktop shell.
+                // Every window has it; content (Topics/Shortcuts/AI) is identical.
+                HelpSidebarPanel {}
             }
 
             // ── Footer buttons ─────────────────────────────────────────────
@@ -575,50 +495,6 @@ fn ResizeHandles(props: ResizeHandlesProps) -> Element {
     }
 }
 
-// ── Window sidebar ────────────────────────────────────────────────────────────
-
-#[derive(Props, Clone, PartialEq)]
-struct WindowSidebarProps {
-    items:     Vec<crate::window::WindowSidebarItem>,
-    active_id: Option<String>,
-    on_select: EventHandler<String>,
-}
-
-/// Collapsible window sidebar: icons only (44px), expands to 200px on hover.
-#[component]
-fn WindowSidebar(props: WindowSidebarProps) -> Element {
-    rsx! {
-        nav {
-            class: "fs-win-sidebar",
-            for item in &props.items {
-                div {
-                    class: if props.active_id.as_deref() == Some(&item.id) {
-                        "fs-win-sidebar__item fs-win-sidebar__item--active"
-                    } else {
-                        "fs-win-sidebar__item"
-                    },
-                    title: "{item.label}",
-                    onclick: {
-                        let id2 = item.id.clone();
-                        move |_| props.on_select.call(id2.clone())
-                    },
-                    span {
-                        class: "fs-win-sidebar__icon",
-                        if item.icon.trim_start().starts_with("<svg") {
-                            span { dangerous_inner_html: "{item.icon}" }
-                        } else if item.icon.starts_with("http://") || item.icon.starts_with("https://") || item.icon.starts_with('/') {
-                            img { src: "{item.icon}", width: "16", height: "16",
-                                  style: "object-fit: contain; display: block;" }
-                        } else {
-                            "{item.icon}"
-                        }
-                    }
-                    span { class: "fs-win-sidebar__label", "{item.label}" }
-                }
-            }
-        }
-    }
-}
 
 // ── Window controls (titlebar buttons) ───────────────────────────────────────
 
@@ -858,63 +734,6 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
     }
 }
 
-// ── HelpPanel ─────────────────────────────────────────────────────────────────
-
-/// Right-side help panel — always visible as a 44px strip with a `?` icon.
-/// On hover or click it expands (300ms CSS transition) to show context-sensitive
-/// help text for the current window.
-///
-/// Per spec konzepte/ui-standards.md:
-/// - Collapsed: only the `?` icon visible (~44px), identical width to collapsed sidebar
-/// - Expanded:  scrollable help text (300ms animation, same as sidebar)
-/// - Content comes from the program's own help files (`.ftl`, category `help`)
-#[component]
-fn HelpPanel(help_topic: Option<String>) -> Element {
-    let mut open = use_signal(|| false);
-    let panel_class = if *open.read() {
-        "fs-help-panel fs-help-panel--open"
-    } else {
-        "fs-help-panel"
-    };
-
-    rsx! {
-        div {
-            class: "{panel_class}",
-
-            // ? icon — always visible, click toggles
-            div {
-                class: "fs-help-panel__icon",
-                title: "Help",
-                onclick: move |_| open.toggle(),
-                "?"
-            }
-
-            // Content — only rendered when panel is open (avoids layout cost)
-            if *open.read() {
-                div {
-                    class: "fs-help-panel__body fs-scrollable",
-                    match &help_topic {
-                        Some(topic) => rsx! {
-                            p { class: "fs-help-panel__title", "{topic}" }
-                            p {
-                                class: "fs-help-panel__text",
-                                "Help content for this context is provided by the program's \
-                                 own .ftl help files. See the documentation for details."
-                            }
-                        },
-                        None => rsx! {
-                            p {
-                                class: "fs-help-panel__text",
-                                style: "color: var(--fs-text-muted); font-style: italic;",
-                                "No help available for this window."
-                            }
-                        },
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ── WindowContent ─────────────────────────────────────────────────────────────
 
