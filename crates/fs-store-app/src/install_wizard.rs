@@ -16,6 +16,43 @@ pub enum InstallResult {
     Failed(String),
 }
 
+// ── Install strategy ──────────────────────────────────────────────────────────
+
+/// Context passed to each install strategy.
+struct InstallCtx<'a> {
+    fs_dir:       &'a std::path::Path,
+    store_path:   Option<String>,
+    env_vars:     &'a str,
+    installed_by: Option<&'a str>,
+}
+
+/// Extension trait — each PackageKind knows how to download/install its files.
+trait PackageInstallExt {
+    async fn install_files(
+        &self,
+        package: &PackageEntry,
+        ctx:     InstallCtx<'_>,
+    ) -> Result<Option<String>, String>;
+}
+
+impl PackageInstallExt for PackageKind {
+    async fn install_files(
+        &self,
+        package: &PackageEntry,
+        ctx:     InstallCtx<'_>,
+    ) -> Result<Option<String>, String> {
+        match self {
+            PackageKind::Bundle    => { install_bundle_members(package, ctx.fs_dir).await?; Ok(None) }
+            PackageKind::Container => install_container(package, ctx.store_path, ctx.fs_dir, ctx.env_vars).await,
+            PackageKind::Language  => install_language_pack(package, ctx.store_path, ctx.fs_dir).await,
+            PackageKind::Theme     => install_theme_file(package, ctx.store_path, ctx.fs_dir).await,
+            PackageKind::App       => install_app_binary(package, ctx.installed_by).await,
+            // Widget, Bot, Task, Bridge, Plugin — register without file download
+            _                      => Ok(None),
+        }
+    }
+}
+
 // ── async install logic ────────────────────────────────────────────────────────
 
 /// Downloads and registers a package. Returns Ok on success.
@@ -29,60 +66,18 @@ async fn do_install_inner(
     env_vars:     String,
     installed_by: Option<String>,
 ) -> Result<(), String> {
-    let home    = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let fs_dir = std::path::PathBuf::from(&home).join(".local/share/fsn");
-
+    let home      = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let fs_dir    = std::path::PathBuf::from(&home).join(".local/share/fsn");
     let store_path = package.store_path.as_deref()
         .map(|p| p.trim_end_matches('/').to_string());
 
-    let file_path: Option<String> = match &package.kind {
-        PackageKind::Bundle => {
-            install_bundle_members(&package, &fs_dir).await?;
-            None
-        }
-        PackageKind::Container => {
-            install_container(&package, store_path, &fs_dir, &env_vars).await?
-        }
-        PackageKind::Language => {
-            let base = store_path.unwrap_or_else(|| format!("shared/i18n/{}", package.id));
-            let url  = format!("{base}/ui.toml");
-            match StoreClient::node_store().fetch_raw(&url).await {
-                Ok(content) => {
-                    let dest_dir = fs_dir.join("i18n").join(&package.id);
-                    std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
-                    let dest = dest_dir.join("ui.toml");
-                    std::fs::write(&dest, content).map_err(|e| e.to_string())?;
-                    Some(dest.to_string_lossy().into_owned())
-                }
-                Err(e) => {
-                    tracing::warn!("Language pack download failed (registering anyway): {e}");
-                    None
-                }
-            }
-        }
-        PackageKind::Theme => {
-            let base = store_path.unwrap_or_else(|| format!("shared/themes/{}", package.id));
-            let url  = format!("{base}/theme.css");
-            match StoreClient::node_store().fetch_raw(&url).await {
-                Ok(content) => {
-                    let dest_dir = fs_dir.join("themes");
-                    std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
-                    let dest = dest_dir.join(format!("{}.css", package.id));
-                    std::fs::write(&dest, content).map_err(|e| e.to_string())?;
-                    Some(dest.to_string_lossy().into_owned())
-                }
-                Err(e) => {
-                    tracing::warn!("Theme download failed (registering anyway): {e}");
-                    None
-                }
-            }
-        }
-        PackageKind::App => {
-            install_app_binary(&package, installed_by.as_deref()).await?
-        }
-        // Widget, Bot, Task, Bridge, Plugin — register without file download
-        _ => None,
+    let ctx = InstallCtx {
+        fs_dir:       &fs_dir,
+        store_path,
+        env_vars:     &env_vars,
+        installed_by: installed_by.as_deref(),
     };
+    let file_path = package.kind.install_files(&package, ctx).await?;
 
     PackageRegistry::install(InstalledPackage {
         id:           package.id.clone(),
@@ -285,6 +280,52 @@ fn find_local_build_binary(id: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Download and install a language pack (`ui.toml`).
+async fn install_language_pack(
+    package:    &PackageEntry,
+    store_path: Option<String>,
+    fs_dir:     &std::path::Path,
+) -> Result<Option<String>, String> {
+    let base = store_path.unwrap_or_else(|| format!("shared/i18n/{}", package.id));
+    let url  = format!("{base}/ui.toml");
+    match StoreClient::node_store().fetch_raw(&url).await {
+        Ok(content) => {
+            let dest_dir = fs_dir.join("i18n").join(&package.id);
+            std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+            let dest = dest_dir.join("ui.toml");
+            std::fs::write(&dest, content).map_err(|e| e.to_string())?;
+            Ok(Some(dest.to_string_lossy().into_owned()))
+        }
+        Err(e) => {
+            tracing::warn!("Language pack download failed (registering anyway): {e}");
+            Ok(None)
+        }
+    }
+}
+
+/// Download and install a theme file (`theme.css`).
+async fn install_theme_file(
+    package:    &PackageEntry,
+    store_path: Option<String>,
+    fs_dir:     &std::path::Path,
+) -> Result<Option<String>, String> {
+    let base = store_path.unwrap_or_else(|| format!("shared/themes/{}", package.id));
+    let url  = format!("{base}/theme.css");
+    match StoreClient::node_store().fetch_raw(&url).await {
+        Ok(content) => {
+            let dest_dir = fs_dir.join("themes");
+            std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+            let dest = dest_dir.join(format!("{}.css", package.id));
+            std::fs::write(&dest, content).map_err(|e| e.to_string())?;
+            Ok(Some(dest.to_string_lossy().into_owned()))
+        }
+        Err(e) => {
+            tracing::warn!("Theme download failed (registering anyway): {e}");
+            Ok(None)
+        }
+    }
 }
 
 /// Full container install:
