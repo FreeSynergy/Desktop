@@ -29,3 +29,8 @@ saving    = "Wird in S3 gespeichert…"
 saved     = "Gespeichert unter /shared/downloads/{name}"
 error     = "Download fehlgeschlagen: {error}"
 empty     = "Noch keine Downloads."
+
+[browser.search_engine]
+label     = "Suchmaschine"
+hint      = "Wird verwendet, wenn Du einen Suchbegriff in die Adressleiste eingibst."
+no_engine = "Keine Suchmaschine konfiguriert — bitte in den Browser-Einstellungen auswählen."

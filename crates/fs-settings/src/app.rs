@@ -4,6 +4,7 @@ use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
 use crate::appearance::AppearanceSettings;
+use crate::browser_settings::BrowserSettings;
 use crate::language::LanguageSettings;
 use crate::service_roles::ServiceRoles;
 use crate::accounts::AccountSettings;
@@ -18,6 +19,7 @@ pub enum SettingsSection {
     ServiceRoles,
     Accounts,
     Desktop,
+    Browser,
     Shortcuts,
     Packages,
 }
@@ -31,6 +33,7 @@ impl SettingsSection {
             Self::ServiceRoles => "service_roles",
             Self::Accounts     => "accounts",
             Self::Desktop      => "desktop",
+            Self::Browser      => "browser",
             Self::Shortcuts    => "shortcuts",
             Self::Packages     => "packages",
         }
@@ -44,6 +47,7 @@ impl SettingsSection {
             Self::ServiceRoles => fs_i18n::t("settings.section.roles").into(),
             Self::Accounts     => fs_i18n::t("settings.section.accounts").into(),
             Self::Desktop      => fs_i18n::t("settings.section.desktop").into(),
+            Self::Browser      => fs_i18n::t("settings.section.browser").into(),
             Self::Shortcuts    => fs_i18n::t("settings.section.shortcuts").into(),
             Self::Packages     => fs_i18n::t("settings.section.packages").into(),
         }
@@ -56,6 +60,7 @@ impl SettingsSection {
             Self::ServiceRoles => "🔗",
             Self::Accounts     => "👤",
             Self::Desktop      => "🖥",
+            Self::Browser      => "🌍",
             Self::Shortcuts    => "⌨",
             Self::Packages     => "📦",
         }
@@ -69,6 +74,7 @@ impl SettingsSection {
             "service_roles" => Some(Self::ServiceRoles),
             "accounts"      => Some(Self::Accounts),
             "desktop"       => Some(Self::Desktop),
+            "browser"       => Some(Self::Browser),
             "shortcuts"     => Some(Self::Shortcuts),
             "packages"      => Some(Self::Packages),
             _               => None,
@@ -82,6 +88,7 @@ const STANDARD_SECTIONS: &[SettingsSection] = &[
     SettingsSection::ServiceRoles,
     SettingsSection::Accounts,
     SettingsSection::Desktop,
+    SettingsSection::Browser,
     SettingsSection::Shortcuts,
 ];
 
@@ -185,6 +192,7 @@ impl SettingsPanel for SettingsSection {
             Self::ServiceRoles => rsx! { ServiceRoles {} },
             Self::Accounts     => rsx! { AccountSettings {} },
             Self::Desktop      => rsx! { DesktopSettings {} },
+            Self::Browser      => rsx! { BrowserSettings {} },
             Self::Shortcuts    => rsx! { ShortcutsSettings {} },
             // Packages is rendered inline in SettingsApp (needs props data).
             Self::Packages     => rsx! { div {} },

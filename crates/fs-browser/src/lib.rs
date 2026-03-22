@@ -2,8 +2,10 @@ pub mod app;
 pub mod bookmarks;
 pub mod history;
 pub mod model;
+pub mod search_engine;
 
 pub use app::BrowserApp;
+pub use search_engine::{BrowserConfig, SearchEngine, SearchEngineRegistry};
 
 /// Register browser i18n strings (`browser.*` keys).
 pub fn register_i18n() {

@@ -1,5 +1,6 @@
 pub mod app;
 pub mod appearance;
+pub mod browser_settings;
 pub mod service_roles;
 pub mod language;
 pub mod translation_editor;
@@ -21,6 +22,7 @@ pub use app::{SettingsApp, SettingsAppProps};
 #[allow(deprecated)]
 pub use language::{load_active_language, LangContext, LanguageSettings};
 pub use service_roles::{ServiceRoles, ServiceRole, KNOWN_ROLES};
+pub use browser_settings::BrowserSettings;
 pub use desktop_settings::{DesktopConfig, DisplayMode, SidebarConfig, SidebarPosition, TaskbarPosition};
 pub use shortcuts::{ActionDef, ShortcutsConfig, register_actions, resolve_shortcut};
 pub use package_settings::{PackageSettingsEntry, PackageSettingsView};

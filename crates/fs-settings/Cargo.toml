@@ -21,6 +21,7 @@ web      = ["dioxus/web",     "fs-components/web"]
 [dependencies]
 fs-db-desktop       = { workspace = true }
 fs-components       = { workspace = true }
+fs-browser          = { workspace = true }
 fs-store            = { workspace = true }
 fs-theme            = { workspace = true }
 fs-i18n             = { workspace = true }

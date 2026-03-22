@@ -9,8 +9,14 @@ language   = "Language"
 roles      = "Service Roles"
 accounts   = "Accounts"
 desktop    = "Desktop"
+browser    = "Browser"
 shortcuts  = "Shortcuts"
 packages   = "Packages"
+
+[settings.browser]
+title              = "Browser"
+search_engine      = "Search Engine"
+search_engine_hint = "Used when you type a search term in the address bar. Only privacy-respecting engines are listed."
 
 [settings.appearance]
 color_theme         = "Color Theme"

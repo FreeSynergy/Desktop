@@ -29,3 +29,8 @@ saving    = "Saving to S3…"
 saved     = "Saved to /shared/downloads/{name}"
 error     = "Download failed: {error}"
 empty     = "No downloads yet."
+
+[browser.search_engine]
+label     = "Search Engine"
+hint      = "Used when you type a search term in the address bar."
+no_engine = "No search engine configured — please select one in the browser settings."

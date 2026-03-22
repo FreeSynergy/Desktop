@@ -9,8 +9,14 @@ language   = "Sprache"
 roles      = "Dienstrollen"
 accounts   = "Konten"
 desktop    = "Desktop"
+browser    = "Browser"
 shortcuts  = "Tastenkürzel"
 packages   = "Pakete"
+
+[settings.browser]
+title              = "Browser"
+search_engine      = "Suchmaschine"
+search_engine_hint = "Wird verwendet, wenn Du einen Suchbegriff in die Adressleiste eingibst. Nur datenschutzfreundliche Suchmaschinen sind aufgelistet."
 
 [settings.appearance]
 color_theme         = "Farbdesign"

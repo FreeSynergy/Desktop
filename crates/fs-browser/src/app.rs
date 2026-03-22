@@ -11,6 +11,7 @@ use fs_i18n;
 
 use crate::bookmarks::{add_bookmark, record_visit, remove_bookmark};
 use crate::model::{Bookmark, BrowserTab, DownloadEntry, HistoryEntry};
+use crate::search_engine::BrowserConfig;
 
 // ── Browser sections ──────────────────────────────────────────────────────────
 
@@ -47,6 +48,9 @@ pub fn BrowserApp() -> Element {
     let mut bookmarks: Signal<Vec<Bookmark>>      = use_signal(Vec::new);
     let mut history:   Signal<Vec<HistoryEntry>>  = use_signal(Vec::new);
     let downloads: Signal<Vec<DownloadEntry>> = use_signal(Vec::new);
+
+    // Browser config (search engine)
+    let browser_config: Signal<BrowserConfig> = use_signal(BrowserConfig::load);
 
     // Status message (bookmark added/removed feedback)
     let mut status_msg: Signal<Option<String>> = use_signal(|| None);
@@ -114,7 +118,7 @@ pub fn BrowserApp() -> Element {
                     class: "fs-browser__nav-btn",
                     title: fs_i18n::t("browser.reload").to_string(),
                     onclick: move |_| {
-                        let url = current_url_for_reload.clone();
+                        let url = normalize_url(&current_url_for_reload, &browser_config.read());
                         navigate_to(&mut tabs, *active_tab.read(), &url, &mut history, &mut address_input);
                     },
                     "↺"
@@ -129,7 +133,7 @@ pub fn BrowserApp() -> Element {
                     oninput: move |e| address_input.set(e.value()),
                     onkeydown: move |e| {
                         if e.key() == Key::Enter {
-                            let url = normalize_url(&address_input.read());
+                            let url = normalize_url(&address_input.read(), &browser_config.read());
                             navigate_to(&mut tabs, *active_tab.read(), &url, &mut history, &mut address_input);
                         }
                     },
@@ -445,7 +449,8 @@ fn navigate_to(
     history: &mut Signal<Vec<HistoryEntry>>,
     address: &mut Signal<String>,
 ) {
-    let url = normalize_url(url);
+    // navigate_to is called with already-normalized URLs; keep as-is.
+    let url = url.to_string();
     address.set(url.clone());
     history.write().push(record_visit(&url, &url));
 
@@ -478,8 +483,12 @@ fn close_tab(tabs: &mut Signal<Vec<BrowserTab>>, active: &mut Signal<u32>, id: u
     }
 }
 
-/// Prepend `https://` if no scheme is present.
-fn normalize_url(input: &str) -> String {
+/// Normalize an address bar input to a URL.
+///
+/// - Already a URL (has scheme) → returned as-is
+/// - Looks like a domain (`foo.com`) → prepend `https://`
+/// - Anything else → treat as search query, build URL via configured engine
+fn normalize_url(input: &str, config: &BrowserConfig) -> String {
     let t = input.trim();
     if t.is_empty() {
         return String::new();
@@ -489,18 +498,8 @@ fn normalize_url(input: &str) -> String {
     } else if t.contains('.') && !t.contains(' ') {
         format!("https://{t}")
     } else {
-        // Treat as a search query — use DuckDuckGo
-        let q = urlencoding_simple(t);
-        format!("https://duckduckgo.com/?q={q}")
+        config.build_search_url(t)
     }
-}
-
-fn urlencoding_simple(s: &str) -> String {
-    s.chars().map(|c| match c {
-        ' ' => '+'.to_string(),
-        c if c.is_alphanumeric() || "-_.~".contains(c) => c.to_string(),
-        c => format!("%{:02X}", c as u32),
-    }).collect()
 }
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
