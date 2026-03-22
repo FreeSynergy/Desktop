@@ -5,7 +5,7 @@ use fs_manager_container::{AppStatus, ContainerManager};
 
 #[component]
 pub fn ContainerManagerPanel() -> Element {
-    let mgr       = ContainerManager::new();
+    let mgr       = ContainerManager::with_noop();
     let installed = use_signal(|| mgr.installed());
 
     rsx! {
@@ -34,12 +34,11 @@ pub fn ContainerManagerPanel() -> Element {
                             border-radius: var(--fs-radius-md); overflow: hidden;",
                     for app in installed.read().clone() {
                         {
-                            let (status_label, status_color) = match &app.status {
-                                AppStatus::Running    => ("Running",    "var(--fs-color-success, #22c55e)"),
-                                AppStatus::Stopped    => ("Stopped",    "var(--fs-color-text-muted, #6b7280)"),
-                                AppStatus::Installing => ("Installing", "var(--fs-color-warning, #f59e0b)"),
-                                AppStatus::Error(msg) => (msg.as_str(), "var(--fs-color-error, #ef4444)"),
+                            let status_label = match &app.status {
+                                AppStatus::Error(msg) => msg.clone(),
+                                other => other.label().to_string(),
                             };
+                            let status_color = app.status.css_color();
                             let app_id_start = app.id.clone();
                             let app_id_stop  = app.id.clone();
                             let app_id_remove = app.id.clone();
@@ -72,7 +71,7 @@ pub fn ContainerManagerPanel() -> Element {
                                                     border-radius: var(--fs-radius-sm, 4px); \
                                                     cursor: pointer;",
                                             onclick: move |_| {
-                                                let mgr = ContainerManager::new();
+                                                let mgr = ContainerManager::with_noop();
                                                 let _ = mgr.start(&app_id_start);
                                             },
                                             {fs_i18n::t("actions.start")}
@@ -86,7 +85,7 @@ pub fn ContainerManagerPanel() -> Element {
                                                     border-radius: var(--fs-radius-sm, 4px); \
                                                     cursor: pointer; color: var(--fs-color-text-muted);",
                                             onclick: move |_| {
-                                                let mgr = ContainerManager::new();
+                                                let mgr = ContainerManager::with_noop();
                                                 let _ = mgr.stop(&app_id_stop);
                                             },
                                             {fs_i18n::t("actions.stop")}
@@ -102,7 +101,7 @@ pub fn ContainerManagerPanel() -> Element {
                                                 opacity: 0.6;",
                                         title: "Remove",
                                         onclick: move |_| {
-                                            let mgr = ContainerManager::new();
+                                            let mgr = ContainerManager::with_noop();
                                             let _ = mgr.remove(&app_id_remove);
                                         },
                                         "✕"

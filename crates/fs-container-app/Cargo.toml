@@ -21,6 +21,7 @@ web      = ["dioxus/web",     "fs-components/web"]
 [dependencies]
 fs-components = { workspace = true }
 fs-container  = { workspace = true }
+fs-error      = { workspace = true }
 fs-i18n       = { workspace = true }
 dioxus         = { workspace = true }
 serde          = { workspace = true }

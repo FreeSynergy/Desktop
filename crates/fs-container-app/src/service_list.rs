@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
 use fs_container::{SystemctlManager, UnitActiveState};
+use fs_error::FsError;
 use fs_i18n;
 
 /// A single service entry displayed in the list.
@@ -42,11 +43,25 @@ impl ServiceEntry {
 }
 
 /// Container lifecycle action.
+///
+/// Carries its own execution logic via `execute` — no external `match` needed.
+/// Follows the *Strategy* pattern: the action knows how to apply itself.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ServiceAction {
     Start,
     Stop,
     Restart,
+}
+
+impl ServiceAction {
+    /// Execute this action against `name` via `mgr`.
+    pub async fn execute(&self, mgr: &SystemctlManager, name: &str) -> Result<(), FsError> {
+        match self {
+            Self::Start   => mgr.start(name).await,
+            Self::Stop    => mgr.stop(name).await,
+            Self::Restart => mgr.restart(name).await,
+        }
+    }
 }
 
 /// Fetch all FSN-managed service unit names via systemctl.
@@ -119,11 +134,7 @@ pub fn ServiceList(mut selected: Signal<Option<String>>) -> Element {
     let on_action = move |(name, action): (String, ServiceAction)| {
         spawn(async move {
             let mgr = SystemctlManager::user();
-            let _ = match action {
-                ServiceAction::Start   => mgr.start(&name).await,
-                ServiceAction::Stop    => mgr.stop(&name).await,
-                ServiceAction::Restart => mgr.restart(&name).await,
-            };
+            let _ = action.execute(&mgr, &name).await;
         });
     };
 

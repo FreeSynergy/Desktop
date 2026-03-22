@@ -8,6 +8,7 @@ use fs_i18n;
 
 use crate::instance_config::InstanceConfigEditor;
 use crate::log_viewer::LogViewer;
+use crate::service_list::ServiceAction;
 
 // ── ServiceDetail ──────────────────────────────────────────────────────────────
 
@@ -151,21 +152,21 @@ fn ServiceConfigTab(service_name: String) -> Element {
                     label: fs_i18n::t("actions.start"),
                     color: "var(--fs-success)",
                     name: service_name.clone(),
-                    action: "start",
+                    action: ServiceAction::Start,
                     msg: action_msg,
                 }
                 ActionBtn {
                     label: fs_i18n::t("actions.stop"),
                     color: "var(--fs-error)",
                     name: service_name.clone(),
-                    action: "stop",
+                    action: ServiceAction::Stop,
                     msg: action_msg,
                 }
                 ActionBtn {
                     label: fs_i18n::t("actions.restart"),
                     color: "var(--fs-warning)",
                     name: service_name.clone(),
-                    action: "restart",
+                    action: ServiceAction::Restart,
                     msg: action_msg,
                 }
             }
@@ -194,7 +195,7 @@ fn ActionBtn(
     label:  String,
     color:  String,
     name:   String,
-    action: String,
+    action: ServiceAction,
     mut msg: Signal<Option<String>>,
 ) -> Element {
     rsx! {
@@ -212,13 +213,7 @@ fn ActionBtn(
                     let label  = label.clone();
                     spawn(async move {
                         let mgr = SystemctlManager::user();
-                        let result = match action.as_str() {
-                            "start"   => mgr.start(&name).await,
-                            "stop"    => mgr.stop(&name).await,
-                            "restart" => mgr.restart(&name).await,
-                            _         => Ok(()),
-                        };
-                        match result {
+                        match action.execute(&mgr, &name).await {
                             Ok(()) => msg.set(Some(format!("{label} OK"))),
                             Err(e) => msg.set(Some(format!("{label} failed: {e}"))),
                         }

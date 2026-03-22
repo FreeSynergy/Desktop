@@ -61,9 +61,11 @@ fs-plugin-sdk     = { path = "../fs-libs/fs-plugin-sdk" }
 fs-auth           = { path = "../fs-libs/fs-auth" }
 fs-core           = { path = "../fs-libs/fs-core" }
 fs-components     = { path = "../fs-libs/fs-components" }
-fs-manager-language = { path = "../fs-managers/language" }
-fs-manager-icons    = { path = "../fs-managers/icons" }
-fs-manager-cursor   = { path = "../fs-managers/cursor" }
+fs-manager-language   = { path = "../fs-managers/language" }
+fs-manager-icons      = { path = "../fs-managers/icons" }
+fs-manager-cursor     = { path = "../fs-managers/cursor" }
+fs-manager-theme      = { path = "../fs-managers/theme" }
+fs-manager-container  = { path = "../fs-managers/container" }
 fs-render         = { path = "../fs-libs/fs-render" }
 fs-db             = { path = "../fs-libs/fs-db" }
 

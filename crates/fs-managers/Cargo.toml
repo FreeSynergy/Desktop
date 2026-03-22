@@ -19,9 +19,11 @@ desktop = ["dioxus/desktop", "fs-components/desktop"]
 web     = ["dioxus/web",     "fs-components/web"]
 
 [dependencies]
-fs-components       = { workspace = true }
-fs-i18n             = { workspace = true }
-fs-manager-language = { workspace = true }
-fs-manager-icons    = { workspace = true }
-fs-manager-cursor   = { workspace = true }
-dioxus               = { workspace = true }
+fs-components          = { workspace = true }
+fs-i18n                = { workspace = true }
+fs-manager-language    = { workspace = true }
+fs-manager-icons       = { workspace = true }
+fs-manager-cursor      = { workspace = true }
+fs-manager-theme       = { workspace = true }
+fs-manager-container   = { workspace = true }
+dioxus                 = { workspace = true }

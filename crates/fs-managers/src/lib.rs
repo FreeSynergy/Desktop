@@ -1,12 +1,18 @@
 pub mod app;
-pub mod language_panel;
-pub mod icons_panel;
+pub mod container_panel;
 pub mod cursor_panel;
+pub mod icons_panel;
+pub mod language_panel;
+pub mod picker_panel;
+pub mod theme_panel;
 
 pub use app::ManagersApp;
-pub use language_panel::LanguageManagerPanel;
-pub use icons_panel::IconsManagerPanel;
+pub use container_panel::ContainerManagerPanel;
 pub use cursor_panel::CursorManagerPanel;
+pub use icons_panel::IconsManagerPanel;
+pub use language_panel::LanguageManagerPanel;
+pub use picker_panel::{PickerItem, PickerPanel};
+pub use theme_panel::ThemeManagerPanel;
 
 /// Register i18n strings (no-op stub — managers split into separate crates).
 pub fn register_i18n() {}
