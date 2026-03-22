@@ -352,27 +352,34 @@ pub fn HelpSidebarPanel(
 
     const PANEL_CSS: &str = r#"
 /* ── Bookmark-drawer: slides in/out from the right edge ── */
+/* Tab-strip is a compact pill — only as tall as the icon,
+   vertically centered. Above/below it the wallpaper shows.  */
 .fs-help-sidebar {
     position: absolute; right: 0; top: 0; bottom: 0; z-index: 200;
-    display: flex; flex-direction: row; overflow: hidden;
-    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
-                filter   300ms ease;
-    pointer-events: all;
+    display: flex; flex-direction: row;
+    align-items: center;        /* pill is vertically centered         */
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;       /* transparent above/below the pill    */
 }
-.fs-help-sidebar:hover {
-    filter: drop-shadow(-4px 0 16px rgba(0, 0, 0, 0.45));
-}
-/* ── Tab strip (left, always visible at right edge when closed) ── */
+/* ── Tab strip (left, compact pill at right edge when closed) ── */
 .fs-help-sidebar__tab-strip {
     width: 44px; flex-shrink: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    /* height: auto — only as tall as icon content */
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 0; gap: 6px;
     background: var(--fs-bg-surface);
-    border-right: 1px solid var(--fs-border);
-    gap: 6px; cursor: default; user-select: none;
+    border-top: 1px solid var(--fs-border);
+    border-left: 1px solid var(--fs-border);
+    border-bottom: 1px solid var(--fs-border);
+    border-radius: 10px 0 0 10px;
+    pointer-events: all;
+    box-shadow: -3px 0 12px rgba(0, 0, 0, 0.35);
 }
 /* ── Body (right part, slides off-screen when closed) ── */
 .fs-help-sidebar__body {
     flex: 1; display: flex; flex-direction: row; min-width: 0; overflow: hidden;
+    align-self: stretch;        /* body fills full height when open    */
+    pointer-events: all;
 }
 .fs-help-sidebar__drag-edge {
     width: 6px; flex-shrink: 0; cursor: ew-resize;

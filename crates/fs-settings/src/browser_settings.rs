@@ -17,7 +17,7 @@ use fs_i18n;
 /// The selection is saved to `~/.config/fsn/browser.toml`.
 #[component]
 pub fn BrowserSettings() -> Element {
-    let mut config = use_signal(BrowserConfig::load);
+    let config = use_signal(BrowserConfig::load);
 
     rsx! {
         div {
