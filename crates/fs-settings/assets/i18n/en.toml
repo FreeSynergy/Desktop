@@ -10,6 +10,7 @@ roles      = "Service Roles"
 accounts   = "Accounts"
 desktop    = "Desktop"
 shortcuts  = "Shortcuts"
+packages   = "Packages"
 
 [settings.appearance]
 color_theme         = "Color Theme"

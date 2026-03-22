@@ -55,6 +55,28 @@ impl PackageInstallExt for PackageKind {
 
 // ── async install logic ────────────────────────────────────────────────────────
 
+/// Fetch an icon: if `icon` is an HTTP(S) URL, download and return the SVG content.
+/// Falls back to the original value on network errors so installs never fail over icons.
+async fn fetch_icon_content(icon: Option<String>) -> String {
+    match icon {
+        None => String::new(),
+        Some(url) if url.starts_with("http://") || url.starts_with("https://") => {
+            match reqwest::Client::new()
+                .get(&url)
+                .timeout(std::time::Duration::from_secs(10))
+                .send()
+                .await
+            {
+                Ok(resp) if resp.status().is_success() => {
+                    resp.text().await.unwrap_or(url)
+                }
+                _ => url,
+            }
+        }
+        Some(other) => other,
+    }
+}
+
 /// Downloads and registers a package. Returns Ok on success.
 pub async fn do_install(package: PackageEntry, env_vars: String) -> Result<(), String> {
     do_install_inner(package, env_vars, None).await
@@ -77,14 +99,19 @@ async fn do_install_inner(
         env_vars:     &env_vars,
         installed_by: installed_by.as_deref(),
     };
-    let file_path = package.kind.install_files(&package, ctx).await?;
+    // Fetch files and icon content concurrently.
+    let (file_path, icon_content) = tokio::join!(
+        package.kind.install_files(&package, ctx),
+        fetch_icon_content(package.icon.clone()),
+    );
+    let file_path = file_path?;
 
     PackageRegistry::install(InstalledPackage {
         id:           package.id.clone(),
         name:         package.name.clone(),
         kind:         package.kind.clone(),
         version:      package.version.clone(),
-        icon:         package.icon.clone().unwrap_or_default(),
+        icon:         icon_content,
         file_path,
         installed_by,
     })

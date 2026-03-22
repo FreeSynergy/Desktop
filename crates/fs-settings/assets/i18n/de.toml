@@ -10,6 +10,7 @@ roles      = "Dienstrollen"
 accounts   = "Konten"
 desktop    = "Desktop"
 shortcuts  = "Tastenkürzel"
+packages   = "Pakete"
 
 [settings.appearance]
 color_theme         = "Farbdesign"

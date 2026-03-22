@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
 use fs_settings::{ShortcutsConfig, register_actions, resolve_shortcut};
 use serde_json;
+use crate::icons::ICON_HELP;
 
 #[derive(Clone, PartialEq, Debug)]
 enum HelpSection {
@@ -28,8 +29,8 @@ impl HelpSection {
 
     fn icon(&self) -> &'static str {
         match self {
-            Self::Topics    => "📚",
-            Self::Shortcuts => "⌨",
+            Self::Topics    => r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>"#,
+            Self::Shortcuts => r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>"#,
         }
     }
 
@@ -681,7 +682,10 @@ pub fn HelpSidebarPanel(
 
             // ── Tab strip (always visible, right edge) ─────────────────────
             div { class: "fs-help-sidebar__tab-strip",
-                span { "❓" }
+                span {
+                    style: "width: 20px; height: 20px; color: var(--fs-text-secondary);",
+                    dangerous_inner_html: ICON_HELP
+                }
                 span { "Help" }
             }
         }

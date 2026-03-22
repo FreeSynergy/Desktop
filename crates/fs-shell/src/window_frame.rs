@@ -334,6 +334,9 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                                 color: var(--fs-color-text-primary, #e2e8f0); z-index: 1;",
                         if win.icon.trim_start().starts_with("<svg") {
                             span { dangerous_inner_html: "{win.icon}" }
+                        } else if win.icon.starts_with("http://") || win.icon.starts_with("https://") || win.icon.starts_with('/') {
+                            img { src: "{win.icon}", width: "18", height: "18",
+                                  style: "object-fit: contain; display: block;" }
                         } else {
                             "{win.icon}"
                         }
@@ -583,6 +586,9 @@ fn WindowSidebar(props: WindowSidebarProps) -> Element {
                         class: "fs-win-sidebar__icon",
                         if item.icon.trim_start().starts_with("<svg") {
                             span { dangerous_inner_html: "{item.icon}" }
+                        } else if item.icon.starts_with("http://") || item.icon.starts_with("https://") || item.icon.starts_with('/') {
+                            img { src: "{item.icon}", width: "16", height: "16",
+                                  style: "object-fit: contain; display: block;" }
                         } else {
                             "{item.icon}"
                         }
@@ -792,6 +798,9 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
                 class: "fs-win-icon__box",
                 if icon.trim_start().starts_with("<svg") {
                     span { dangerous_inner_html: "{icon}" }
+                } else if icon.starts_with("http://") || icon.starts_with("https://") || icon.starts_with('/') {
+                    img { src: "{icon}", width: "24", height: "24",
+                          style: "object-fit: contain; display: block;" }
                 } else {
                     "{icon}"
                 }

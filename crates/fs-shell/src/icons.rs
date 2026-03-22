@@ -60,6 +60,8 @@ pub const ICON_BOTS: &str = r#"<svg width="16" height="16" viewBox="0 0 24 24" f
 
 pub const ICON_MANAGERS: &str = r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>"#;
 
+pub const ICON_HELP: &str = r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>"#;
+
 // ── Language Flags ────────────────────────────────────────────────────────────
 
 pub const ICON_FLAG_EN: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 36" width="24" height="14"><rect width="60" height="36" fill="#012169"/><line x1="0" y1="0" x2="60" y2="36" stroke="#FFFFFF" stroke-width="12"/><line x1="60" y1="0" x2="0" y2="36" stroke="#FFFFFF" stroke-width="12"/><line x1="0" y1="0" x2="60" y2="36" stroke="#C8102E" stroke-width="6"/><line x1="60" y1="0" x2="0" y2="36" stroke="#C8102E" stroke-width="6"/><rect x="24" y="0" width="12" height="36" fill="#FFFFFF"/><rect x="0" y="12" width="60" height="12" fill="#FFFFFF"/><rect x="26" y="0" width="8" height="36" fill="#C8102E"/><rect x="0" y="14" width="60" height="8" fill="#C8102E"/></svg>"##;
