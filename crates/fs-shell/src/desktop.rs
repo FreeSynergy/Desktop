@@ -76,51 +76,6 @@ fn os_resize_handles() -> Element {
     rsx! {}
 }
 
-/// Initialize the global i18n instance and load all app-specific language strings.
-///
-/// Called once at Desktop startup:
-/// 1. Loads built-in generic snippets (EN + DE) from fs-i18n.
-/// 2. Each app crate registers its own app-specific strings (store.*, container.*, …).
-/// 3. Overlays any user-installed language pack from disk (Store → Inventory).
-fn init_i18n() -> String {
-    let lang = fs_settings::load_active_language();
-
-    // 1. Generic built-in snippets (actions.*, labels.*, status.*, …)
-    let _ = fs_i18n::init_with_builtins(&lang);
-
-    // 2. App-specific strings — each crate owns its own TOML assets
-    fs_store_app::register_i18n();
-    fs_settings::register_i18n();
-    fs_builder::register_i18n();
-    fs_browser::register_i18n();
-    fs_lenses::register_i18n();
-    fs_managers::register_i18n();
-    fs_container_app::register_i18n();
-    fs_bots::register_i18n();
-    fs_theme_app::register_i18n();
-    // shell.* + profile.* — registered inline below
-    {
-        const EN: &str = include_str!("../assets/i18n/en.toml");
-        const DE: &str = include_str!("../assets/i18n/de.toml");
-        let _ = fs_i18n::add_toml_lang("en", EN);
-        let _ = fs_i18n::add_toml_lang("de", DE);
-    }
-
-    // 3. Overlay user-installed language pack from ~/.local/share/fsn/i18n/{lang}/ui.toml
-    //    (future: will read from Inventory DB instead of files)
-    if lang != "en" {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-        let pack = std::path::PathBuf::from(home)
-            .join(".local/share/fsn/i18n")
-            .join(&lang)
-            .join("ui.toml");
-        if let Ok(content) = std::fs::read_to_string(&pack) {
-            let _ = fs_i18n::add_toml_lang(&lang, &content);
-        }
-    }
-
-    lang
-}
 
 /// Root desktop component.
 #[component]
@@ -144,10 +99,11 @@ pub fn Desktop() -> Element {
     // Single AppContext — all cross-cutting desktop state in one place.
     // Child components access locale, theme, wallpaper, and appearance settings
     // via use_context::<AppContext>() instead of individual signals.
+    // i18n is already initialized by init_i18n() called in main() before launch.
     let app_ctx = use_context_provider(|| {
         let saved_wallpaper = crate::db::load_wallpaper_css_from_db(&db);
         AppContext {
-            locale:         Signal::new(init_i18n()),
+            locale:         Signal::new(fs_settings::load_active_language()),
             theme:          Signal::new(crate::db::load_theme_from_db(&db)),
             wallpaper:      Signal::new(if saved_wallpaper.is_empty() {
                                 Wallpaper::default().to_css_background()

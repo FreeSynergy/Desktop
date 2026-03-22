@@ -4,10 +4,15 @@ pub mod query;
 
 pub use app::LensesApp;
 
-/// Register lenses i18n strings (`lenses.*` keys).
-pub fn register_i18n() {
-    const EN: &str = include_str!("../assets/i18n/en.toml");
-    const DE: &str = include_str!("../assets/i18n/de.toml");
-    let _ = fs_i18n::add_toml_lang("en", EN);
-    let _ = fs_i18n::add_toml_lang("de", DE);
+const I18N_SNIPPETS: &[(&str, &str)] = &[
+    ("en", include_str!("../assets/i18n/en.toml")),
+    ("de", include_str!("../assets/i18n/de.toml")),
+];
+
+/// i18n plugin for fs-lenses (`lenses.*` keys). Pass to [`fs_i18n::init_with_plugins`].
+pub struct I18nPlugin;
+
+impl fs_i18n::SnippetPlugin for I18nPlugin {
+    fn name(&self) -> &str { "fs-lenses" }
+    fn snippets(&self) -> &[(&str, &str)] { I18N_SNIPPETS }
 }

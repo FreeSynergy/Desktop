@@ -18,5 +18,15 @@ pub use picker_panel::{PickerItem, PickerPanel};
 pub use theme_panel::ThemeManagerPanel;
 pub use view_model::PackageViewModel;
 
-/// Register i18n strings (no-op stub — managers split into separate crates).
-pub fn register_i18n() {}
+const I18N_SNIPPETS: &[(&str, &str)] = &[
+    ("en", include_str!("../assets/i18n/en.toml")),
+    ("de", include_str!("../assets/i18n/de.toml")),
+];
+
+/// i18n plugin for fs-managers (`managers.*` keys). Pass to [`fs_i18n::init_with_plugins`].
+pub struct I18nPlugin;
+
+impl fs_i18n::SnippetPlugin for I18nPlugin {
+    fn name(&self) -> &str { "fs-managers" }
+    fn snippets(&self) -> &[(&str, &str)] { I18N_SNIPPETS }
+}
