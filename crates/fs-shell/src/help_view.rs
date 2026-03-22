@@ -348,6 +348,7 @@ pub fn HelpSidebarPanel(
     let is_open       = *hovered.read() || is_resizing;
     let pw            = *panel_width.read();
     let aih           = *ai_height.read();
+    let translate_x   = if is_open { 0.0_f64 } else { pw };
 
     const PANEL_CSS: &str = r#"
 /* ── Bookmark-drawer: slides in/out from the right edge ── */
@@ -484,7 +485,7 @@ pub fn HelpSidebarPanel(
         div {
             class: "fs-help-sidebar",
             style: "width: {44.0 + pw}px; \
-                    transform: translateX({if is_open { 0.0 } else { pw }}px);",
+                    transform: translateX({translate_x}px);",
             onmouseenter: move |_| hovered.set(true),
             onmouseleave: move |_| {
                 if !*resizing_w.read() && !*resizing_ai.read() {
