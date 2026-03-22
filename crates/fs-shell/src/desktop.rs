@@ -521,6 +521,13 @@ pub fn Desktop() -> Element {
 
                         // Render ALL non-minimized windows — use display:none for inactive
                         // desktops so Dioxus keeps component state (pos/dim signals) alive.
+                        {
+                        let top_z = wm.read().windows().iter()
+                            .filter(|w| !w.minimized)
+                            .map(|w| w.z_index)
+                            .max()
+                            .unwrap_or(0);
+                        rsx! {
                         for window in wm.read().windows().iter().filter(|w| !w.minimized).cloned().collect::<Vec<_>>() {
                             {
                                 let on_active = window.desktop_index == *active_desktop.read();
@@ -532,6 +539,7 @@ pub fn Desktop() -> Element {
                                         WindowFrame {
                                             key: "{window.id.0}",
                                             window: window.clone(),
+                                            top_z,
                                             on_close: on_close_window,
                                             on_focus: on_focus_window,
                                             on_minimize: on_minimize_window,
@@ -540,6 +548,8 @@ pub fn Desktop() -> Element {
                                     }
                                 }
                             }
+                        }
+                        }
                         }
 
                         // Minimized icons: show only those on the active desktop.

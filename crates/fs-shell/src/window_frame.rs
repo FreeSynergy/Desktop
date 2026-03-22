@@ -171,6 +171,11 @@ pub struct WindowFrameProps {
     pub on_focus:    EventHandler<WindowId>,
     pub on_minimize: EventHandler<WindowId>,
     pub on_maximize: EventHandler<WindowId>,
+    /// Highest z_index among all open windows.
+    /// The hover-boost only lifts this window above the current top,
+    /// so intentionally focused windows are never displaced by hover.
+    #[props(default = 0)]
+    pub top_z:       u32,
 }
 
 // ── Resize direction ──────────────────────────────────────────────────────────
@@ -221,9 +226,10 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let mut close_requested: Signal<bool> = use_signal(|| false);
 
     // ── Hover-raise state ─────────────────────────────────────────────────────
-    // While the mouse is over the VISIBLE part of this window the z_index is
-    // temporarily boosted (+1000). A click (on_focus) makes it permanently active
-    // (highest z_index via WindowManager). Hover never calls on_focus.
+    // While the mouse is over this window the z_index is temporarily boosted to
+    // top_z + 1 — just enough to peek over the currently focused window.
+    // This only has a visible effect when the window is NOT already the topmost.
+    // A click (on_focus) makes the focus permanent via WindowManager.
     let mut hovered: Signal<bool> = use_signal(|| false);
 
     let (px, py)   = *pos.read();
@@ -232,9 +238,12 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let is_resizing = resize.read().dir.is_some();
     let has_overlay = is_dragging || is_resizing;
     let is_max      = win.maximized;
-    // Hover temporarily brings this window above all others.
-    // Use a very large offset so it always wins regardless of base z_index.
-    let effective_z = if *hovered.read() { win.z_index + 1_000_000 } else { win.z_index };
+    // Peek: temporarily above the current top, but only when not already on top.
+    let effective_z = if *hovered.read() && win.z_index < props.top_z {
+        props.top_z + 1
+    } else {
+        win.z_index
+    };
 
     // ── Frame style ───────────────────────────────────────────────────────────
     let frame_style = if is_max {
@@ -456,7 +465,11 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
                     let c = evt.data().client_coordinates();
                     if *dragging.read() {
                         let (ox, oy) = *drag_off.read();
-                        pos.set((c.x - ox, c.y - oy));
+                        // Clamp: titlebar (40px) must stay inside the viewport.
+                        // py >= 0 keeps the titlebar reachable at the top edge.
+                        let new_x = c.x - ox;
+                        let new_y = (c.y - oy).max(0.0);
+                        pos.set((new_x, new_y));
                     } else {
                         let rs = resize.read().clone();
                         if let Some(dir) = rs.dir {
