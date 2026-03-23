@@ -4,6 +4,12 @@ use std::path::PathBuf;
 
 // ── BotKind ───────────────────────────────────────────────────────────────────
 
+/// All display properties for a `BotKind` variant — single source of truth.
+pub struct BotKindMeta {
+    pub label: &'static str,
+    pub icon:  &'static str,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BotKind {
@@ -15,25 +21,19 @@ pub enum BotKind {
 }
 
 impl BotKind {
-    pub fn label(&self) -> &'static str {
+    /// Single match block — all display properties in one place.
+    pub fn meta(&self) -> BotKindMeta {
         match self {
-            Self::Broadcast  => "Broadcast",
-            Self::Gatekeeper => "Gatekeeper",
-            Self::Monitor    => "Monitor",
-            Self::Digest     => "Digest",
-            Self::UserBot    => "Personal Assistant",
+            Self::Broadcast  => BotKindMeta { label: "Broadcast",          icon: "📢" },
+            Self::Gatekeeper => BotKindMeta { label: "Gatekeeper",         icon: "🔒" },
+            Self::Monitor    => BotKindMeta { label: "Monitor",            icon: "📊" },
+            Self::Digest     => BotKindMeta { label: "Digest",             icon: "📋" },
+            Self::UserBot    => BotKindMeta { label: "Personal Assistant", icon: "🤖" },
         }
     }
 
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::Broadcast  => "📢",
-            Self::Gatekeeper => "🔒",
-            Self::Monitor    => "📊",
-            Self::Digest     => "📋",
-            Self::UserBot    => "🤖",
-        }
-    }
+    pub fn label(&self) -> &'static str { self.meta().label }
+    pub fn icon(&self)  -> &'static str { self.meta().icon  }
 }
 
 // ── Platform ──────────────────────────────────────────────────────────────────
@@ -43,6 +43,12 @@ pub struct CredentialField {
     pub name:        &'static str,
     pub placeholder: &'static str,
     pub is_secret:   bool,
+}
+
+/// All display properties for a `Platform` variant — single source of truth.
+pub struct PlatformMeta {
+    pub label: &'static str,
+    pub icon:  &'static str,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -70,29 +76,21 @@ impl Platform {
         ]
     }
 
-    pub fn label(&self) -> &'static str {
+    /// Single match block — all display properties in one place.
+    pub fn meta(&self) -> PlatformMeta {
         match self {
-            Self::Telegram   => "Telegram",
-            Self::Matrix     => "Matrix",
-            Self::Discord    => "Discord",
-            Self::RocketChat => "Rocket.Chat",
-            Self::Mattermost => "Mattermost",
-            Self::Slack      => "Slack",
-            Self::XMPP       => "XMPP",
+            Self::Telegram   => PlatformMeta { label: "Telegram",    icon: "✈"  },
+            Self::Matrix     => PlatformMeta { label: "Matrix",      icon: "🔷" },
+            Self::Discord    => PlatformMeta { label: "Discord",     icon: "🎮" },
+            Self::RocketChat => PlatformMeta { label: "Rocket.Chat", icon: "🚀" },
+            Self::Mattermost => PlatformMeta { label: "Mattermost",  icon: "📡" },
+            Self::Slack      => PlatformMeta { label: "Slack",       icon: "💼" },
+            Self::XMPP       => PlatformMeta { label: "XMPP",        icon: "💬" },
         }
     }
 
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::Telegram   => "✈",
-            Self::Matrix     => "🔷",
-            Self::Discord    => "🎮",
-            Self::RocketChat => "🚀",
-            Self::Mattermost => "📡",
-            Self::Slack      => "💼",
-            Self::XMPP       => "💬",
-        }
-    }
+    pub fn label(&self) -> &'static str { self.meta().label }
+    pub fn icon(&self)  -> &'static str { self.meta().icon  }
 
     pub fn credential_fields(&self) -> Vec<CredentialField> {
         match self {
@@ -151,6 +149,25 @@ pub struct ControlBotAccount {
     pub connected:   bool,
 }
 
+impl ControlBotAccount {
+    /// Factory: validates input and builds an account. Returns `None` if label is empty.
+    pub fn create(
+        platform:    Platform,
+        label:       String,
+        credentials: Vec<(String, String)>,
+        count:       usize,
+    ) -> Option<Self> {
+        if label.trim().is_empty() { return None; }
+        Some(Self {
+            id:        format!("acc-{}", count + 1),
+            platform,
+            label,
+            credentials,
+            connected: false,
+        })
+    }
+}
+
 // ── ControlBotConfig ──────────────────────────────────────────────────────────
 
 #[derive(Default, Serialize, Deserialize)]
@@ -200,6 +217,23 @@ pub struct BroadcastRecord {
     pub target_count: usize,
 }
 
+impl BroadcastRecord {
+    pub fn time_ago(&self) -> String {
+        let secs = (Utc::now() - self.sent_at).num_seconds();
+        if secs < 60        { format!("{secs}s ago") }
+        else if secs < 3600 { format!("{}m ago", secs / 60) }
+        else                { format!("{}h ago", secs / 3600) }
+    }
+
+    pub fn preview(&self, max_len: usize) -> String {
+        if self.message.len() > max_len {
+            format!("{}…", &self.message[..max_len - 1])
+        } else {
+            self.message.clone()
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PendingApproval {
     pub id:            String,
@@ -221,7 +255,34 @@ pub struct MessagingBot {
     pub pending_approvals: Vec<PendingApproval>,
 }
 
+/// Whether a pending approval was granted or denied.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ApprovalAction {
+    Allow,
+    Deny,
+}
+
 impl MessagingBot {
+    /// Record a sent broadcast message. Returns `false` if the message is empty.
+    pub fn send_broadcast(&mut self, message: &str, target_count: usize) -> bool {
+        if message.trim().is_empty() { return false; }
+        let record = BroadcastRecord {
+            message:      message.to_string(),
+            sent_at:      Utc::now(),
+            target_count,
+        };
+        self.recent_broadcasts.insert(0, record);
+        if self.recent_broadcasts.len() > 20 {
+            self.recent_broadcasts.truncate(20);
+        }
+        true
+    }
+
+    /// Remove a pending approval entry (allow or deny — both resolve the request).
+    pub fn resolve_approval(&mut self, id: &str, _action: ApprovalAction) {
+        self.pending_approvals.retain(|a| a.id != id);
+    }
+
     pub fn demo_bots() -> Vec<Self> {
         vec![
             Self {

@@ -9,6 +9,13 @@ use crate::gatekeeper_view::GatekeeperView;
 use crate::groups_view::GroupsView;
 use crate::model::{BotKind, MessagingBot, MessagingBotsConfig};
 
+/// Display properties for a `BotSection` variant — single source of truth.
+struct SectionMeta {
+    id:       &'static str,
+    icon:     &'static str,
+    i18n_key: &'static str,
+}
+
 /// Active section in the Bot Manager.
 #[derive(Clone, PartialEq, Debug)]
 pub enum BotSection {
@@ -19,49 +26,6 @@ pub enum BotSection {
     Groups,
 }
 
-impl BotSection {
-    pub fn id(&self) -> &str {
-        match self {
-            Self::Accounts   => "accounts",
-            Self::Bots       => "bots",
-            Self::Broadcast  => "broadcast",
-            Self::Gatekeeper => "gatekeeper",
-            Self::Groups     => "groups",
-        }
-    }
-
-    pub fn label(&self) -> String {
-        match self {
-            Self::Accounts   => fs_i18n::t("bots.section.accounts").to_string(),
-            Self::Bots       => fs_i18n::t("bots.section.bots").to_string(),
-            Self::Broadcast  => fs_i18n::t("bots.section.broadcast").to_string(),
-            Self::Gatekeeper => fs_i18n::t("bots.section.gatekeeper").to_string(),
-            Self::Groups     => fs_i18n::t("bots.section.groups").to_string(),
-        }
-    }
-
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::Accounts   => "🔑",
-            Self::Bots       => "🤖",
-            Self::Broadcast  => "📢",
-            Self::Gatekeeper => "🔒",
-            Self::Groups     => "📁",
-        }
-    }
-
-    pub fn from_id(id: &str) -> Option<Self> {
-        match id {
-            "accounts"   => Some(Self::Accounts),
-            "bots"       => Some(Self::Bots),
-            "broadcast"  => Some(Self::Broadcast),
-            "gatekeeper" => Some(Self::Gatekeeper),
-            "groups"     => Some(Self::Groups),
-            _            => None,
-        }
-    }
-}
-
 const ALL_SECTIONS: &[BotSection] = &[
     BotSection::Accounts,
     BotSection::Bots,
@@ -69,6 +33,28 @@ const ALL_SECTIONS: &[BotSection] = &[
     BotSection::Gatekeeper,
     BotSection::Groups,
 ];
+
+impl BotSection {
+    /// Single match block — all display properties in one place.
+    fn meta(&self) -> SectionMeta {
+        match self {
+            Self::Accounts   => SectionMeta { id: "accounts",   icon: "🔑", i18n_key: "bots.section.accounts"   },
+            Self::Bots       => SectionMeta { id: "bots",       icon: "🤖", i18n_key: "bots.section.bots"       },
+            Self::Broadcast  => SectionMeta { id: "broadcast",  icon: "📢", i18n_key: "bots.section.broadcast"  },
+            Self::Gatekeeper => SectionMeta { id: "gatekeeper", icon: "🔒", i18n_key: "bots.section.gatekeeper" },
+            Self::Groups     => SectionMeta { id: "groups",     icon: "📁", i18n_key: "bots.section.groups"     },
+        }
+    }
+
+    pub fn id(&self)    -> &str    { self.meta().id }
+    pub fn icon(&self)  -> &str    { self.meta().icon }
+    pub fn label(&self) -> String  { fs_i18n::t(self.meta().i18n_key).to_string() }
+
+    /// No match needed — delegates to `id()` via ALL_SECTIONS.
+    pub fn from_id(id: &str) -> Option<Self> {
+        ALL_SECTIONS.iter().find(|s| s.id() == id).cloned()
+    }
+}
 
 /// Root component of the Bot Manager.
 #[component]

@@ -182,9 +182,7 @@ pub fn AccountsView() -> Element {
                                 onclick: move |_| {
                                     let platform = form_platform.read().clone();
                                     let label    = form_label.read().clone();
-                                    if label.trim().is_empty() { return; }
-
-                                    let fields = platform.credential_fields();
+                                    let fields   = platform.credential_fields();
                                     let creds_read = form_creds.read();
                                     let credentials: Vec<(String, String)> = fields.iter().enumerate()
                                         .map(|(i, f)| (
@@ -193,16 +191,12 @@ pub fn AccountsView() -> Element {
                                         ))
                                         .collect();
 
-                                    let account = ControlBotAccount {
-                                        id:          format!("acc-{}", accounts.read().len() + 1),
-                                        platform:    platform.clone(),
-                                        label:       label.clone(),
-                                        credentials,
-                                        connected:   false,
-                                    };
-                                    accounts.write().push(account);
-                                    let _ = ControlBotConfig::save(&*accounts.read());
-                                    show_form.set(false);
+                                    let count = accounts.read().len();
+                                    if let Some(account) = ControlBotAccount::create(platform, label, credentials, count) {
+                                        accounts.write().push(account);
+                                        let _ = ControlBotConfig::save(&*accounts.read());
+                                        show_form.set(false);
+                                    }
                                 },
                                 "Save"
                             }

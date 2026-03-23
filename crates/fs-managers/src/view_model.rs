@@ -33,6 +33,42 @@ pub struct ConfigFieldView {
     pub missing_help:  bool,
 }
 
+impl ConfigFieldView {
+    pub fn from_config_field(f: &ConfigField) -> Self {
+        let kind = match &f.kind {
+            ConfigFieldKind::Text      => ConfigKindView::Text,
+            ConfigFieldKind::Password  => ConfigKindView::Password,
+            ConfigFieldKind::Number { min, max } => ConfigKindView::Number { min: *min, max: *max },
+            ConfigFieldKind::Bool      => ConfigKindView::Bool(
+                f.value.as_bool().unwrap_or(false)
+            ),
+            ConfigFieldKind::Select { options } => ConfigKindView::Select {
+                options: options.iter().map(|o| (o.value.clone(), o.label.clone())).collect(),
+            },
+            ConfigFieldKind::Port     => ConfigKindView::Port,
+            ConfigFieldKind::Path     => ConfigKindView::Path,
+            ConfigFieldKind::Textarea => ConfigKindView::Textarea,
+        };
+        let value = match &f.value {
+            ConfigValue::Text(s)   => s.clone(),
+            ConfigValue::Bool(b)   => b.to_string(),
+            ConfigValue::Number(n) => n.to_string(),
+            ConfigValue::Port(p)   => p.to_string(),
+            ConfigValue::Empty     => String::new(),
+        };
+        Self {
+            key:           f.key.clone(),
+            label:         f.label.clone(),
+            help:          f.help.clone(),
+            kind,
+            value,
+            required:      f.required,
+            needs_restart: f.needs_restart,
+            missing_help:  f.help.is_empty(),
+        }
+    }
+}
+
 /// Simplified field kind for the UI — avoids dragging ConfigFieldKind (non-PartialEq enums).
 #[derive(Clone, PartialEq, Debug)]
 pub enum ConfigKindView {
@@ -54,6 +90,18 @@ pub struct InstanceView {
     pub status:      String,
     pub status_css:  String,
     pub is_running:  bool,
+}
+
+impl InstanceView {
+    pub fn from_instance(i: &InstanceRef) -> Self {
+        Self {
+            id:         i.id.clone(),
+            name:       i.name.clone(),
+            status:     i.status.label().to_string(),
+            status_css: i.status.css_class().to_string(),
+            is_running: i.status.is_running(),
+        }
+    }
 }
 
 /// All data the Manager UI needs — extracted from a Manageable implementor.
@@ -102,8 +150,8 @@ impl PackageViewModel {
         let config      = pkg.config_fields();
         let build       = pkg.build_fields();
 
-        let (type_label, type_css) = package_type_display(pkg.package_type());
-        let instances_view: Vec<InstanceView> = instances.iter().map(instance_to_view).collect();
+        let (type_label, type_css) = Self::package_type_display(pkg.package_type());
+        let instances_view: Vec<InstanceView> = instances.iter().map(InstanceView::from_instance).collect();
         let has_instances = !instances_view.is_empty();
 
         Self {
@@ -128,8 +176,8 @@ impl PackageViewModel {
                 message: c.message.clone(),
             }).collect(),
 
-            config_fields: config.iter().map(field_to_view).collect(),
-            build_fields:  build.iter().map(field_to_view).collect(),
+            config_fields: config.iter().map(ConfigFieldView::from_config_field).collect(),
+            build_fields:  build.iter().map(ConfigFieldView::from_config_field).collect(),
 
             has_instances,
             instances: instances_view,
@@ -139,66 +187,19 @@ impl PackageViewModel {
             can_persist: pkg.can_persist(),
         }
     }
-}
 
-// ── Conversion helpers ────────────────────────────────────────────────────────
-
-fn package_type_display(t: PackageType) -> (String, String) {
-    match t {
-        PackageType::App       => ("App".into(),       "fs-type--app".into()),
-        PackageType::Container => ("Container".into(), "fs-type--container".into()),
-        PackageType::Bundle    => ("Bundle".into(),    "fs-type--bundle".into()),
-        PackageType::Language  => ("Language".into(),  "fs-type--language".into()),
-        PackageType::Theme     => ("Theme".into(),     "fs-type--theme".into()),
-        PackageType::Widget    => ("Widget".into(),    "fs-type--widget".into()),
-        PackageType::Bot       => ("Bot".into(),       "fs-type--bot".into()),
-        PackageType::Bridge    => ("Bridge".into(),    "fs-type--bridge".into()),
-        PackageType::Task      => ("Task".into(),      "fs-type--task".into()),
-    }
-}
-
-fn instance_to_view(i: &InstanceRef) -> InstanceView {
-    InstanceView {
-        id:         i.id.clone(),
-        name:       i.name.clone(),
-        status:     i.status.label().to_string(),
-        status_css: i.status.css_class().to_string(),
-        is_running: i.status.is_running(),
-    }
-}
-
-fn field_to_view(f: &ConfigField) -> ConfigFieldView {
-    let kind = match &f.kind {
-        ConfigFieldKind::Text      => ConfigKindView::Text,
-        ConfigFieldKind::Password  => ConfigKindView::Password,
-        ConfigFieldKind::Number { min, max } => ConfigKindView::Number { min: *min, max: *max },
-        ConfigFieldKind::Bool      => ConfigKindView::Bool(
-            f.value.as_bool().unwrap_or(false)
-        ),
-        ConfigFieldKind::Select { options } => ConfigKindView::Select {
-            options: options.iter().map(|o| (o.value.clone(), o.label.clone())).collect(),
-        },
-        ConfigFieldKind::Port     => ConfigKindView::Port,
-        ConfigFieldKind::Path     => ConfigKindView::Path,
-        ConfigFieldKind::Textarea => ConfigKindView::Textarea,
-    };
-
-    let value = match &f.value {
-        ConfigValue::Text(s)   => s.clone(),
-        ConfigValue::Bool(b)   => b.to_string(),
-        ConfigValue::Number(n) => n.to_string(),
-        ConfigValue::Port(p)   => p.to_string(),
-        ConfigValue::Empty     => String::new(),
-    };
-
-    ConfigFieldView {
-        key:           f.key.clone(),
-        label:         f.label.clone(),
-        help:          f.help.clone(),
-        kind,
-        value,
-        required:      f.required,
-        needs_restart: f.needs_restart,
-        missing_help:  f.help.is_empty(),
+    fn package_type_display(t: PackageType) -> (String, String) {
+        let (label, css) = match t {
+            PackageType::App       => ("App",       "fs-type--app"),
+            PackageType::Container => ("Container", "fs-type--container"),
+            PackageType::Bundle    => ("Bundle",    "fs-type--bundle"),
+            PackageType::Language  => ("Language",  "fs-type--language"),
+            PackageType::Theme     => ("Theme",     "fs-type--theme"),
+            PackageType::Widget    => ("Widget",    "fs-type--widget"),
+            PackageType::Bot       => ("Bot",       "fs-type--bot"),
+            PackageType::Bridge    => ("Bridge",    "fs-type--bridge"),
+            PackageType::Task      => ("Task",      "fs-type--task"),
+        };
+        (label.into(), css.into())
     }
 }

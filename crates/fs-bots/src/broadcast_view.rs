@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use chrono::Utc;
 use crate::model::{BroadcastRecord, ChannelTarget, MessagingBot};
 
 #[component]
@@ -55,17 +54,9 @@ pub fn BroadcastView(bot: MessagingBot, on_update: EventHandler<MessagingBot>) -
                     let msg = message.read().clone();
                     let mut updated = bot.clone();
                     move |_| {
-                        if msg.trim().is_empty() { return; }
-                        let record = BroadcastRecord {
-                            message: msg.clone(),
-                            sent_at: Utc::now(),
-                            target_count: enabled_count,
-                        };
-                        updated.recent_broadcasts.insert(0, record.clone());
-                        if updated.recent_broadcasts.len() > 20 {
-                            updated.recent_broadcasts.truncate(20);
+                        if updated.send_broadcast(&msg, enabled_count) {
+                            on_update.call(updated.clone());
                         }
-                        on_update.call(updated.clone());
                     }
                 },
                 "📤 Send Broadcast"
@@ -105,15 +96,8 @@ fn TargetRow(target: ChannelTarget) -> Element {
 
 #[component]
 fn BroadcastRecordRow(record: BroadcastRecord) -> Element {
-    let preview = if record.message.len() > 50 {
-        format!("{}…", &record.message[..47])
-    } else {
-        record.message.clone()
-    };
-    let secs = (Utc::now() - record.sent_at).num_seconds();
-    let time_ago = if secs < 60 { format!("{secs}s ago") }
-        else if secs < 3600 { format!("{}m ago", secs / 60) }
-        else { format!("{}h ago", secs / 3600) };
+    let preview  = record.preview(50);
+    let time_ago = record.time_ago();
 
     rsx! {
         div {

@@ -28,6 +28,18 @@ impl BrowserTab {
         self.url   = url;
         self
     }
+
+    /// Navigate to `url`, updating title from the URL string.
+    pub fn navigate(&mut self, url: String) {
+        self.title = url.chars().take(32).collect();
+        self.url   = url;
+    }
+
+    /// Reset to an empty new-tab state.
+    pub fn reset(&mut self) {
+        self.url   = String::new();
+        self.title = "New Tab".to_string();
+    }
 }
 
 /// A bookmarked URL.

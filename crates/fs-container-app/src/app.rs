@@ -8,6 +8,13 @@ use crate::log_viewer::LogViewer;
 use crate::service_detail::ServiceDetail;
 use crate::service_list::ServiceList;
 
+/// Display properties for a `ContainerSection` variant — single source of truth.
+struct SectionMeta {
+    id:       &'static str,
+    icon:     &'static str,
+    i18n_key: &'static str,
+}
+
 /// Active section in the Container App Manager.
 #[derive(Clone, PartialEq, Debug)]
 pub enum ContainerSection {
@@ -17,51 +24,33 @@ pub enum ContainerSection {
     Logs,
 }
 
-impl ContainerSection {
-    pub fn id(&self) -> &str {
-        match self {
-            Self::Installed   => "installed",
-            Self::InstallNew  => "install_new",
-            Self::Build       => "build",
-            Self::Logs        => "logs",
-        }
-    }
-
-    pub fn label(&self) -> String {
-        match self {
-            Self::Installed  => fs_i18n::t("container.section.installed").to_string(),
-            Self::InstallNew => fs_i18n::t("container.section.install_new").to_string(),
-            Self::Build      => fs_i18n::t("container.section.build").to_string(),
-            Self::Logs       => fs_i18n::t("container.section.logs").to_string(),
-        }
-    }
-
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::Installed  => "📦",
-            Self::InstallNew => "🛍",
-            Self::Build      => "🔧",
-            Self::Logs       => "📋",
-        }
-    }
-
-    pub fn from_id(id: &str) -> Option<Self> {
-        match id {
-            "installed"   => Some(Self::Installed),
-            "install_new" => Some(Self::InstallNew),
-            "build"       => Some(Self::Build),
-            "logs"        => Some(Self::Logs),
-            _             => None,
-        }
-    }
-}
-
 const ALL_SECTIONS: &[ContainerSection] = &[
     ContainerSection::Installed,
     ContainerSection::InstallNew,
     ContainerSection::Build,
     ContainerSection::Logs,
 ];
+
+impl ContainerSection {
+    /// Single match block — all display properties in one place.
+    fn meta(&self) -> SectionMeta {
+        match self {
+            Self::Installed  => SectionMeta { id: "installed",   icon: "📦", i18n_key: "container.section.installed"   },
+            Self::InstallNew => SectionMeta { id: "install_new", icon: "🛍", i18n_key: "container.section.install_new" },
+            Self::Build      => SectionMeta { id: "build",       icon: "🔧", i18n_key: "container.section.build"       },
+            Self::Logs       => SectionMeta { id: "logs",        icon: "📋", i18n_key: "container.section.logs"        },
+        }
+    }
+
+    pub fn id(&self)    -> &str   { self.meta().id }
+    pub fn icon(&self)  -> &str   { self.meta().icon }
+    pub fn label(&self) -> String { fs_i18n::t(self.meta().i18n_key).to_string() }
+
+    /// No match needed — delegates to `id()` via ALL_SECTIONS.
+    pub fn from_id(id: &str) -> Option<Self> {
+        ALL_SECTIONS.iter().find(|s| s.id() == id).cloned()
+    }
+}
 
 /// Root component of the Container App Manager.
 #[component]

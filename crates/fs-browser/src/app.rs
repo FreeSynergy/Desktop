@@ -455,8 +455,7 @@ fn navigate_to(
     history.write().push(record_visit(&url, &url));
 
     if let Some(tab) = tabs.write().iter_mut().find(|t| t.id == tab_id) {
-        tab.url   = url.clone();
-        tab.title = url.chars().take(32).collect();
+        tab.navigate(url);
     }
 }
 
@@ -464,10 +463,9 @@ fn navigate_to(
 fn close_tab(tabs: &mut Signal<Vec<BrowserTab>>, active: &mut Signal<u32>, id: u32) {
     let len = tabs.read().len();
     if len <= 1 {
-        // Always keep at least one tab; clear it instead
+        // Always keep at least one tab; reset it instead
         if let Some(t) = tabs.write().first_mut() {
-            t.url   = String::new();
-            t.title = "New Tab".to_string();
+            t.reset();
         }
         return;
     }
