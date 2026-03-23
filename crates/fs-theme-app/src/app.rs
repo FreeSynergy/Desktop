@@ -1,6 +1,6 @@
 /// Theme Manager — main app component.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
 use crate::chrome_view::ChromeView;
@@ -68,8 +68,8 @@ const ALL_SECTIONS: &[ThemeSection] = &[
 pub fn ThemeManagerApp() -> Element {
     let mut active = use_signal(|| ThemeSection::Themes);
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_SECTIONS.iter()
-        .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
+    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS.iter()
+        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
     rsx! {
@@ -93,7 +93,7 @@ pub fn ThemeManagerApp() -> Element {
             div {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
-                FsSidebar {
+                Sidebar {
                     items:     sidebar_items,
                     active_id: active.read().id().to_string(),
                     on_select: move |id: String| {

@@ -1,7 +1,7 @@
 /// Help View — context-sensitive help and keyboard shortcuts reference.
 /// Also exports HelpSidebarPanel: the collapsible right-side help panel for the Desktop.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, SidebarSide, FS_SIDEBAR_CSS};
+use fs_components::{Sidebar, SidebarItem, SidebarSide, FS_SIDEBAR_CSS};
 use fs_settings::{ShortcutsConfig, register_actions, resolve_shortcut};
 use serde_json;
 use crate::icons::ICON_HELP;
@@ -63,13 +63,13 @@ const TOPICS: &[HelpTopic] = &[
 const ALL_SECTIONS: &[HelpSection] = &[HelpSection::Topics, HelpSection::Shortcuts];
 
 /// Root component for the Help view (standalone window).
-/// Uses FsSidebar on the left side for navigation between Topics and Shortcuts.
+/// Uses Sidebar on the left side for navigation between Topics and Shortcuts.
 #[component]
 pub fn HelpApp() -> Element {
     let mut active = use_signal(|| HelpSection::Topics);
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_SECTIONS.iter()
-        .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
+    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS.iter()
+        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
     rsx! {
@@ -93,7 +93,7 @@ pub fn HelpApp() -> Element {
             div {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
-                FsSidebar {
+                Sidebar {
                     items: sidebar_items,
                     active_id: active.read().id().to_string(),
                     on_select: move |id: String| {
@@ -240,7 +240,7 @@ fn HelpTopicCard(topic: HelpTopic) -> Element {
 
 // ── HelpSidebarPanel ──────────────────────────────────────────────────────────
 // Collapsible right-side panel embedded in the Desktop shell.
-// Uses the universal FsSidebar { side: SidebarSide::Right } — the SAME component
+// Uses the universal Sidebar { side: SidebarSide::Right } — the SAME component
 // as every other sidebar in the application; only the panel CONTENT differs.
 //
 // Layout when open (280 px):
@@ -264,7 +264,7 @@ pub struct ChatMsg {
 
 /// Collapsible right-side help panel for the Desktop shell.
 ///
-/// Uses `FsSidebar { side: SidebarSide::Right }` — the universal sidebar
+/// Uses `Sidebar { side: SidebarSide::Right }` — the universal sidebar
 /// component. The help icon appears in the tab-strip (mirrored parallelogram);
 /// the panel body contains Topics/Shortcuts tabs, content, and the AI chat
 /// section when the AI service is online.
@@ -343,7 +343,7 @@ pub fn HelpSidebarPanel(
     let aih          = *ai_height.read();
 
     // The help icon as the sole tab-strip entry.
-    let help_item = FsSidebarItem::new("help", ICON_HELP, "Help");
+    let help_item = SidebarItem::new("help", ICON_HELP, "Help");
 
     rsx! {
         // ── Width-resize fullscreen overlay (active while dragging) ───────
@@ -376,9 +376,9 @@ pub fn HelpSidebarPanel(
             }
         }
 
-        // ── Universal FsSidebar (side = Right) ────────────────────────────
+        // ── Universal Sidebar (side = Right) ────────────────────────────
         // items: help icon in tab-strip. custom_panel: the panel body.
-        FsSidebar {
+        Sidebar {
             items:        vec![help_item],
             active_id:    "help".to_string(),
             on_select:    move |_| {},

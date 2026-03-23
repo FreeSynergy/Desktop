@@ -26,7 +26,8 @@ use crate::help_view::{HelpApp, HelpSidebarPanel};
 use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
-use crate::sidebar::{ShellSidebar, default_sidebar_sections};
+use crate::sidebar::{default_sidebar_sections, default_pinned_items};
+use fs_components::{Sidebar, SidebarSection};
 use crate::taskbar::{AppEntry, default_apps};
 use fs_db_desktop::package_registry::PackageRegistry;
 use crate::wallpaper::Wallpaper;
@@ -141,6 +142,11 @@ pub fn Desktop() -> Element {
         let _ = sidebar_refresh.read(); // subscribe to manual refreshes
         let _ = fs_store_app::INSTALL_COUNTER.read(); // subscribe to store install/remove events
         default_sidebar_sections()
+    });
+    let sidebar_pinned = use_memo(move || {
+        let _ = sidebar_refresh.read();
+        let _ = fs_store_app::INSTALL_COUNTER.read();
+        default_pinned_items()
     });
     // Convenience locals extracted from AppContext for use in this component's closures.
     let mut theme          = app_ctx.theme;
@@ -378,11 +384,20 @@ pub fn Desktop() -> Element {
             div {
                 style: "flex: 1; display: flex; flex-direction: row; overflow: hidden; position: relative;",
 
-                // ── Shell sidebar (flow, always visible, hover-expand) ──────
-                ShellSidebar {
-                    sections: sidebar_sections.read().clone(),
-                    active_id: active_app_id,
-                    on_select: on_sidebar_select,
+                // ── Shell sidebar (overlay, hover-expand) ──────────────────
+                Sidebar {
+                    sections:     sidebar_sections.read().clone(),
+                    pinned_items: sidebar_pinned.read().clone(),
+                    active_id:    active_app_id,
+                    on_select:    on_sidebar_select,
+                    on_context_menu: move |id: String| {
+                        // Right-click toggles the pinned state of the item.
+                        let pkgs = PackageRegistry::load();
+                        if let Some(pkg) = pkgs.iter().find(|p| p.id == id) {
+                            let _ = PackageRegistry::set_pinned(&id, !pkg.pinned);
+                            *sidebar_refresh.write() += 1;
+                        }
+                    },
                 }
 
                 // ── Desktop area (home layer + window area) ─────────────────

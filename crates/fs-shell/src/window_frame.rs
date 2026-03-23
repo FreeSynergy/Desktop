@@ -5,7 +5,7 @@
 //! - Resize from all 8 handles (5px tolerance via CSS handles)
 //! - Minimize → icon on desktop (handled in desktop.rs)
 //! - Close: if has_unsaved_changes → UnsavedChangesDialog
-//! - Window sidebar: universal FsSidebar (left, overlay, hover-expand)
+//! - Window sidebar: universal Sidebar (left, overlay, hover-expand)
 //! - Scrollable content area (.fs-scrollable)
 //! - Double-click on titlebar → maximize / restore previous size+position
 //! - Right-side help panel: universal HelpSidebarPanel (same as Desktop shell)
@@ -14,7 +14,7 @@
 #![allow(unpredictable_function_pointer_comparisons)]
 
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, SidebarSide};
+use fs_components::{Sidebar, SidebarItem, SidebarSide};
 
 use crate::help_view::HelpSidebarPanel;
 use crate::window::{OpenWindow, WindowButton, WindowId, WindowRenderFn, WindowSize};
@@ -306,16 +306,16 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
             }
 
             // ── Body: sidebar + content + help-panel ──────────────────────
-            // position: relative so the absolute-positioned FsSidebar panels anchor here.
+            // position: relative so the absolute-positioned Sidebar panels anchor here.
             div {
                 style: "display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative;",
 
-                // Left navigation sidebar — universal FsSidebar, same component as the shell.
+                // Left navigation sidebar — universal Sidebar, same component as the shell.
                 // Only rendered when the window provides sidebar items.
                 if has_sidebar {
-                    FsSidebar {
+                    Sidebar {
                         items: win.sidebar_items.iter()
-                            .map(|i| FsSidebarItem::new(i.id.clone(), i.icon.clone(), i.label.clone()))
+                            .map(|i| SidebarItem::new(i.id.clone(), i.icon.clone(), i.label.clone()))
                             .collect::<Vec<_>>(),
                         active_id: win.active_sidebar_id.clone().unwrap_or_default(),
                         on_select: move |_item_id: String| {},

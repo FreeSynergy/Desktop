@@ -1,6 +1,6 @@
 /// Bot Manager — manage messenger accounts and bot configurations.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
 use crate::accounts_view::AccountsView;
@@ -77,8 +77,8 @@ pub fn BotManagerApp() -> Element {
     let mut bots   = use_signal(MessagingBotsConfig::load);
     let mut selected_idx: Signal<Option<usize>> = use_signal(|| Some(0));
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_SECTIONS.iter()
-        .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
+    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS.iter()
+        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
     // Find first broadcast/gatekeeper bot for the dedicated views
@@ -96,8 +96,8 @@ pub fn BotManagerApp() -> Element {
         .map(|b| b.id.clone())
         .unwrap_or_default();
 
-    let bots_sidebar_items: Vec<FsSidebarItem> = bot_list.iter()
-        .map(|b| FsSidebarItem::new(b.id.clone(), b.kind.icon().to_string(), b.name.clone()))
+    let bots_sidebar_items: Vec<SidebarItem> = bot_list.iter()
+        .map(|b| SidebarItem::new(b.id.clone(), b.kind.icon().to_string(), b.name.clone()))
         .collect();
 
     rsx! {
@@ -120,7 +120,7 @@ pub fn BotManagerApp() -> Element {
             div {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
-                FsSidebar {
+                Sidebar {
                     items:     sidebar_items,
                     active_id: active.read().id().to_string(),
                     on_select: move |id: String| {
@@ -143,7 +143,7 @@ pub fn BotManagerApp() -> Element {
                                 // Bot list sidebar
                                 div {
                                     style: "width: 220px; border-right: 1px solid var(--fs-border); overflow-y: auto;",
-                                    FsSidebar {
+                                    Sidebar {
                                         items: bots_sidebar_items,
                                         active_id: active_bot_id,
                                         on_select: move |id: String| {

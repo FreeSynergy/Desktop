@@ -1,6 +1,6 @@
 /// Settings — root component: all settings sections in one place.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
 use crate::appearance::AppearanceSettings;
@@ -117,13 +117,13 @@ pub fn SettingsApp(props: SettingsAppProps) -> Element {
     let has_packages = !props.packages.is_empty();
     let mut active = use_signal(|| SettingsSection::Appearance);
 
-    let mut sidebar_items: Vec<FsSidebarItem> = STANDARD_SECTIONS.iter()
-        .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
+    let mut sidebar_items: Vec<SidebarItem> = STANDARD_SECTIONS.iter()
+        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
     if has_packages {
         let s = SettingsSection::Packages;
-        sidebar_items.push(FsSidebarItem::new(s.id(), s.icon(), s.label()));
+        sidebar_items.push(SidebarItem::new(s.id(), s.icon(), s.label()));
     }
 
     rsx! {
@@ -147,7 +147,7 @@ pub fn SettingsApp(props: SettingsAppProps) -> Element {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
                 // Collapsible sidebar navigation
-                FsSidebar {
+                Sidebar {
                     items:     sidebar_items,
                     active_id: active.read().id().to_string(),
                     on_select: move |id: String| {

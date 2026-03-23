@@ -96,7 +96,7 @@ pub use launcher::{AppLauncher, LauncherState};
 pub use multiwindow::{MultiwindowHandle, use_multiwindow};
 pub use context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
 pub use notification::{Notification, NotificationHistory, NotificationKind, NotificationManager, NotificationStack};
-pub use sidebar::{ShellSidebar, SidebarSection, SidebarNavItem};
+pub use sidebar::{SidebarEntry, ManagerBundle, default_sidebar_sections, default_pinned_items};
 pub use split_view::{SplitState, SplitView};
 pub use taskbar::{Taskbar, LangSwitcher};
 pub use web_desktop::{WebDesktop, WebTaskbarState};

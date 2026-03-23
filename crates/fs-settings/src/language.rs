@@ -1,15 +1,10 @@
-/// Language settings — sidebar (installed packs + Default) + detail pane.
+/// Language settings — panel sidebar (Default / Installed / Install) + detail pane.
 ///
-/// Left sidebar:
-///   "Default"  (pinned) — pick active language + locale formats
-///   Installed language packages (one entry per language)
-///   "+ Install" — browse & install from the Store
-///
-/// Right detail pane:
-///   Default selected   → language picker + locale formats
-///   Language selected  → Info tab (metadata) · Edit tab (contribution)
-///   Install selected   → available languages from Store
+/// The sidebar is the shared `Sidebar { mode: SidebarMode::Panel }` component —
+/// no custom sidebar code here.  The domain enum `LangPanel` maps sidebar item
+/// keys to the concrete pane to render on the right.
 use dioxus::prelude::*;
+use fs_components::{Sidebar, SidebarItem as NavItem, SidebarSection, SidebarMode};
 use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_i18n;
 use fs_manager_language::{
@@ -82,15 +77,37 @@ impl From<LocaleEntry> for LocaleInfo {
 #[derive(Clone, PartialEq)]
 struct LangEntry { code: String, name: String, builtin: bool }
 
-/// Which sidebar item is currently selected.
+/// Which panel is currently shown in the detail pane.
+///
+/// Maps directly to sidebar item keys so that `Sidebar.on_select` can drive
+/// the pane without any manual match blocks.
 #[derive(Clone, PartialEq, Debug)]
-enum SidebarItem {
-    /// "Default" — active language picker + locale formats.
+enum LangPanel {
+    /// Active language picker + locale formats.
     Default,
-    /// A specific installed language pack.
+    /// Info / Edit view for a specific installed language.
     Language(String),
-    /// The install-from-Store panel.
+    /// Browse & install from the Store.
     Install,
+}
+
+impl LangPanel {
+    fn to_key(&self) -> String {
+        match self {
+            Self::Default        => "default".into(),
+            Self::Language(code) => code.clone(),
+            Self::Install        => "install".into(),
+        }
+    }
+
+    fn from_key(key: &str, installed: &[LangEntry]) -> Self {
+        match key {
+            "install" => Self::Install,
+            "default" => Self::Default,
+            code if installed.iter().any(|e| e.code == code) => Self::Language(code.into()),
+            _ => Self::Default,
+        }
+    }
 }
 
 /// Tabs in the per-language detail pane.
@@ -152,8 +169,8 @@ async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
 
 #[component]
 pub fn LanguageSettings() -> Element {
-    let installed   = use_signal(load_installed);
-    let mut sidebar_sel = use_signal(|| SidebarItem::Default);
+    let installed       = use_signal(load_installed);
+    let mut panel       = use_signal(|| LangPanel::Default);
     let mut editor_lang: Signal<Option<(String, String)>> = use_signal(|| None);
 
     // Full-screen translation editor replaces the whole view when open.
@@ -167,8 +184,18 @@ pub fn LanguageSettings() -> Element {
         };
     }
 
-    let sel         = sidebar_sel.read().clone();
-    let detail_code = if let SidebarItem::Language(c) = &sel { Some(c.clone()) } else { None };
+    let sel         = panel.read().clone();
+    let detail_code = if let LangPanel::Language(c) = &sel { Some(c.clone()) } else { None };
+
+    // Build sidebar items from the installed language list.
+    // Flag SVG is used as icon when available; falls back to "🌐".
+    // Builtin languages get a "✦" badge.
+    let lang_items: Vec<NavItem> = installed.read().iter().map(|e| {
+        let flag = Language::from_code(&e.code).flag_svg().to_string();
+        let icon = if flag.is_empty() { "🌐".into() } else { flag };
+        let item = NavItem::new(e.code.clone(), icon, e.name.clone());
+        if e.builtin { item.with_badge("✦") } else { item }
+    }).collect();
 
     rsx! {
         div {
@@ -176,90 +203,47 @@ pub fn LanguageSettings() -> Element {
             style: "display: flex; height: 100%; width: 100%; overflow: hidden; \
                     background: var(--fs-color-bg-base);",
 
-            // ── Left Sidebar ──────────────────────────────────────────────
-            div {
-                style: "width: 220px; flex-shrink: 0; \
-                        background: var(--fs-color-bg-surface); \
-                        border-right: 1px solid var(--fs-color-border-default); \
-                        display: flex; flex-direction: column; overflow-y: auto;",
-
-                // "Default" pinned entry
-                SidebarDefaultBtn {
-                    active_lang: load_active_language(),
-                    active:      sel == SidebarItem::Default,
-                    onclick:     move |_| sidebar_sel.set(SidebarItem::Default),
-                }
-
-                // Divider + "Installed" label
-                div {
-                    style: "margin: 4px 0; \
-                            border-top: 1px solid var(--fs-color-border-default);",
-                }
-                div {
-                    style: "padding: 6px 16px 2px; font-size: 10px; font-weight: 600; \
-                            letter-spacing: 0.06em; text-transform: uppercase; \
-                            color: var(--fs-color-text-muted);",
-                    "Installed"
-                }
-
-                // Installed language packs
-                for entry in installed.read().clone() {
-                    {
-                        let code      = entry.code.clone();
-                        let is_active = sel == SidebarItem::Language(code.clone());
-                        rsx! {
-                            SidebarLangBtn {
-                                key:      "{code}",
-                                code:     entry.code.clone(),
-                                name:     entry.name.clone(),
-                                builtin:  entry.builtin,
-                                active:   is_active,
-                                on_select: {
-                                    let c = code.clone();
-                                    move |_| sidebar_sel.set(SidebarItem::Language(c.clone()))
-                                },
-                                on_remove: {
-                                    let c              = code.clone();
-                                    let mut installed  = installed.clone();
-                                    let mut sel_signal = sidebar_sel.clone();
-                                    move |_| {
-                                        let _ = PackageRegistry::remove(&c);
-                                        installed.write().retain(|e| e.code != c);
-                                        if *sel_signal.read() == SidebarItem::Language(c.clone()) {
-                                            sel_signal.set(SidebarItem::Default);
-                                        }
-                                    }
-                                },
+            // ── Left Sidebar — the shared Sidebar component, Panel mode ───
+            Sidebar {
+                mode: SidebarMode::Panel,
+                sections: vec![
+                    SidebarSection::untitled(vec![
+                        NavItem::new("default", "⚙", fs_i18n::t("settings.language.default_label")),
+                    ]),
+                    SidebarSection::new(
+                        fs_i18n::t("settings.language.section.installed"),
+                        lang_items,
+                    ),
+                ],
+                pinned_items: vec![
+                    NavItem::new("install", "➕", fs_i18n::t("settings.language.tabs.install")),
+                ],
+                active_id: sel.to_key(),
+                on_select: move |id: String| {
+                    panel.set(LangPanel::from_key(&id, &installed.read()));
+                },
+                // Right-click removes a non-builtin language.
+                on_context_menu: {
+                    let mut installed  = installed.clone();
+                    let mut panel_sig  = panel.clone();
+                    move |id: String| {
+                        let is_builtin = BUILTIN_LANGUAGES.iter().any(|(c, _)| *c == id.as_str());
+                        if !is_builtin {
+                            let _ = PackageRegistry::remove(&id);
+                            installed.write().retain(|e| e.code != id);
+                            if *panel_sig.read() == LangPanel::Language(id.clone()) {
+                                panel_sig.set(LangPanel::Default);
                             }
                         }
                     }
-                }
-
-                // Spacer
-                div { style: "flex: 1; min-height: 8px;" }
-
-                // "+ Install" button
-                button {
-                    style: format!(
-                        "margin: 8px; padding: 8px 12px; font-size: 12px; \
-                         background: {}; border: 1px solid var(--fs-color-primary); \
-                         border-radius: var(--fs-radius-md); cursor: pointer; \
-                         color: var(--fs-color-primary); text-align: left; \
-                         display: flex; align-items: center; gap: 6px; \
-                         transition: background 100ms;",
-                        if sel == SidebarItem::Install { "rgba(6,182,212,0.12)" } else { "transparent" }
-                    ),
-                    onclick: move |_| sidebar_sel.set(SidebarItem::Install),
-                    "+ "
-                    {fs_i18n::t("settings.language.tabs.install")}
-                }
+                },
             }
 
             // ── Right Detail Pane ─────────────────────────────────────────
             div {
                 style: "flex: 1; display: flex; flex-direction: column; overflow: hidden;",
 
-                if sel == SidebarItem::Default {
+                if sel == LangPanel::Default {
                     DefaultPane { installed: installed.read().clone() }
                 }
 
@@ -282,7 +266,7 @@ pub fn LanguageSettings() -> Element {
                     }
                 }
 
-                if sel == SidebarItem::Install {
+                if sel == LangPanel::Install {
                     InstallPane {
                         installed_ids: installed.read().iter().map(|e| e.code.clone()).collect(),
                         on_installed: {
@@ -904,88 +888,6 @@ fn InstallPane(installed_ids: Vec<String>, on_installed: EventHandler<LangEntry>
 // ── Sidebar buttons ───────────────────────────────────────────────────────────
 
 #[component]
-fn SidebarDefaultBtn(
-    active_lang: String,
-    active:      bool,
-    onclick:     EventHandler<MouseEvent>,
-) -> Element {
-    let (bg, fg) = if active {
-        ("background: var(--fs-sidebar-active-bg, rgba(6,182,212,0.15));",
-         "color: var(--fs-color-primary);")
-    } else {
-        ("background: transparent;", "color: var(--fs-color-text-primary);")
-    };
-    rsx! {
-        div {
-            style: "display: flex; align-items: center; gap: 10px; padding: 10px 16px; \
-                    cursor: pointer; transition: background 100ms; {bg} {fg}",
-            onclick,
-            span { style: "font-size: 16px; flex-shrink: 0;", "⚙" }
-            div { style: "flex: 1; min-width: 0;",
-                div { style: "font-size: 13px; font-weight: 600;", "Default" }
-                div {
-                    style: "font-size: 11px; opacity: 0.6; margin-top: 1px; \
-                            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
-                    "{active_lang}"
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn SidebarLangBtn(
-    code:      String,
-    name:      String,
-    builtin:   bool,
-    active:    bool,
-    on_select: EventHandler<MouseEvent>,
-    on_remove: EventHandler<MouseEvent>,
-) -> Element {
-    let (bg, fg) = if active {
-        ("background: var(--fs-sidebar-active-bg, rgba(6,182,212,0.15));",
-         "color: var(--fs-color-primary);")
-    } else {
-        ("background: transparent;", "color: var(--fs-color-text-primary);")
-    };
-    rsx! {
-        div {
-            style: "display: flex; align-items: center; gap: 10px; padding: 8px 16px; \
-                    cursor: pointer; transition: background 100ms; {bg} {fg}",
-            onclick: on_select,
-            span { style: "font-size: 14px; flex-shrink: 0;", "🌐" }
-            div { style: "flex: 1; min-width: 0;",
-                div {
-                    style: "font-size: 13px; font-weight: 500; white-space: nowrap; \
-                            overflow: hidden; text-overflow: ellipsis;",
-                    "{name}"
-                }
-                div { style: "font-size: 11px; opacity: 0.55; margin-top: 1px;", "{code}" }
-            }
-            if builtin {
-                span {
-                    style: "padding: 1px 5px; font-size: 9px; \
-                            background: var(--fs-color-primary); color: white; \
-                            border-radius: 999px; flex-shrink: 0;",
-                    "✦"
-                }
-            }
-            if !builtin {
-                button {
-                    style: "margin-left: 2px; padding: 2px 6px; font-size: 11px; \
-                            background: transparent; border: 1px solid currentColor; \
-                            border-radius: var(--fs-radius-sm); cursor: pointer; opacity: 0.5;",
-                    onclick: move |e: MouseEvent| {
-                        e.stop_propagation();
-                        on_remove.call(e);
-                    },
-                    "✕"
-                }
-            }
-        }
-    }
-}
-
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
 const SELECT_STYLE: &str =

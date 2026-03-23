@@ -1,6 +1,6 @@
 /// Builder — root component: Container builder, Bridge builder, i18n editor, resource browser.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 
 use crate::bridge_builder::BridgeBuilder;
 use crate::container_builder::ContainerBuilder;
@@ -66,8 +66,8 @@ const ALL_TABS: &[BuilderTab] = &[
 pub fn BuilderApp() -> Element {
     let mut active_tab = use_signal(|| BuilderTab::Container);
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_TABS.iter()
-        .map(|t| FsSidebarItem::new(t.id(), t.icon(), t.label()))
+    let sidebar_items: Vec<SidebarItem> = ALL_TABS.iter()
+        .map(|t| SidebarItem::new(t.id(), t.icon(), t.label()))
         .collect();
 
     rsx! {
@@ -90,7 +90,7 @@ pub fn BuilderApp() -> Element {
             div {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
-                FsSidebar {
+                Sidebar {
                     items: sidebar_items,
                     active_id: active_tab.read().id().to_string(),
                     on_select: move |id: String| {

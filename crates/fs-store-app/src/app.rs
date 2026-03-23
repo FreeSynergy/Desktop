@@ -4,7 +4,7 @@
 /// visible regardless of the active section. Switching sections triggers the
 /// universal FsTabView slide+blur animation.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FsTabDef, FsTabView,
+use fs_components::{Sidebar, SidebarItem, FsTabDef, FsTabView,
                      FS_SIDEBAR_CSS, FS_TAB_VIEW_CSS};
 use fs_store::StoreClient;
 
@@ -70,27 +70,27 @@ impl StoreSection {
     }
 
     /// Sidebar items for this section (excludes the pinned Settings entry).
-    pub fn sidebar_items(&self) -> Vec<FsSidebarItem> {
+    pub fn sidebar_items(&self) -> Vec<SidebarItem> {
         match self {
             Self::Server => vec![
-                FsSidebarItem::new("server",  ICON_SERVER,  fs_i18n::t("store.sidebar.server")),
-                FsSidebarItem::new("bridges", ICON_BRIDGE,  fs_i18n::t("store.sidebar.bridges")),
+                SidebarItem::new("server",  ICON_SERVER,  fs_i18n::t("store.sidebar.server")),
+                SidebarItem::new("bridges", ICON_BRIDGE,  fs_i18n::t("store.sidebar.bridges")),
             ],
             Self::Apps => vec![
-                FsSidebarItem::new("bundles",  ICON_BUNDLE, fs_i18n::t("store.sidebar.bundles")),
-                FsSidebarItem::new("apps",     ICON_APPS,   fs_i18n::t("store.sidebar.apps")),
-                FsSidebarItem::new("bots",     ICON_BOT,    fs_i18n::t("store.sidebar.bots")),
-                FsSidebarItem::new("installed",ICON_INSTALLED, fs_i18n::t("store.sidebar.installed")),
-                FsSidebarItem::new("updates",  ICON_UPDATES, fs_i18n::t("store.sidebar.updates")),
+                SidebarItem::new("bundles",  ICON_BUNDLE, fs_i18n::t("store.sidebar.bundles")),
+                SidebarItem::new("apps",     ICON_APPS,   fs_i18n::t("store.sidebar.apps")),
+                SidebarItem::new("bots",     ICON_BOT,    fs_i18n::t("store.sidebar.bots")),
+                SidebarItem::new("installed",ICON_INSTALLED, fs_i18n::t("store.sidebar.installed")),
+                SidebarItem::new("updates",  ICON_UPDATES, fs_i18n::t("store.sidebar.updates")),
             ],
             Self::Desktop => vec![
-                FsSidebarItem::new("themes",   ICON_THEME,   fs_i18n::t("store.sidebar.themes")),
-                FsSidebarItem::new("widgets",  ICON_WIDGET,  fs_i18n::t("store.sidebar.widgets")),
-                FsSidebarItem::new("cursors",  ICON_CURSOR,  fs_i18n::t("store.sidebar.cursors")),
-                FsSidebarItem::new("icons",    ICON_ICONS,   fs_i18n::t("store.sidebar.icons")),
-                FsSidebarItem::new("languages",ICON_LANG,    fs_i18n::t("store.sidebar.languages")),
-                FsSidebarItem::new("installed",ICON_INSTALLED, fs_i18n::t("store.sidebar.installed")),
-                FsSidebarItem::new("updates",  ICON_UPDATES, fs_i18n::t("store.sidebar.updates")),
+                SidebarItem::new("themes",   ICON_THEME,   fs_i18n::t("store.sidebar.themes")),
+                SidebarItem::new("widgets",  ICON_WIDGET,  fs_i18n::t("store.sidebar.widgets")),
+                SidebarItem::new("cursors",  ICON_CURSOR,  fs_i18n::t("store.sidebar.cursors")),
+                SidebarItem::new("icons",    ICON_ICONS,   fs_i18n::t("store.sidebar.icons")),
+                SidebarItem::new("languages",ICON_LANG,    fs_i18n::t("store.sidebar.languages")),
+                SidebarItem::new("installed",ICON_INSTALLED, fs_i18n::t("store.sidebar.installed")),
+                SidebarItem::new("updates",  ICON_UPDATES, fs_i18n::t("store.sidebar.updates")),
             ],
         }
     }
@@ -190,7 +190,7 @@ pub fn StoreApp() -> Element {
 
     let sidebar_items = cur_section.sidebar_items();
     let pinned = vec![
-        FsSidebarItem::new("settings", ICON_SETTINGS, fs_i18n::t("store.sidebar.settings")),
+        SidebarItem::new("settings", ICON_SETTINGS, fs_i18n::t("store.sidebar.settings")),
     ];
 
     let kinds = cur_section.kinds_for(&cur_item);
@@ -219,7 +219,7 @@ pub fn StoreApp() -> Element {
                     style: "display: flex; flex: 1; overflow: hidden; height: 100%;",
 
                     // Left sidebar (section-specific, Settings pinned)
-                    FsSidebar {
+                    Sidebar {
                         items:        sidebar_items,
                         pinned_items: pinned,
                         active_id:    cur_item.clone(),

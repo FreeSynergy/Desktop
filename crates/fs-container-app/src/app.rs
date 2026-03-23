@@ -1,6 +1,6 @@
 /// Container App Manager — manage running/stopped containers, browse store, build packages.
 use dioxus::prelude::*;
-use fs_components::{AppContext, FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{AppContext, Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
 use crate::build_view::BuildView;
@@ -69,8 +69,8 @@ pub fn Container() -> Element {
     let mut active = use_signal(|| ContainerSection::Installed);
     let mut selected_service: Signal<Option<String>> = use_signal(|| None);
 
-    let sidebar_items: Vec<FsSidebarItem> = ALL_SECTIONS.iter()
-        .map(|s| FsSidebarItem::new(s.id(), s.icon(), s.label()))
+    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS.iter()
+        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
     rsx! {
@@ -95,7 +95,7 @@ pub fn Container() -> Element {
                 style: "display: flex; flex: 1; overflow: hidden;",
 
                 // ── Left nav sidebar ───────────────────────────────────────────────
-                FsSidebar {
+                Sidebar {
                     items:     sidebar_items,
                     active_id: active.read().id().to_string(),
                     on_select: move |id: String| {
