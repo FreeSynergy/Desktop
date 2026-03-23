@@ -27,7 +27,7 @@ use crate::header::{Breadcrumb, ShellHeader};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
 use crate::sidebar::{default_sidebar_sections, default_pinned_items};
-use fs_components::{Sidebar, SidebarSection};
+use fs_components::Sidebar;
 use crate::taskbar::{AppEntry, default_apps};
 use fs_db_desktop::package_registry::PackageRegistry;
 use crate::wallpaper::Wallpaper;
@@ -137,7 +137,7 @@ pub fn Desktop() -> Element {
     let mut notif_history   = use_signal(NotificationHistory::default);
     let mut ctx_menu        = use_signal(|| ContextMenuState::default());
     // Sidebar refresh counter — kept for manual refresh calls from sub-apps.
-    let sidebar_refresh: Signal<u32> = use_context_provider(|| Signal::new(0u32));
+    let mut sidebar_refresh: Signal<u32> = use_context_provider(|| Signal::new(0u32));
     let sidebar_sections = use_memo(move || {
         let _ = sidebar_refresh.read(); // subscribe to manual refreshes
         let _ = fs_store_app::INSTALL_COUNTER.read(); // subscribe to store install/remove events
