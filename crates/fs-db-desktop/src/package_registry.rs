@@ -125,6 +125,9 @@ pub struct InstalledPackage {
     /// Contains the bundle's package ID. The package cannot be removed individually.
     #[serde(default)]
     pub installed_by: Option<String>,
+    /// If `true`, this package is pinned in the sidebar's pinned section.
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 /// Simple JSON-based registry at `~/.local/share/fsn/packages.json`.
@@ -180,6 +183,17 @@ impl PackageRegistry {
             }
         }
         packages.retain(|p| p.id != id);
+        let json = serde_json::to_string_pretty(&packages).map_err(|e| e.to_string())?;
+        std::fs::write(&path, json).map_err(|e| e.to_string())
+    }
+
+    /// Toggle the pinned state of a package by ID.
+    pub fn set_pinned(id: &str, pinned: bool) -> Result<(), String> {
+        let path = Self::registry_path();
+        let mut packages = Self::load();
+        if let Some(pkg) = packages.iter_mut().find(|p| p.id == id) {
+            pkg.pinned = pinned;
+        }
         let json = serde_json::to_string_pretty(&packages).map_err(|e| e.to_string())?;
         std::fs::write(&path, json).map_err(|e| e.to_string())
     }

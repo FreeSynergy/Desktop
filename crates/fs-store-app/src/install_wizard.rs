@@ -114,6 +114,7 @@ async fn do_install_inner(
         icon:         icon_content,
         file_path,
         installed_by,
+        pinned: false,
     })
     .map_err(|e| format!("Registry error: {e}"))
 }

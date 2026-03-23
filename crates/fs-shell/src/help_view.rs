@@ -377,15 +377,15 @@ pub fn HelpSidebarPanel(
         }
 
         // ── Universal FsSidebar (side = Right) ────────────────────────────
-        // items: help icon in tab-strip. children: custom panel body.
+        // items: help icon in tab-strip. custom_panel: the panel body.
         FsSidebar {
-            items:       vec![help_item],
-            active_id:   "help".to_string(),
-            on_select:   move |_| {},
-            side:        SidebarSide::Right,
-            panel_width: pw,
-            force_open:  is_resizing,
-
+            items:        vec![help_item],
+            active_id:    "help".to_string(),
+            on_select:    move |_| {},
+            side:         SidebarSide::Right,
+            panel_width:  pw,
+            force_open:   is_resizing,
+            custom_panel: rsx! {
             // ── Panel body ────────────────────────────────────────────────
             div {
                 style: "display: flex; flex-direction: row; flex: 1; overflow: hidden; \
@@ -625,6 +625,7 @@ pub fn HelpSidebarPanel(
                     }
                 }
             }
+            },  // close custom_panel rsx!
         }
     }
 }

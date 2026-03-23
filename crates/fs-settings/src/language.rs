@@ -137,6 +137,7 @@ async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
         icon:         String::new(),
         file_path,
         installed_by: None,
+        pinned:       false,
     })
     .map_err(|e| format!("Registry error: {e}"))
 }

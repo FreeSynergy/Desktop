@@ -80,6 +80,7 @@ pub fn ensure_registered() {
             icon:         pkg.icon.to_string(),
             file_path:    None,
             installed_by: None,
+            pinned:       false,
         };
         let _ = PackageRegistry::install(entry);
     }
