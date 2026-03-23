@@ -158,7 +158,7 @@ pub fn BrowserApp() -> Element {
                 // Panel toggles
                 button {
                     class: if *panel.read() == BrowserPanel::Bookmarks { "fs-browser__nav-btn fs-browser__nav-btn--active" } else { "fs-browser__nav-btn" },
-                    title: fs_i18n::t("browser.bookmarks").to_string(),
+                    title: fs_i18n::t("browser.bookmarks.label").to_string(),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::Bookmarks { BrowserPanel::Browse } else { BrowserPanel::Bookmarks };
                         panel.set(p);
@@ -167,7 +167,7 @@ pub fn BrowserApp() -> Element {
                 }
                 button {
                     class: if *panel.read() == BrowserPanel::History { "fs-browser__nav-btn fs-browser__nav-btn--active" } else { "fs-browser__nav-btn" },
-                    title: fs_i18n::t("browser.history").to_string(),
+                    title: fs_i18n::t("browser.history.label").to_string(),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::History { BrowserPanel::Browse } else { BrowserPanel::History };
                         panel.set(p);
@@ -176,7 +176,7 @@ pub fn BrowserApp() -> Element {
                 }
                 button {
                     class: if *panel.read() == BrowserPanel::Downloads { "fs-browser__nav-btn fs-browser__nav-btn--active" } else { "fs-browser__nav-btn" },
-                    title: fs_i18n::t("browser.downloads").to_string(),
+                    title: fs_i18n::t("browser.downloads.label").to_string(),
                     onclick: move |_| {
                         let p = if *panel.read() == BrowserPanel::Downloads { BrowserPanel::Browse } else { BrowserPanel::Downloads };
                         panel.set(p);
@@ -328,7 +328,7 @@ fn BookmarksPanel(
 ) -> Element {
     rsx! {
         div { class: "fs-browser__panel-inner",
-            h3 { style: "margin: 0 0 12px; font-size: 14px;", {fs_i18n::t("browser.bookmarks")} }
+            h3 { style: "margin: 0 0 12px; font-size: 14px;", {fs_i18n::t("browser.bookmarks.label")} }
             if bookmarks.is_empty() {
                 p { style: "color: var(--fs-color-text-muted); font-size: 13px;",
                     {fs_i18n::t("browser.bookmarks.empty")}
@@ -374,7 +374,7 @@ fn HistoryPanel(
     rsx! {
         div { class: "fs-browser__panel-inner",
             div { style: "display: flex; align-items: center; gap: 8px; margin-bottom: 12px;",
-                h3 { style: "margin: 0; flex: 1; font-size: 14px;", {fs_i18n::t("browser.history")} }
+                h3 { style: "margin: 0; flex: 1; font-size: 14px;", {fs_i18n::t("browser.history.label")} }
                 button {
                     class: "fs-browser__panel-row-action",
                     onclick: move |_| on_clear.call(()),
@@ -414,7 +414,7 @@ fn HistoryPanel(
 fn DownloadsPanel(downloads: Vec<DownloadEntry>) -> Element {
     rsx! {
         div { class: "fs-browser__panel-inner",
-            h3 { style: "margin: 0 0 12px; font-size: 14px;", {fs_i18n::t("browser.downloads")} }
+            h3 { style: "margin: 0 0 12px; font-size: 14px;", {fs_i18n::t("browser.downloads.label")} }
             if downloads.is_empty() {
                 p { style: "color: var(--fs-color-text-muted); font-size: 13px;",
                     {fs_i18n::t("browser.downloads.empty")}

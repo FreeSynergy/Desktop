@@ -17,6 +17,8 @@ fn main() {
 
     tracing::info!("Starting FreeSynergy.Desktop");
 
+    fs_shell::init_i18n();
+
     #[cfg(feature = "desktop")]
     fs_shell::launch_desktop(
         fs_shell::DesktopConfig::new()

@@ -67,8 +67,12 @@ pub fn init_i18n() {
         &ShellI18nPlugin,
     ];
 
-    // Errors only when already initialized (e.g. during hot-reload) — safe to ignore.
-    let _ = fs_i18n::init_with_plugins(&lang, plugins);
+    if let Err(e) = fs_i18n::init_with_plugins(&lang, plugins) {
+        // OnceLock already set during hot-reload — fine. Any other error is a real bug.
+        if !e.to_string().contains("already initialized") {
+            tracing::error!("i18n init failed: {e}");
+        }
+    }
 
     // Overlay user-installed language pack from disk.
     if lang != "en" {

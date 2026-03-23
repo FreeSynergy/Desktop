@@ -1,7 +1,7 @@
 /// Help View — context-sensitive help and keyboard shortcuts reference.
 /// Also exports HelpSidebarPanel: the collapsible right-side help panel for the Desktop.
 use dioxus::prelude::*;
-use fs_components::{FsSidebar, FsSidebarItem, FS_SIDEBAR_CSS};
+use fs_components::{FsSidebar, FsSidebarItem, SidebarSide, FS_SIDEBAR_CSS};
 use fs_settings::{ShortcutsConfig, register_actions, resolve_shortcut};
 use serde_json;
 use crate::icons::ICON_HELP;
@@ -52,17 +52,18 @@ struct HelpTopic {
 
 const TOPICS: &[HelpTopic] = &[
     HelpTopic { id: "getting-started", title: "Getting Started",    summary: "Learn how to set up your first FreeSynergy.Node deployment." },
-    HelpTopic { id: "container-app",   title: "Container",      summary: "Manage services, bots, and containers from the Container App view." },
-    HelpTopic { id: "store",           title: "Module Store",       summary: "Browse, install, and update service modules from the store." },
-    HelpTopic { id: "studio",          title: "Studio",             summary: "Create custom modules, plugins, and language packs." },
-    HelpTopic { id: "settings",        title: "Settings",           summary: "Configure appearance, language, service roles, and AI connections." },
-    HelpTopic { id: "ai-assistant",    title: "AI Assistant",       summary: "Use your local Ollama instance as an integrated AI helper." },
-    HelpTopic { id: "troubleshooting", title: "Troubleshooting",    summary: "Common issues and how to resolve them." },
+    HelpTopic { id: "container-app",   title: "Container",          summary: "Manage services, bots, and containers from the Container App view." },
+    HelpTopic { id: "store",           title: "Module Store",        summary: "Browse, install, and update service modules from the store." },
+    HelpTopic { id: "studio",          title: "Studio",              summary: "Create custom modules, plugins, and language packs." },
+    HelpTopic { id: "settings",        title: "Settings",            summary: "Configure appearance, language, service roles, and AI connections." },
+    HelpTopic { id: "ai-assistant",    title: "AI Assistant",        summary: "Use your local Ollama instance as an integrated AI helper." },
+    HelpTopic { id: "troubleshooting", title: "Troubleshooting",     summary: "Common issues and how to resolve them." },
 ];
 
 const ALL_SECTIONS: &[HelpSection] = &[HelpSection::Topics, HelpSection::Shortcuts];
 
-/// Root component for the Help view.
+/// Root component for the Help view (standalone window).
+/// Uses FsSidebar on the left side for navigation between Topics and Shortcuts.
 #[component]
 pub fn HelpApp() -> Element {
     let mut active = use_signal(|| HelpSection::Topics);
@@ -170,7 +171,7 @@ fn ShortcutsReference() -> Element {
             class: "fs-scrollable", style: "overflow-y: auto; padding: 16px 24px; height: 100%;",
             p {
                 style: "font-size: 12px; color: var(--fs-text-muted); margin-bottom: 16px;",
-                "Shortcuts can be customized in Settings → Shortcuts."
+                "Shortcuts can be customized in Settings \u{2192} Shortcuts."
             }
             for cat in &categories {
                 {
@@ -239,18 +240,15 @@ fn HelpTopicCard(topic: HelpTopic) -> Element {
 
 // ── HelpSidebarPanel ──────────────────────────────────────────────────────────
 // Collapsible right-side panel embedded in the Desktop shell.
+// Uses the universal FsSidebar { side: SidebarSide::Right } — the SAME component
+// as every other sidebar in the application; only the panel CONTENT differs.
+//
 // Layout when open (280 px):
-//   ┌──────────────────┐
-//   │ Header: Help [×] │
-//   ├──────────────────┤
-//   │ [Topics][Kbd]    │  ← tab strip
-//   ├──────────────────┤
-//   │ topic list /     │
-//   │ shortcuts        │  ← scrollable content
-//   ├──────────────────┤  (only when AI is running)
-//   │ AI Chat          │  ← flex: 1
-//   │ [input ↵]        │
-//   └──────────────────┘
+//   [tab-strip 44px] | [drag-edge 6px] [inner-content panel_width]
+//
+// The tab-strip (mirrored parallelogram) is always visible at the right edge.
+// CSS :hover expands the panel leftward. force_open keeps it expanded while
+// the user is drag-resizing the panel width or AI section height.
 
 #[derive(Clone, PartialEq, Debug)]
 enum SidebarTab {
@@ -266,12 +264,13 @@ pub struct ChatMsg {
 
 /// Collapsible right-side help panel for the Desktop shell.
 ///
-/// Collapsed (44 px): shows a vertical "❓ Help" tab on the right edge.
-/// Hover over the tab or panel: expands leftward with a 300 ms CSS transition.
-/// Width is resizable by dragging the left edge of the expanded panel.
-/// AI chat section height is resizable by dragging the divider above it.
-/// AI availability is checked periodically via HTTP ping; the section is hidden
-/// when the AI service is not responding, and a notification is emitted on change.
+/// Uses `FsSidebar { side: SidebarSide::Right }` — the universal sidebar
+/// component. The help icon appears in the tab-strip (mirrored parallelogram);
+/// the panel body contains Topics/Shortcuts tabs, content, and the AI chat
+/// section when the AI service is online.
+///
+/// Panel width is drag-resizable (left edge handle). AI section height is
+/// drag-resizable (divider above it).
 #[component]
 pub fn HelpSidebarPanel(
     #[props(default)]
@@ -284,25 +283,21 @@ pub fn HelpSidebarPanel(
     // ── Panel geometry ────────────────────────────────────────────────────
     let mut panel_width:  Signal<f64> = use_signal(|| 280.0);
     let mut ai_height:    Signal<f64> = use_signal(|| 260.0);
-    let mut hovered:      Signal<bool> = use_signal(|| false);
 
-    // Width-resize state (dragging the left edge)
-    let mut resizing_w:   Signal<bool> = use_signal(|| false);
-    let mut resize_w_sx:  Signal<f64>  = use_signal(|| 0.0);
-    let mut resize_w_sw:  Signal<f64>  = use_signal(|| 280.0);
+    // Width-resize drag state
+    let mut resizing_w:  Signal<bool> = use_signal(|| false);
+    let mut resize_w_sx: Signal<f64>  = use_signal(|| 0.0);
+    let mut resize_w_sw: Signal<f64>  = use_signal(|| 280.0);
 
-    // AI-section height resize state (dragging the divider)
+    // AI-section height resize drag state
     let mut resizing_ai:  Signal<bool> = use_signal(|| false);
     let mut resize_ai_sy: Signal<f64>  = use_signal(|| 0.0);
     let mut resize_ai_sh: Signal<f64>  = use_signal(|| 260.0);
 
     // ── AI health ─────────────────────────────────────────────────────────
-    // true  = AI responded to HTTP ping within 3 s
-    // false = no response / not running
     let mut ai_online:     Signal<bool> = use_signal(|| false);
     let mut ai_was_online: Signal<bool> = use_signal(|| false);
 
-    // Background task: ping every 30 s, emit callbacks on state change.
     {
         let on_offline = on_ai_offline.clone();
         let on_online  = on_ai_online.clone();
@@ -330,7 +325,6 @@ pub fn HelpSidebarPanel(
                         if let Some(ref cb) = on_offline { cb.call(()); }
                     }
                 }
-
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
             }
         });
@@ -343,128 +337,22 @@ pub fn HelpSidebarPanel(
     let ai_url        = fs_ai::ai_api_url();
 
     // ── Derived values ────────────────────────────────────────────────────
-    let is_ai_online  = *ai_online.read();
-    let is_resizing   = *resizing_w.read() || *resizing_ai.read();
-    let is_open       = *hovered.read() || is_resizing;
-    let pw            = *panel_width.read();
-    let aih           = *ai_height.read();
-    let translate_x   = if is_open { 0.0_f64 } else { pw };
+    let is_ai_online = *ai_online.read();
+    let is_resizing  = *resizing_w.read() || *resizing_ai.read();
+    let pw           = *panel_width.read();
+    let aih          = *ai_height.read();
 
-    const PANEL_CSS: &str = r#"
-/* ── Bookmark-drawer: slides in/out from the right edge ── */
-/* Tab-strip is a compact pill — only as tall as the icon,
-   vertically centered. Above/below it the wallpaper shows.  */
-.fs-help-sidebar {
-    position: absolute; right: 0; top: 0; bottom: 0; z-index: 200;
-    display: flex; flex-direction: row;
-    align-items: center;        /* pill is vertically centered         */
-    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;       /* transparent above/below the pill    */
-}
-/* ── Tab strip (left, compact pill at right edge when closed) ── */
-.fs-help-sidebar__tab-strip {
-    width: 44px; flex-shrink: 0;
-    /* height: auto — only as tall as icon content */
-    display: flex; flex-direction: column; align-items: center;
-    padding: 8px 0; gap: 6px;
-    background: var(--fs-bg-surface);
-    border-top: 1px solid var(--fs-border);
-    border-left: 1px solid var(--fs-border);
-    border-bottom: 1px solid var(--fs-border);
-    border-radius: 10px 0 0 10px;
-    pointer-events: all;
-    box-shadow: -3px 0 12px rgba(0, 0, 0, 0.35);
-}
-/* ── Body (right part, slides off-screen when closed) ── */
-.fs-help-sidebar__body {
-    flex: 1; display: flex; flex-direction: row; min-width: 0; overflow: hidden;
-    align-self: stretch;        /* body fills full height when open    */
-    pointer-events: all;
-}
-.fs-help-sidebar__drag-edge {
-    width: 6px; flex-shrink: 0; cursor: ew-resize;
-    background: transparent;
-    transition: background 120ms;
-}
-.fs-help-sidebar__drag-edge:hover { background: var(--fs-border-focus); }
-.fs-help-sidebar__inner {
-    flex: 1; display: flex; flex-direction: column; overflow: hidden;
-    background: var(--fs-bg-surface);
-    border-left: 1px solid var(--fs-border);
-    min-width: 0;
-}
-/* ── Header ── */
-.fs-help-sidebar__header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px; border-bottom: 1px solid var(--fs-border);
-    flex-shrink: 0; background: var(--fs-bg-elevated);
-}
-/* ── Tabs ── */
-.fs-help-sidebar__tabs {
-    display: flex; border-bottom: 1px solid var(--fs-border); flex-shrink: 0;
-}
-.fs-help-sidebar__tab {
-    flex: 1; padding: 7px 0; text-align: center;
-    font-size: 12px; cursor: pointer;
-    background: none; border: none; border-bottom: 2px solid transparent;
-    color: var(--fs-text-muted); font-family: inherit;
-    transition: color 120ms, border-color 120ms;
-}
-.fs-help-sidebar__tab--active {
-    color: var(--fs-primary); border-bottom-color: var(--fs-primary);
-}
-/* ── Content ── */
-.fs-help-sidebar__content { flex: 1; overflow-y: auto; min-height: 0; }
-/* ── AI resize divider ── */
-.fs-help-sidebar__ai-resize {
-    height: 6px; flex-shrink: 0; cursor: ns-resize;
-    background: var(--fs-border);
-    transition: background 120ms;
-}
-.fs-help-sidebar__ai-resize:hover { background: var(--fs-border-focus); }
-/* ── AI chat section ── */
-.fs-help-sidebar__ai {
-    flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
-}
-.fs-help-sidebar__ai-title {
-    padding: 6px 12px; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--fs-accent); border-bottom: 1px solid var(--fs-border);
-    flex-shrink: 0;
-}
-.fs-help-sidebar__chat-msgs {
-    flex: 1; overflow-y: auto; padding: 8px 12px;
-    display: flex; flex-direction: column; gap: 6px; min-height: 0;
-}
-.fs-help-sidebar__chat-input-row {
-    display: flex; gap: 6px; padding: 8px 10px;
-    border-top: 1px solid var(--fs-border); flex-shrink: 0;
-}
-.fs-help-sidebar__chat-input {
-    flex: 1; padding: 7px 10px; border-radius: 6px;
-    background: var(--fs-bg-input); border: 1px solid var(--fs-border);
-    color: var(--fs-text-primary); font-size: 13px; font-family: inherit;
-    outline: none; resize: none; height: 34px; line-height: 1.4;
-}
-.fs-help-sidebar__chat-send {
-    padding: 0 12px; border-radius: 6px;
-    background: var(--fs-primary); border: none;
-    color: #fff; font-size: 13px; cursor: pointer; flex-shrink: 0;
-}
-.fs-help-sidebar__chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
-"#;
+    // The help icon as the sole tab-strip entry.
+    let help_item = FsSidebarItem::new("help", ICON_HELP, "Help");
 
     rsx! {
-        style { "{PANEL_CSS}" }
-
-        // ── Width-resize overlay (fullscreen, active while dragging left edge) ─
+        // ── Width-resize fullscreen overlay (active while dragging) ───────
         if *resizing_w.read() {
             div {
                 style: "position: fixed; inset: 0; z-index: 99999; \
                         pointer-events: all; cursor: ew-resize;",
                 onmousemove: move |evt: MouseEvent| {
                     let c = evt.data().client_coordinates();
-                    // dragging left = bigger panel (start_x - current_x = positive delta)
                     let dx = *resize_w_sx.read() - c.x;
                     let new_w = (*resize_w_sw.read() + dx).max(180.0).min(600.0);
                     panel_width.set(new_w);
@@ -473,14 +361,13 @@ pub fn HelpSidebarPanel(
             }
         }
 
-        // ── AI-height resize overlay ───────────────────────────────────────
+        // ── AI-section height resize overlay ──────────────────────────────
         if *resizing_ai.read() {
             div {
                 style: "position: fixed; inset: 0; z-index: 99999; \
                         pointer-events: all; cursor: ns-resize;",
                 onmousemove: move |evt: MouseEvent| {
                     let c = evt.data().client_coordinates();
-                    // dragging down = bigger AI section
                     let dy = c.y - *resize_ai_sy.read();
                     let new_h = (*resize_ai_sh.read() + dy).max(100.0).min(450.0);
                     ai_height.set(new_h);
@@ -489,31 +376,25 @@ pub fn HelpSidebarPanel(
             }
         }
 
-        div {
-            class: "fs-help-sidebar",
-            style: "width: {44.0 + pw}px; \
-                    transform: translateX({translate_x}px);",
-            onmouseenter: move |_| hovered.set(true),
-            onmouseleave: move |_| {
-                if !*resizing_w.read() && !*resizing_ai.read() {
-                    hovered.set(false);
-                }
-            },
+        // ── Universal FsSidebar (side = Right) ────────────────────────────
+        // items: help icon in tab-strip. children: custom panel body.
+        FsSidebar {
+            items:       vec![help_item],
+            active_id:   "help".to_string(),
+            on_select:   move |_| {},
+            side:        SidebarSide::Right,
+            panel_width: pw,
+            force_open:  is_resizing,
 
-            // ── Tab strip (always visible, left edge — moves with sidebar) ──
-            div { class: "fs-help-sidebar__tab-strip",
-                span {
-                    style: "width: 20px; height: 20px; color: var(--fs-text-secondary);",
-                    dangerous_inner_html: ICON_HELP
-                }
-            }
+            // ── Panel body ────────────────────────────────────────────────
+            div {
+                style: "display: flex; flex-direction: row; flex: 1; overflow: hidden; \
+                        align-self: stretch;",
 
-            // ── Body: drag handle + inner content ──────────────────────────
-            div { class: "fs-help-sidebar__body",
-
-                // Left-edge drag handle — resize panel width
+                // Left-edge drag handle — drag to resize panel width
                 div {
-                    class: "fs-help-sidebar__drag-edge",
+                    style: "width: 6px; flex-shrink: 0; cursor: ew-resize; \
+                            background: transparent; transition: background 120ms;",
                     onmousedown: move |evt: MouseEvent| {
                         evt.stop_propagation();
                         let c = evt.data().client_coordinates();
@@ -523,10 +404,17 @@ pub fn HelpSidebarPanel(
                     },
                 }
 
-                div { class: "fs-help-sidebar__inner",
+                // Inner content
+                div {
+                    style: "flex: 1; display: flex; flex-direction: column; overflow: hidden; \
+                            min-width: 0;",
 
-                    // ── Header ──────────────────────────────────────────────
-                    div { class: "fs-help-sidebar__header",
+                    // Header
+                    div {
+                        style: "display: flex; align-items: center; \
+                                justify-content: space-between; padding: 10px 14px; \
+                                border-bottom: 1px solid var(--fs-border); \
+                                flex-shrink: 0; background: var(--fs-bg-elevated);",
                         span {
                             style: "font-size: 14px; font-weight: 600; \
                                     color: var(--fs-text-primary);",
@@ -542,37 +430,57 @@ pub fn HelpSidebarPanel(
                         }
                     }
 
-                    // ── Tab strip ────────────────────────────────────────────
-                    div { class: "fs-help-sidebar__tabs",
+                    // Tab selector (Topics / Shortcuts)
+                    div {
+                        style: "display: flex; border-bottom: 1px solid var(--fs-border); \
+                                flex-shrink: 0;",
                         button {
-                            class: if *tab.read() == SidebarTab::Topics {
-                                "fs-help-sidebar__tab fs-help-sidebar__tab--active"
-                            } else { "fs-help-sidebar__tab" },
+                            style: {
+                                let active = *tab.read() == SidebarTab::Topics;
+                                format!("flex: 1; padding: 7px 0; text-align: center; \
+                                         font-size: 12px; cursor: pointer; background: none; \
+                                         border: none; border-bottom: 2px solid {}; \
+                                         color: {}; font-family: inherit; \
+                                         transition: color 120ms, border-color 120ms;",
+                                    if active { "var(--fs-primary)" } else { "transparent" },
+                                    if active { "var(--fs-primary)" } else { "var(--fs-text-muted)" })
+                            },
                             onclick: move |_| tab.set(SidebarTab::Topics),
-                            "📚 Topics"
+                            "Topics"
                         }
                         button {
-                            class: if *tab.read() == SidebarTab::Shortcuts {
-                                "fs-help-sidebar__tab fs-help-sidebar__tab--active"
-                            } else { "fs-help-sidebar__tab" },
+                            style: {
+                                let active = *tab.read() == SidebarTab::Shortcuts;
+                                format!("flex: 1; padding: 7px 0; text-align: center; \
+                                         font-size: 12px; cursor: pointer; background: none; \
+                                         border: none; border-bottom: 2px solid {}; \
+                                         color: {}; font-family: inherit; \
+                                         transition: color 120ms, border-color 120ms;",
+                                    if active { "var(--fs-primary)" } else { "transparent" },
+                                    if active { "var(--fs-primary)" } else { "var(--fs-text-muted)" })
+                            },
                             onclick: move |_| tab.set(SidebarTab::Shortcuts),
-                            "⌨ Shortcuts"
+                            "Shortcuts"
                         }
                     }
 
-                    // ── Content ──────────────────────────────────────────────
-                    div { class: "fs-help-sidebar__content fs-scrollable",
+                    // Main content area
+                    div {
+                        style: "flex: 1; overflow-y: auto; min-height: 0;",
+                        class: "fs-scrollable",
                         match *tab.read() {
                             SidebarTab::Topics    => rsx! { SidebarTopicsView {} },
                             SidebarTab::Shortcuts => rsx! { SidebarShortcutsView {} },
                         }
                     }
 
-                    // ── AI section (only when AI is online) ──────────────────
+                    // AI chat section (only when AI is online)
                     if is_ai_online {
                         // Divider — drag to resize AI section height
                         div {
-                            class: "fs-help-sidebar__ai-resize",
+                            style: "height: 6px; flex-shrink: 0; cursor: ns-resize; \
+                                    background: var(--fs-border); \
+                                    transition: background 120ms;",
                             onmousedown: move |evt: MouseEvent| {
                                 evt.stop_propagation();
                                 let c = evt.data().client_coordinates();
@@ -583,17 +491,28 @@ pub fn HelpSidebarPanel(
                         }
 
                         div {
-                            class: "fs-help-sidebar__ai",
-                            style: "height: {aih}px;",
+                            style: "height: {aih}px; flex-shrink: 0; display: flex; \
+                                    flex-direction: column; overflow: hidden;",
 
-                            div { class: "fs-help-sidebar__ai-title", "AI Assistant" }
+                            div {
+                                style: "padding: 6px 12px; font-size: 11px; font-weight: 600; \
+                                        text-transform: uppercase; letter-spacing: 0.08em; \
+                                        color: var(--fs-accent); \
+                                        border-bottom: 1px solid var(--fs-border); \
+                                        flex-shrink: 0;",
+                                "AI Assistant"
+                            }
 
-                            div { class: "fs-help-sidebar__chat-msgs fs-scrollable",
+                            div {
+                                style: "flex: 1; overflow-y: auto; padding: 8px 12px; \
+                                        display: flex; flex-direction: column; \
+                                        gap: 6px; min-height: 0;",
+                                class: "fs-scrollable",
                                 if messages.read().is_empty() {
                                     p {
                                         style: "color: var(--fs-text-muted); font-size: 12px; \
                                                 text-align: center; margin: 12px 0;",
-                                        "Ask me anything about FreeSynergy…"
+                                        "Ask me anything about FreeSynergy\u{2026}"
                                     }
                                 }
                                 for msg in messages.read().iter() {
@@ -612,7 +531,8 @@ pub fn HelpSidebarPanel(
                                                     style: "max-width: 90%; padding: 6px 10px; \
                                                             border-radius: 8px; background: {bg}; \
                                                             color: {color}; font-size: 12px; \
-                                                            line-height: 1.5; white-space: pre-wrap;",
+                                                            line-height: 1.5; \
+                                                            white-space: pre-wrap;",
                                                     "{msg.content}"
                                                 }
                                             }
@@ -623,16 +543,24 @@ pub fn HelpSidebarPanel(
                                     div {
                                         style: "display: flex; align-items: center; gap: 4px; \
                                                 color: var(--fs-text-muted); font-size: 11px;",
-                                        "AI is thinking…"
+                                        "AI is thinking\u{2026}"
                                     }
                                 }
                             }
 
-                            div { class: "fs-help-sidebar__chat-input-row",
+                            div {
+                                style: "display: flex; gap: 6px; padding: 8px 10px; \
+                                        border-top: 1px solid var(--fs-border); \
+                                        flex-shrink: 0;",
                                 input {
                                     r#type: "text",
-                                    class: "fs-help-sidebar__chat-input",
-                                    placeholder: "Ask a question…",
+                                    style: "flex: 1; padding: 7px 10px; border-radius: 6px; \
+                                            background: var(--fs-bg-input); \
+                                            border: 1px solid var(--fs-border); \
+                                            color: var(--fs-text-primary); font-size: 13px; \
+                                            font-family: inherit; outline: none; \
+                                            resize: none; height: 34px; line-height: 1.4;",
+                                    placeholder: "Ask a question\u{2026}",
                                     value: "{input.read()}",
                                     oninput: move |e| input.set(e.value()),
                                     onkeydown: {
@@ -662,7 +590,10 @@ pub fn HelpSidebarPanel(
                                     },
                                 }
                                 button {
-                                    class: "fs-help-sidebar__chat-send",
+                                    style: "padding: 0 12px; border-radius: 6px; \
+                                            background: var(--fs-primary); border: none; \
+                                            color: #fff; font-size: 13px; \
+                                            cursor: pointer; flex-shrink: 0;",
                                     disabled: *thinking.read() || input.read().is_empty(),
                                     onclick: {
                                         let api = ai_url.clone();
@@ -687,14 +618,13 @@ pub fn HelpSidebarPanel(
                                             });
                                         }
                                     },
-                                    "↵"
+                                    "\u{21b5}"
                                 }
                             }
                         }
                     }
                 }
             }
-
         }
     }
 }
@@ -741,7 +671,8 @@ fn SidebarShortcutsView() -> Element {
                     rsx! {
                         div {
                             key: "{action.id}",
-                            style: "display: flex; align-items: center; justify-content: space-between; \
+                            style: "display: flex; align-items: center; \
+                                    justify-content: space-between; \
                                     padding: 4px 0; font-size: 12px; \
                                     border-bottom: 1px solid var(--fs-border);",
                             span { style: "color: var(--fs-text-primary);", "{action.label}" }

@@ -8,12 +8,10 @@ close_tab     = "Close Tab"
 reload        = "Reload"
 go_back       = "Back"
 go_forward    = "Forward"
-bookmarks     = "Bookmarks"
-history       = "History"
-downloads     = "Downloads"
 empty_tab     = "New Tab"
 
 [browser.bookmarks]
+label    = "Bookmarks"
 add      = "Bookmark this page"
 remove   = "Remove bookmark"
 empty    = "No bookmarks yet."
@@ -21,10 +19,12 @@ added    = "Bookmark added."
 removed  = "Bookmark removed."
 
 [browser.history]
+label  = "History"
 empty  = "No history yet."
 clear  = "Clear history"
 
 [browser.downloads]
+label     = "Downloads"
 saving    = "Saving to S3…"
 saved     = "Saved to /shared/downloads/{name}"
 error     = "Download failed: {error}"

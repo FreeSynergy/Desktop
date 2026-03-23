@@ -8,12 +8,10 @@ close_tab     = "Tab schließen"
 reload        = "Neu laden"
 go_back       = "Zurück"
 go_forward    = "Vorwärts"
-bookmarks     = "Lesezeichen"
-history       = "Verlauf"
-downloads     = "Downloads"
 empty_tab     = "Neuer Tab"
 
 [browser.bookmarks]
+label    = "Lesezeichen"
 add      = "Seite als Lesezeichen speichern"
 remove   = "Lesezeichen entfernen"
 empty    = "Noch keine Lesezeichen."
@@ -21,10 +19,12 @@ added    = "Lesezeichen hinzugefügt."
 removed  = "Lesezeichen entfernt."
 
 [browser.history]
+label  = "Verlauf"
 empty  = "Noch kein Verlauf."
 clear  = "Verlauf löschen"
 
 [browser.downloads]
+label     = "Downloads"
 saving    = "Wird in S3 gespeichert…"
 saved     = "Gespeichert unter /shared/downloads/{name}"
 error     = "Download fehlgeschlagen: {error}"
