@@ -2,20 +2,10 @@
 members = [
     "crates/fs-db-desktop",
     "crates/fs-shell",
-    "crates/fs-container-app",
-    "crates/fs-store-app",
-    "crates/fs-builder",
     "crates/fs-settings",
     "crates/fs-profile",
     "crates/fs-app",
     "crates/fs-showcase",
-    "crates/fs-bots",
-    "crates/fs-tasks",
-    "crates/fs-browser",
-    "crates/fs-lenses",
-    "crates/fs-managers",
-    "crates/fs-theme-app",
-    "crates/fs-ai",
 ]
 resolver = "2"
 
@@ -24,28 +14,29 @@ version    = "0.1.0"
 edition    = "2021"
 license    = "MIT"
 authors    = ["FreeSynergy.Net"]
-repository = "https://github.com/FreeSynergy/Desktop"
+repository = "https://github.com/FreeSynergy/fs-desktop"
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
 
 # Internal Desktop crates
-fs-db-desktop    = { path = "crates/fs-db-desktop" }
-fs-shell         = { path = "crates/fs-shell", default-features = false }
-fs-container-app = { path = "crates/fs-container-app" }
-fs-store-app     = { path = "crates/fs-store-app" }
-fs-builder       = { path = "crates/fs-builder" }
-fs-settings      = { path = "crates/fs-settings" }
-fs-profile       = { path = "crates/fs-profile" }
-fs-showcase      = { path = "crates/fs-showcase" }
-fs-bots          = { path = "crates/fs-bots" }
-fs-tasks         = { path = "crates/fs-tasks" }
-fs-browser       = { path = "crates/fs-browser" }
-fs-lenses        = { path = "crates/fs-lenses" }
-fs-managers      = { path = "crates/fs-managers" }
-fs-theme-app     = { path = "crates/fs-theme-app" }
-fs-ai            = { path = "crates/fs-ai" }
-fs-manager-ai    = { path = "../fs-managers/ai" }
+fs-db-desktop = { path = "crates/fs-db-desktop" }
+fs-shell      = { path = "crates/fs-shell", default-features = false }
+fs-settings   = { path = "crates/fs-settings" }
+fs-profile    = { path = "crates/fs-profile" }
+fs-showcase   = { path = "crates/fs-showcase" }
+
+# fs-apps — standalone apps (embedded in shell)
+fs-store-app     = { path = "../fs-apps/crates/fs-store-app" }
+fs-browser       = { path = "../fs-apps/crates/fs-browser" }
+fs-lenses        = { path = "../fs-apps/crates/fs-lenses" }
+fs-theme-app     = { path = "../fs-apps/crates/fs-theme-app" }
+fs-builder       = { path = "../fs-apps/crates/fs-builder" }
+fs-tasks         = { path = "../fs-apps/crates/fs-tasks" }
+fs-bots          = { path = "../fs-apps/crates/fs-bots" }
+fs-ai            = { path = "../fs-apps/crates/fs-ai" }
+fs-container-app = { path = "../fs-apps/crates/fs-container-app" }
+fs-managers      = { path = "../fs-apps/crates/fs-managers" }
 
 # fs-libs — shared libraries monorepo
 fs-types          = { path = "../fs-libs/fs-types" }
@@ -61,14 +52,17 @@ fs-plugin-sdk     = { path = "../fs-libs/fs-plugin-sdk" }
 fs-auth           = { path = "../fs-libs/fs-auth" }
 fs-core           = { path = "../fs-libs/fs-core" }
 fs-components     = { path = "../fs-libs/fs-components" }
-fs-manager-language   = { path = "../fs-managers/language" }
-fs-manager-icons      = { path = "../fs-managers/icons" }
-fs-manager-cursor     = { path = "../fs-managers/cursor" }
-fs-manager-theme      = { path = "../fs-managers/theme" }
-fs-manager-container  = { path = "../fs-managers/container" }
 fs-render         = { path = "../fs-libs/fs-render" }
 fs-db             = { path = "../fs-libs/fs-db" }
 fs-pkg            = { path = "../fs-libs/fs-pkg" }
+
+# fs-managers — manager backends
+fs-manager-language  = { path = "../fs-managers/language" }
+fs-manager-icons     = { path = "../fs-managers/icons" }
+fs-manager-cursor    = { path = "../fs-managers/cursor" }
+fs-manager-theme     = { path = "../fs-managers/theme" }
+fs-manager-container = { path = "../fs-managers/container" }
+fs-manager-ai        = { path = "../fs-managers/ai" }
 
 # Database (SeaORM)
 sea-orm = { version = "=2.0.0-rc.37", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
