@@ -713,21 +713,32 @@ pub fn Desktop() -> Element {
                 } // end desktop column (tab bar + inner)
 
                 // ── Help sidebar (right, hover-expandable) ─────────────────
-                HelpSidebarPanel {
-                    on_ai_offline: Some(EventHandler::new(move |_| {
-                        notifs.write().push(
-                            crate::notification::NotificationKind::Warning,
-                            "AI Assistant offline",
-                            Some("The AI service is not responding.".into()),
-                        );
-                    })),
-                    on_ai_online: Some(EventHandler::new(move |_| {
-                        notifs.write().push(
-                            crate::notification::NotificationKind::Success,
-                            "AI Assistant online",
-                            Some("The AI assistant is now available.".into()),
-                        );
-                    })),
+                {
+                    let active_help_topic = wm.read()
+                        .windows()
+                        .iter()
+                        .filter(|w| !w.minimized)
+                        .max_by_key(|w| w.z_index)
+                        .and_then(|w| w.help_topic.clone());
+                    rsx! {
+                        HelpSidebarPanel {
+                            active_help_topic,
+                            on_ai_offline: Some(EventHandler::new(move |_| {
+                                notifs.write().push(
+                                    crate::notification::NotificationKind::Warning,
+                                    "AI Assistant offline",
+                                    Some("The AI service is not responding.".into()),
+                                );
+                            })),
+                            on_ai_online: Some(EventHandler::new(move |_| {
+                                notifs.write().push(
+                                    crate::notification::NotificationKind::Success,
+                                    "AI Assistant online",
+                                    Some("The AI assistant is now available.".into()),
+                                );
+                            })),
+                        }
+                    }
                 }
 
             } // end flex row (sidebar + desktop)

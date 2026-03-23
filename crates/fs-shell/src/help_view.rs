@@ -269,6 +269,9 @@ pub struct ChatMsg {
 /// the panel body contains Topics/Shortcuts tabs, content, and the AI chat
 /// section when the AI service is online.
 ///
+/// `active_help_topic`: topic-id of the currently focused window (e.g. "store").
+/// When set, the Topics tab shows that topic's entry at the top, highlighted.
+///
 /// Panel width is drag-resizable (left edge handle). AI section height is
 /// drag-resizable (divider above it).
 #[component]
@@ -277,6 +280,8 @@ pub fn HelpSidebarPanel(
     on_ai_offline: Option<EventHandler<()>>,
     #[props(default)]
     on_ai_online: Option<EventHandler<()>>,
+    #[props(default)]
+    active_help_topic: Option<String>,
 ) -> Element {
     let mut tab = use_signal(|| SidebarTab::Topics);
 
@@ -469,7 +474,9 @@ pub fn HelpSidebarPanel(
                         style: "flex: 1; overflow-y: auto; min-height: 0;",
                         class: "fs-scrollable",
                         match *tab.read() {
-                            SidebarTab::Topics    => rsx! { SidebarTopicsView {} },
+                            SidebarTab::Topics    => rsx! {
+                                SidebarTopicsView { active_topic: active_help_topic.clone() }
+                            },
                             SidebarTab::Shortcuts => rsx! { SidebarShortcutsView {} },
                         }
                     }
@@ -633,24 +640,62 @@ pub fn HelpSidebarPanel(
 // ── Sidebar-specific compact views ───────────────────────────────────────────
 
 /// Compact topic list for the sidebar (no search box to save space).
+/// If `active_topic` matches a known topic id, that entry is shown first,
+/// highlighted with a "Current App" label, followed by the remaining topics.
 #[component]
-fn SidebarTopicsView() -> Element {
+fn SidebarTopicsView(#[props(default)] active_topic: Option<String>) -> Element {
+    let pinned = active_topic
+        .as_deref()
+        .and_then(|id| TOPICS.iter().find(|t| t.id == id));
+
     rsx! {
         div { style: "padding: 8px;",
-            for topic in TOPICS {
+            // ── Pinned: current-app topic ──────────────────────────────────
+            if let Some(topic) = pinned {
                 div {
-                    style: "padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; \
-                            cursor: pointer; \
-                            border: 1px solid var(--fs-border);",
-                    p {
-                        style: "margin: 0 0 2px; font-size: 13px; font-weight: 500; \
-                                color: var(--fs-primary);",
-                        "{topic.title}"
+                    style: "margin-bottom: 8px;",
+                    div {
+                        style: "font-size: 10px; font-weight: 600; text-transform: uppercase; \
+                                letter-spacing: 0.08em; color: var(--fs-accent); \
+                                padding: 0 2px 4px;",
+                        "Current App"
                     }
-                    p {
-                        style: "margin: 0; font-size: 11px; color: var(--fs-text-muted); \
-                                line-height: 1.4;",
-                        "{topic.summary}"
+                    div {
+                        style: "padding: 8px 10px; border-radius: 6px; \
+                                border: 1px solid var(--fs-accent); \
+                                background: rgba(34,211,238,0.08);",
+                        p {
+                            style: "margin: 0 0 2px; font-size: 13px; font-weight: 600; \
+                                    color: var(--fs-accent);",
+                            "{topic.title}"
+                        }
+                        p {
+                            style: "margin: 0; font-size: 11px; color: var(--fs-text-muted); \
+                                    line-height: 1.4;",
+                            "{topic.summary}"
+                        }
+                    }
+                }
+            }
+
+            // ── All topics ─────────────────────────────────────────────────
+            for topic in TOPICS {
+                // Skip the pinned topic so it doesn't appear twice
+                if active_topic.as_deref() != Some(topic.id) {
+                    div {
+                        style: "padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; \
+                                cursor: pointer; \
+                                border: 1px solid var(--fs-border);",
+                        p {
+                            style: "margin: 0 0 2px; font-size: 13px; font-weight: 500; \
+                                    color: var(--fs-primary);",
+                            "{topic.title}"
+                        }
+                        p {
+                            style: "margin: 0; font-size: 11px; color: var(--fs-text-muted); \
+                                    line-height: 1.4;",
+                            "{topic.summary}"
+                        }
                     }
                 }
             }

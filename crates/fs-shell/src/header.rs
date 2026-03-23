@@ -183,6 +183,7 @@ pub fn ShellHeader(
 /// Invisible drag handle that covers the full header area.
 /// Sits at z-index: -1 so buttons above it still receive events.
 /// When `decorations = false`, this allows dragging the OS window by the header.
+/// Double-click toggles maximize / restore.
 #[cfg(feature = "desktop")]
 #[component]
 fn OsWindowDragHandle() -> Element {
@@ -191,6 +192,9 @@ fn OsWindowDragHandle() -> Element {
             style: "position: absolute; inset: 0; z-index: -1;",
             onmousedown: move |_| {
                 dioxus::desktop::window().drag();
+            },
+            ondblclick: move |_| {
+                dioxus::desktop::window().toggle_maximized();
             },
         }
     }
