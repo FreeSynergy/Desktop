@@ -8,9 +8,10 @@ use sea_orm::{
 };
 
 use crate::{
-    DbError, db_path,
+    db_path,
     entities::{audit, setting},
     migration::SharedMigrator,
+    DbError,
 };
 use fs_db::{DbBackend, DbConnection};
 
@@ -51,7 +52,10 @@ impl SharedDb {
 
     /// Gets a setting value, returning `default` if not set.
     pub async fn get_setting_or(&self, key: &str, default: &str) -> Result<String, DbError> {
-        Ok(self.get_setting(key).await?.unwrap_or_else(|| default.to_string()))
+        Ok(self
+            .get_setting(key)
+            .await?
+            .unwrap_or_else(|| default.to_string()))
     }
 
     /// Upserts a setting.
@@ -59,8 +63,8 @@ impl SharedDb {
         use sea_orm::sea_query::OnConflict;
         let now = unix_now();
         let active = setting::ActiveModel {
-            key:        Set(key.to_string()),
-            value:      Set(value.to_string()),
+            key: Set(key.to_string()),
+            value: Set(value.to_string()),
             updated_at: Set(now),
         };
         setting::Entity::insert(active)
@@ -95,10 +99,10 @@ impl SharedDb {
         outcome: &str,
     ) -> Result<(), DbError> {
         let active = audit::ActiveModel {
-            actor:      Set(actor.to_string()),
-            action:     Set(action.to_string()),
-            target:     Set(target.map(|s| s.to_string())),
-            outcome:    Set(outcome.to_string()),
+            actor: Set(actor.to_string()),
+            action: Set(action.to_string()),
+            target: Set(target.map(|s| s.to_string())),
+            outcome: Set(outcome.to_string()),
             created_at: Set(unix_now()),
             ..Default::default()
         };
@@ -122,7 +126,10 @@ impl SharedDb {
 
     /// Explicitly close the connection pool.
     pub async fn close(self) -> Result<(), DbError> {
-        self.conn.close().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+        self.conn
+            .close()
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 }
 
@@ -139,20 +146,20 @@ fn unix_now() -> i64 {
 
 #[derive(Debug, Clone)]
 pub struct AuditEntry {
-    pub actor:      String,
-    pub action:     String,
-    pub target:     Option<String>,
-    pub outcome:    String,
+    pub actor: String,
+    pub action: String,
+    pub target: Option<String>,
+    pub outcome: String,
     pub created_at: i64,
 }
 
 impl From<audit::Model> for AuditEntry {
     fn from(m: audit::Model) -> Self {
         Self {
-            actor:      m.actor,
-            action:     m.action,
-            target:     m.target,
-            outcome:    m.outcome,
+            actor: m.actor,
+            action: m.action,
+            target: m.target,
+            outcome: m.outcome,
             created_at: m.created_at,
         }
     }

@@ -3,14 +3,15 @@
 // Tables: active_theme, widget_slots, shortcuts, profile_data
 
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, QueryOrder, Order, TransactionTrait,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Order,
+    QueryFilter, QueryOrder, TransactionTrait,
 };
 
 use crate::{
-    DbError, db_path,
+    db_path,
     entities::{active_theme, shortcut, widget_slot},
     migration::DesktopMigrator,
+    DbError,
 };
 use fs_db::{DbBackend, DbConnection};
 
@@ -46,13 +47,15 @@ impl DesktopDb {
             .one(self.db())
             .await
             .map_err(|e| DbError::SeaOrm(e.to_string()))?;
-        Ok(row.map(|m| m.name).unwrap_or_else(|| "midnight-blue".into()))
+        Ok(row
+            .map(|m| m.name)
+            .unwrap_or_else(|| "midnight-blue".into()))
     }
 
     /// Persists the active theme name.
     pub async fn set_active_theme(&self, name: &str) -> Result<(), DbError> {
         let active = active_theme::ActiveModel {
-            id:   Set(1),
+            id: Set(1),
             name: Set(name.to_string()),
         };
         active
@@ -76,24 +79,33 @@ impl DesktopDb {
 
     /// Replaces ALL widget slots with the given list (full replace on save).
     pub async fn save_widget_slots(&self, slots: &[DbWidgetSlot]) -> Result<(), DbError> {
-        let tx = self.db().begin().await.map_err(|e| DbError::SeaOrm(e.to_string()))?;
+        let tx = self
+            .db()
+            .begin()
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))?;
         widget_slot::Entity::delete_many()
             .exec(&tx)
             .await
             .map_err(|e| DbError::SeaOrm(e.to_string()))?;
         for (i, s) in slots.iter().enumerate() {
             let active = widget_slot::ActiveModel {
-                kind:       Set(s.kind.clone()),
-                pos_x:      Set(s.x),
-                pos_y:      Set(s.y),
-                width:      Set(s.w),
-                height:     Set(s.h),
+                kind: Set(s.kind.clone()),
+                pos_x: Set(s.x),
+                pos_y: Set(s.y),
+                width: Set(s.w),
+                height: Set(s.h),
                 sort_order: Set(i as i64),
                 ..Default::default()
             };
-            active.insert(&tx).await.map_err(|e| DbError::SeaOrm(e.to_string()))?;
+            active
+                .insert(&tx)
+                .await
+                .map_err(|e| DbError::SeaOrm(e.to_string()))?;
         }
-        tx.commit().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+        tx.commit()
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 
     // ── Shortcuts ─────────────────────────────────────────────────────────────
@@ -104,10 +116,13 @@ impl DesktopDb {
             .all(self.db())
             .await
             .map_err(|e| DbError::SeaOrm(e.to_string()))?;
-        Ok(rows.into_iter().map(|r| DbShortcut {
-            action_id: r.action_id,
-            key_combo: r.key_combo,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| DbShortcut {
+                action_id: r.action_id,
+                key_combo: r.key_combo,
+            })
+            .collect())
     }
 
     /// Upserts a single shortcut override.
@@ -142,7 +157,10 @@ impl DesktopDb {
 
     /// Explicitly close the connection pool.
     pub async fn close(self) -> Result<(), DbError> {
-        self.conn.close().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+        self.conn
+            .close()
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 }
 
@@ -151,24 +169,24 @@ impl DesktopDb {
 /// A widget slot row as stored in `fs-desktop.db`.
 #[derive(Debug, Clone)]
 pub struct DbWidgetSlot {
-    pub id:         u32,
-    pub kind:       String,
-    pub x:          f64,
-    pub y:          f64,
-    pub w:          f64,
-    pub h:          f64,
+    pub id: u32,
+    pub kind: String,
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
     pub sort_order: u32,
 }
 
 impl From<widget_slot::Model> for DbWidgetSlot {
     fn from(m: widget_slot::Model) -> Self {
         Self {
-            id:         m.id as u32,
-            kind:       m.kind,
-            x:          m.pos_x,
-            y:          m.pos_y,
-            w:          m.width,
-            h:          m.height,
+            id: m.id as u32,
+            kind: m.kind,
+            x: m.pos_x,
+            y: m.pos_y,
+            w: m.width,
+            h: m.height,
             sort_order: m.sort_order as u32,
         }
     }

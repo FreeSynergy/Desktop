@@ -1,40 +1,42 @@
+use dioxus::prelude::*;
+use fs_i18n;
 /// Desktop — root layout: header + sidebar + content area.
 use std::collections::HashMap;
 use std::sync::Arc;
-use dioxus::prelude::*;
-use fs_i18n;
 
-use fs_browser::BrowserApp;
 use fs_bots::BotManagerApp;
+use fs_browser::BrowserApp;
+use fs_builder::BuilderApp;
 use fs_container_app::Container;
 use fs_lenses::LensesApp;
-use fs_managers::{ManagersApp, IconsManagerPanel};
+use fs_managers::{IconsManagerPanel, ManagersApp};
 use fs_profile::ProfileApp;
 use fs_settings::SettingsApp;
 use fs_store_app::StoreApp;
-use fs_builder::BuilderApp;
 use fs_tasks::TasksApp;
 use fs_theme_app::ThemeManagerApp;
 
 use fs_components::AppContext;
 
 use crate::ai_view::AiApp;
-use crate::app_shell::{AppMode, AppShell, GLOBAL_CSS, LayoutA, LayoutC};
-use fs_components::FS_SIDEBAR_CSS;
+use crate::app_shell::{AppMode, AppShell, LayoutA, LayoutC, GLOBAL_CSS};
 use crate::context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
-use crate::help_view::{HelpApp, HelpSidebarPanel};
 use crate::header::{Breadcrumb, ShellHeader};
+use crate::help_view::{HelpApp, HelpSidebarPanel};
+use crate::icons::{ICON_ADD, ICON_CHEVRON_DOWN, ICON_CHEVRON_UP, ICON_EDIT, ICON_SETTINGS};
 use crate::launcher::{AppLauncher, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager, NotificationStack};
-use crate::sidebar::{default_sidebar_sections, default_pinned_items};
-use fs_components::Sidebar;
-use crate::taskbar::{AppEntry, default_apps};
-use fs_db_desktop::package_registry::PackageRegistry;
+use crate::sidebar::{default_pinned_items, default_sidebar_sections};
+use crate::taskbar::{default_apps, AppEntry};
 use crate::wallpaper::Wallpaper;
-use crate::icons::{ICON_EDIT, ICON_ADD, ICON_SETTINGS, ICON_CHEVRON_UP, ICON_CHEVRON_DOWN};
-use crate::widgets::{WidgetKind, WidgetSlot, load_widget_layout, render_widget, save_widget_layout};
+use crate::widgets::{
+    load_widget_layout, render_widget, save_widget_layout, WidgetKind, WidgetSlot,
+};
 use crate::window::{OpenWindow, Window, WindowId, WindowManager, WindowRenderFn};
-use crate::window_frame::{WindowFrame, MinimizedWindowIcon, FSNOBJ_CSS};
+use crate::window_frame::{MinimizedWindowIcon, WindowFrame, FSNOBJ_CSS};
+use fs_components::Sidebar;
+use fs_components::FS_SIDEBAR_CSS;
+use fs_db_desktop::package_registry::PackageRegistry;
 
 /// Eight invisible fixed-position resize handles around the OS window border.
 /// Only compiled in desktop mode (requires tao window API).
@@ -77,7 +79,6 @@ fn os_resize_handles() -> Element {
     rsx! {}
 }
 
-
 /// Root desktop component.
 #[component]
 pub fn Desktop() -> Element {
@@ -104,19 +105,19 @@ pub fn Desktop() -> Element {
     let app_ctx = use_context_provider(|| {
         let saved_wallpaper = crate::db::load_wallpaper_css_from_db(&db);
         AppContext {
-            locale:         Signal::new(fs_settings::load_active_language()),
-            theme:          Signal::new(crate::db::load_theme_from_db(&db)),
-            wallpaper:      Signal::new(if saved_wallpaper.is_empty() {
-                                Wallpaper::default().to_css_background()
-                            } else {
-                                saved_wallpaper
-                            }),
-            anim_enabled:   Signal::new(true),
+            locale: Signal::new(fs_settings::load_active_language()),
+            theme: Signal::new(crate::db::load_theme_from_db(&db)),
+            wallpaper: Signal::new(if saved_wallpaper.is_empty() {
+                Wallpaper::default().to_css_background()
+            } else {
+                saved_wallpaper
+            }),
+            anim_enabled: Signal::new(true),
             chrome_opacity: Signal::new(0.80f64),
-            chrome_style:   Signal::new("kde".to_string()),
-            btn_style:      Signal::new("rounded".to_string()),
-            sidebar_style:  Signal::new("solid".to_string()),
-            app_open_req:   Signal::new(None),
+            chrome_style: Signal::new("kde".to_string()),
+            btn_style: Signal::new("rounded".to_string()),
+            sidebar_style: Signal::new("solid".to_string()),
+            app_open_req: Signal::new(None),
         }
     });
     let _active_lang = app_ctx.locale.read().clone();
@@ -130,12 +131,12 @@ pub fn Desktop() -> Element {
         });
     }
 
-    let mut wm              = use_signal(WindowManager::default);
-    let mut apps            = use_signal(default_apps);
-    let mut launcher        = use_signal(LauncherState::default);
-    let mut notifs          = use_signal(NotificationManager::default);
-    let mut notif_history   = use_signal(NotificationHistory::default);
-    let mut ctx_menu        = use_signal(|| ContextMenuState::default());
+    let mut wm = use_signal(WindowManager::default);
+    let mut apps = use_signal(default_apps);
+    let mut launcher = use_signal(LauncherState::default);
+    let mut notifs = use_signal(NotificationManager::default);
+    let mut notif_history = use_signal(NotificationHistory::default);
+    let mut ctx_menu = use_signal(|| ContextMenuState::default());
     // Sidebar refresh counter — kept for manual refresh calls from sub-apps.
     let mut sidebar_refresh: Signal<u32> = use_context_provider(|| Signal::new(0u32));
     let sidebar_sections = use_memo(move || {
@@ -149,13 +150,13 @@ pub fn Desktop() -> Element {
         default_pinned_items()
     });
     // Convenience locals extracted from AppContext for use in this component's closures.
-    let mut theme          = app_ctx.theme;
-    let anim_enabled       = app_ctx.anim_enabled;
-    let chrome_opacity     = app_ctx.chrome_opacity;
-    let chrome_style       = app_ctx.chrome_style;
-    let btn_style          = app_ctx.btn_style;
-    let sidebar_style      = app_ctx.sidebar_style;
-    let mut app_open_req   = app_ctx.app_open_req;
+    let mut theme = app_ctx.theme;
+    let anim_enabled = app_ctx.anim_enabled;
+    let chrome_opacity = app_ctx.chrome_opacity;
+    let chrome_style = app_ctx.chrome_style;
+    let btn_style = app_ctx.btn_style;
+    let sidebar_style = app_ctx.sidebar_style;
+    let mut app_open_req = app_ctx.app_open_req;
 
     // Notification callbacks for AI health changes (used by HelpSidebarPanel).
     // Declared here so they can capture the `notifs` signal.
@@ -167,9 +168,9 @@ pub fn Desktop() -> Element {
     // ── Virtual desktops ───────────────────────────────────────────────────
     let mut active_desktop: Signal<usize> = use_signal(|| 0usize);
     let desktop_count: usize = 2; // configurable in settings; 2 = default per spec
-    // Wipe animation: direction + monotonic key so each switch triggers a fresh animation.
-    // "left"  = new tab has higher index (slide new content in from the right)
-    // "right" = new tab has lower index  (slide new content in from the left)
+                                  // Wipe animation: direction + monotonic key so each switch triggers a fresh animation.
+                                  // "left"  = new tab has higher index (slide new content in from the right)
+                                  // "right" = new tab has lower index  (slide new content in from the left)
     let mut slide_dir: Signal<&'static str> = use_signal(|| "");
     let mut slide_anim_key: Signal<u32> = use_signal(|| 0u32);
 
@@ -184,10 +185,10 @@ pub fn Desktop() -> Element {
 
     // ── Widget layer state ─────────────────────────────────────────────────
     let db_widgets = db.clone();
-    let mut widget_layout   = use_signal(move || load_widget_layout(&db_widgets));
-    let mut edit_mode       = use_signal(|| false);
-    let mut next_widget_id  = use_signal(|| 100u32);
-    let mut picker_open     = use_signal(|| false);
+    let mut widget_layout = use_signal(move || load_widget_layout(&db_widgets));
+    let mut edit_mode = use_signal(|| false);
+    let mut next_widget_id = use_signal(|| 100u32);
+    let mut picker_open = use_signal(|| false);
 
     // Persistent icon positions: window_id → (pos_x, pos_y)
     let mut icon_positions: Signal<HashMap<u64, (f64, f64)>> = use_signal(HashMap::new);
@@ -212,13 +213,14 @@ pub fn Desktop() -> Element {
 
     // ── Theme + menu action handler ────────────────────────────────────────
     let db_menu = db.clone();
-    let menu_action_handler = move |id: String| {
-        match id.as_str() {
-            "theme-midnight-blue" => { theme.set("midnight-blue".to_string()); crate::db::save_theme_to_db(db_menu.clone(), "midnight-blue".to_string()); }
-            "launcher"            => launcher.write().toggle(),
-            "open-tasks"          => open_app(&mut wm, &mut apps, "tasks", *active_desktop.read()),
-            _ => {}
+    let menu_action_handler = move |id: String| match id.as_str() {
+        "theme-midnight-blue" => {
+            theme.set("midnight-blue".to_string());
+            crate::db::save_theme_to_db(db_menu.clone(), "midnight-blue".to_string());
         }
+        "launcher" => launcher.write().toggle(),
+        "open-tasks" => open_app(&mut wm, &mut apps, "tasks", *active_desktop.read()),
+        _ => {}
     };
 
     // ── Sidebar app select ─────────────────────────────────────────────────
@@ -232,8 +234,12 @@ pub fn Desktop() -> Element {
         open_app(&mut wm, &mut apps, &app_id, *active_desktop.read());
         launcher.write().close();
     };
-    let on_launcher_query = move |q: String| { launcher.write().query = q; };
-    let on_launcher_close = move |_: ()| { launcher.write().close(); };
+    let on_launcher_query = move |q: String| {
+        launcher.write().query = q;
+    };
+    let on_launcher_close = move |_: ()| {
+        launcher.write().close();
+    };
 
     // ── Window manager callbacks ────────────────────────────────────────────
     let on_close_window = move |id: WindowId| {
@@ -242,12 +248,20 @@ pub fn Desktop() -> Element {
             app.windows.retain(|&wid| wid != id);
         }
     };
-    let on_focus_window    = move |id: WindowId| { wm.write().focus(id); };
-    let on_minimize_window = move |id: WindowId| { wm.write().minimize(id); };
-    let on_maximize_window = move |id: WindowId| { wm.write().maximize(id); };
+    let on_focus_window = move |id: WindowId| {
+        wm.write().focus(id);
+    };
+    let on_minimize_window = move |id: WindowId| {
+        wm.write().minimize(id);
+    };
+    let on_maximize_window = move |id: WindowId| {
+        wm.write().maximize(id);
+    };
 
     // ── Notification dismiss ────────────────────────────────────────────────
-    let on_dismiss_notif = move |id: u64| { notifs.write().dismiss(id); };
+    let on_dismiss_notif = move |id: u64| {
+        notifs.write().dismiss(id);
+    };
 
     // ── Widget edit mode callbacks ──────────────────────────────────────────
 
@@ -279,14 +293,19 @@ pub fn Desktop() -> Element {
 
     // ── Derived state ───────────────────────────────────────────────────────
     let launcher_state = launcher.read().clone();
-    let notif_items    = notifs.read().items().to_vec();
-    let app_list       = apps.read().clone();
-    let in_edit_mode   = *edit_mode.read();
+    let notif_items = notifs.read().items().to_vec();
+    let app_list = apps.read().clone();
+    let in_edit_mode = *edit_mode.read();
     let is_picker_open = *picker_open.read();
     // In edit mode the window area is hidden (visibility: hidden preserves component state).
-    let window_area_visibility = if in_edit_mode { "visibility: hidden;" } else { "" };
+    let window_area_visibility = if in_edit_mode {
+        "visibility: hidden;"
+    } else {
+        ""
+    };
 
-    let active_app_id = wm.read()
+    let active_app_id = wm
+        .read()
         .windows()
         .iter()
         .filter(|w| !w.minimized)
@@ -294,12 +313,17 @@ pub fn Desktop() -> Element {
         .and_then(|w| w.title_key.strip_prefix("app-").map(String::from))
         .unwrap_or_default();
 
-    let breadcrumbs = wm.read()
+    let breadcrumbs = wm
+        .read()
         .windows()
         .iter()
         .filter(|w| !w.minimized)
         .max_by_key(|w| w.z_index)
-        .map(|w| vec![Breadcrumb::new(app_id_to_label(w.title_key.trim_start_matches("app-")))])
+        .map(|w| {
+            vec![Breadcrumb::new(app_id_to_label(
+                w.title_key.trim_start_matches("app-"),
+            ))]
+        })
         .unwrap_or_else(|| vec![Breadcrumb::new("Desktop")]);
 
     // Pre-compute icon positions for minimized windows.
@@ -329,7 +353,9 @@ pub fn Desktop() -> Element {
                         let free = !used.iter().any(|(ux, uy)| {
                             (ux - x).abs() < ICON_W * 0.8 && (uy - y).abs() < ICON_H * 0.8
                         });
-                        if free { break 'find (x, y); }
+                        if free {
+                            break 'find (x, y);
+                        }
                     }
                 }
                 (START_X, START_Y)
@@ -756,22 +782,22 @@ fn HomeWidgetCard(
     on_remove: EventHandler<u32>,
     on_update: EventHandler<WidgetSlot>,
 ) -> Element {
-    let id   = slot.id;
+    let id = slot.id;
     let kind = slot.kind.clone();
 
     // Local position / size — initialised from slot on mount, updated on drag/resize
-    let mut pos_x  = use_signal(|| slot.x);
-    let mut pos_y  = use_signal(|| slot.y);
-    let mut width  = use_signal(|| slot.w);
+    let mut pos_x = use_signal(|| slot.x);
+    let mut pos_y = use_signal(|| slot.y);
+    let mut width = use_signal(|| slot.w);
     let mut height = use_signal(|| slot.h);
 
     // Drag state
     let mut dragging = use_signal(|| false);
-    let mut drag_ox  = use_signal(|| 0.0f64);
-    let mut drag_oy  = use_signal(|| 0.0f64);
+    let mut drag_ox = use_signal(|| 0.0f64);
+    let mut drag_oy = use_signal(|| 0.0f64);
 
     // Resize state
-    let mut resizing  = use_signal(|| false);
+    let mut resizing = use_signal(|| false);
     let mut resize_sx = use_signal(|| 0.0f64);
     let mut resize_sy = use_signal(|| 0.0f64);
     let mut resize_sw = use_signal(|| 0.0f64);
@@ -781,13 +807,13 @@ fn HomeWidgetCard(
     let y = *pos_y.read();
     let w = *width.read();
     let h = *height.read();
-    let is_dragging  = *dragging.read();
-    let is_resizing  = *resizing.read();
+    let is_dragging = *dragging.read();
+    let is_resizing = *resizing.read();
 
     // Clones for closures
-    let kind_render   = kind.clone();
-    let kind_label    = kind.label();
-    let kind_drag_up  = kind.clone();
+    let kind_render = kind.clone();
+    let kind_label = kind.label();
+    let kind_drag_up = kind.clone();
     let kind_resize_up = kind.clone();
 
     let card_style = format!(
@@ -908,9 +934,9 @@ fn HomeWidgetCard(
 /// A single row in the widget picker panel.
 #[component]
 fn WidgetPickerRow(kind: WidgetKind, on_add: EventHandler<WidgetKind>) -> Element {
-    let icon  = kind.icon();
+    let icon = kind.icon();
     let label = kind.label();
-    let k     = kind.clone();
+    let k = kind.clone();
 
     rsx! {
         div {
@@ -936,23 +962,28 @@ fn WidgetPickerRow(kind: WidgetKind, on_add: EventHandler<WidgetKind>) -> Elemen
 /// Returns the SVG icon (or emoji fallback) for a known built-in app ID.
 fn icon_for_app(app_id: &str) -> String {
     use crate::icons::{
-        ICON_STORE, ICON_SETTINGS, ICON_CONTAINER, ICON_BOTS,
-        ICON_LANGUAGE, ICON_THEME, ICON_ICONS, ICON_MANAGERS,
+        ICON_BOTS, ICON_CONTAINER, ICON_ICONS, ICON_LANGUAGE, ICON_MANAGERS, ICON_SETTINGS,
+        ICON_STORE, ICON_THEME,
     };
     match app_id {
-        "store"            => ICON_STORE.to_string(),
-        "settings"         => ICON_SETTINGS.to_string(),
-        "container"        => ICON_CONTAINER.to_string(),
-        "bot-manager"      => ICON_BOTS.to_string(),
+        "store" => ICON_STORE.to_string(),
+        "settings" => ICON_SETTINGS.to_string(),
+        "container" => ICON_CONTAINER.to_string(),
+        "bot-manager" => ICON_BOTS.to_string(),
         "language-manager" => ICON_LANGUAGE.to_string(),
-        "theme-manager"    => ICON_THEME.to_string(),
-        "icons-manager"    => ICON_ICONS.to_string(),
-        "managers"         => ICON_MANAGERS.to_string(),
-        _                  => "🗗".to_string(),
+        "theme-manager" => ICON_THEME.to_string(),
+        "icons-manager" => ICON_ICONS.to_string(),
+        "managers" => ICON_MANAGERS.to_string(),
+        _ => "🗗".to_string(),
     }
 }
 
-fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, app_id: &str, desktop_idx: usize) {
+fn open_app(
+    wm: &mut Signal<WindowManager>,
+    apps: &mut Signal<Vec<AppEntry>>,
+    app_id: &str,
+    desktop_idx: usize,
+) {
     // Normalize catalog IDs: strip "fs-" prefix so "fs-browser" routes as "browser".
     let app_id = app_id.strip_prefix("fs-").unwrap_or(app_id);
 
@@ -971,7 +1002,10 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
 
     // Icon priority: existing AppEntry → PackageRegistry (project icon) → built-in map → fallback.
     // This ensures the window titlebar always shows the same icon as the left sidebar.
-    let icon = apps.read().iter().find(|a| a.id == app_id)
+    let icon = apps
+        .read()
+        .iter()
+        .find(|a| a.id == app_id)
         .map(|a| a.icon.clone())
         .or_else(|| {
             PackageRegistry::load()
@@ -982,7 +1016,9 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
         })
         .unwrap_or_else(|| icon_for_app(app_id));
 
-    let meta   = Window::new(title_key).with_icon(icon.clone()).with_desktop(desktop_idx);
+    let meta = Window::new(title_key)
+        .with_icon(icon.clone())
+        .with_desktop(desktop_idx);
     let win_id = meta.id;
     let render = render_fn_for(app_id);
     wm.write().open(OpenWindow::new(meta, render));
@@ -995,13 +1031,13 @@ fn open_app(wm: &mut Signal<WindowManager>, apps: &mut Signal<Vec<AppEntry>>, ap
         }
     } else {
         apps.write().push(AppEntry {
-            id:        app_id.to_string(),
+            id: app_id.to_string(),
             label_key: app_id_to_label(app_id).to_string(),
             icon,
-            icon_url:  None,
-            group:     None,
-            pinned:    false,
-            windows:   vec![win_id],
+            icon_url: None,
+            group: None,
+            pinned: false,
+            windows: vec![win_id],
         });
     }
     tracing::info!("Opened app: {}", app_id);
@@ -1020,41 +1056,71 @@ fn render_fn_for(app_id: &str) -> WindowRenderFn {
         return render_bot_manager;
     }
     match app_id {
-        "tasks"                                       => render_tasks,
-        "store"                                       => render_store,
-        "builder"                                     => render_builder,
-        "container" | "manager-container-app"         => render_container,
-        "language-manager" | "manager-language"       => render_language_manager,
-        "icons-manager"    | "manager-icons"          => render_icons_manager,
-        "theme-manager"    | "manager-theme"          => render_theme_manager,
-        "bot-manager"      | "manager-bots"           => render_bot_manager,
-        "settings"                                    => render_settings,
-        "managers"                                    => render_managers,
-        "profile"                                     => render_profile,
-        "browser"                                     => render_browser,
-        "lenses"                                      => render_lenses,
-        "ai"                                          => render_ai,
-        "help"                                        => render_help,
-        _                                             => render_unknown,
+        "tasks" => render_tasks,
+        "store" => render_store,
+        "builder" => render_builder,
+        "container" | "manager-container-app" => render_container,
+        "language-manager" | "manager-language" => render_language_manager,
+        "icons-manager" | "manager-icons" => render_icons_manager,
+        "theme-manager" | "manager-theme" => render_theme_manager,
+        "bot-manager" | "manager-bots" => render_bot_manager,
+        "settings" => render_settings,
+        "managers" => render_managers,
+        "profile" => render_profile,
+        "browser" => render_browser,
+        "lenses" => render_lenses,
+        "ai" => render_ai,
+        "help" => render_help,
+        _ => render_unknown,
     }
 }
 
-fn render_tasks()            -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { TasksApp {} } } } }
-fn render_store()            -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { StoreApp {} } } } }
-fn render_builder()          -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { BuilderApp {} } } } }
-fn render_container()        -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { Container {} } } } }
-fn render_language_manager() -> Element { rsx! { AppShell { mode: AppMode::Window, fs_settings::LanguageSettings {} } } }
-fn render_icons_manager()    -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { IconsManagerPanel {} } } } }
-fn render_theme_manager()    -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { ThemeManagerApp {} } } } }
-fn render_bot_manager()      -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { BotManagerApp {} } } } }
-fn render_settings()         -> Element { rsx! { AppShell { mode: AppMode::Window, SettingsApp {} } } }
-fn render_managers()         -> Element { rsx! { AppShell { mode: AppMode::Window, ManagersApp {} } } }
-fn render_profile()          -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutC { ProfileApp {} } } } }
-fn render_browser()          -> Element { rsx! { AppShell { mode: AppMode::Window, BrowserApp {} } } }
-fn render_lenses()           -> Element { rsx! { AppShell { mode: AppMode::Window, LensesApp {} } } }
-fn render_ai()               -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { AiApp {} } } } }
-fn render_help()             -> Element { rsx! { AppShell { mode: AppMode::Window, LayoutA { HelpApp {} } } } }
-fn render_unknown()          -> Element {
+fn render_tasks() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { TasksApp {} } } }
+}
+fn render_store() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { StoreApp {} } } }
+}
+fn render_builder() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { BuilderApp {} } } }
+}
+fn render_container() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { Container {} } } }
+}
+fn render_language_manager() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, fs_settings::LanguageSettings {} } }
+}
+fn render_icons_manager() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { IconsManagerPanel {} } } }
+}
+fn render_theme_manager() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { ThemeManagerApp {} } } }
+}
+fn render_bot_manager() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { BotManagerApp {} } } }
+}
+fn render_settings() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, SettingsApp {} } }
+}
+fn render_managers() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, ManagersApp {} } }
+}
+fn render_profile() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutC { ProfileApp {} } } }
+}
+fn render_browser() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, BrowserApp {} } }
+}
+fn render_lenses() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LensesApp {} } }
+}
+fn render_ai() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { AiApp {} } } }
+}
+fn render_help() -> Element {
+    rsx! { AppShell { mode: AppMode::Window, LayoutA { HelpApp {} } } }
+}
+fn render_unknown() -> Element {
     rsx! {
         div {
             style: "color: var(--fs-color-text-muted, #94a3b8); font-size: 13px; \
@@ -1067,27 +1133,27 @@ fn render_unknown()          -> Element {
 /// Map an app id (the part after `"app-"`) to a human-readable breadcrumb label.
 fn app_id_to_label(id: &str) -> &str {
     match id {
-        "tasks"         => "Tasks",
-        "store"         => "Store",
-        "builder"       => "Builder",
-        "browser"       => "Browser",
-        "lenses"        => "Lenses",
-        "settings"      => "Settings",
-        "managers"      => "Managers",
-        "profile"       => "Profile",
-        "ai"            => "AI Assistant",
-        "help"          => "Help",
-        "container"           => "Container Manager",
-        "theme-manager"       => "Theme Manager",
-        "bot-manager"         => "Bot Manager",
-        "language-manager"    => "Language Manager",
-        "icons-manager"       => "Icons Manager",
-        "manager-language"    => "Language Manager",
-        "manager-theme"       => "Theme Manager",
-        "manager-icons"       => "Icons Manager",
+        "tasks" => "Tasks",
+        "store" => "Store",
+        "builder" => "Builder",
+        "browser" => "Browser",
+        "lenses" => "Lenses",
+        "settings" => "Settings",
+        "managers" => "Managers",
+        "profile" => "Profile",
+        "ai" => "AI Assistant",
+        "help" => "Help",
+        "container" => "Container Manager",
+        "theme-manager" => "Theme Manager",
+        "bot-manager" => "Bot Manager",
+        "language-manager" => "Language Manager",
+        "icons-manager" => "Icons Manager",
+        "manager-language" => "Language Manager",
+        "manager-theme" => "Theme Manager",
+        "manager-icons" => "Icons Manager",
         "manager-container-app" => "Container App Manager",
-        "manager-bots"        => "Bots Manager",
-        other           => other,
+        "manager-bots" => "Bots Manager",
+        other => other,
     }
 }
 

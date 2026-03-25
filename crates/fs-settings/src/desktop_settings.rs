@@ -23,9 +23,9 @@ impl TaskbarPosition {
     pub fn label(&self) -> &str {
         match self {
             Self::Bottom => "Bottom",
-            Self::Top    => "Top",
-            Self::Left   => "Left",
-            Self::Right  => "Right",
+            Self::Top => "Top",
+            Self::Left => "Left",
+            Self::Right => "Right",
         }
     }
 }
@@ -50,24 +50,24 @@ impl DisplayMode {
     pub fn label(&self) -> &str {
         match self {
             Self::Window => "Window",
-            Self::Web    => "Web",
-            Self::Tui    => "TUI",
+            Self::Web => "Web",
+            Self::Tui => "TUI",
         }
     }
 
     pub fn description(&self) -> String {
         match self {
             Self::Window => fs_i18n::t("settings.desktop.mode_window").into(),
-            Self::Web    => fs_i18n::t("settings.desktop.mode_web").into(),
-            Self::Tui    => fs_i18n::t("settings.desktop.mode_tui").into(),
+            Self::Web => fs_i18n::t("settings.desktop.mode_web").into(),
+            Self::Tui => fs_i18n::t("settings.desktop.mode_tui").into(),
         }
     }
 
     pub fn icon(&self) -> &str {
         match self {
             Self::Window => "🖥",
-            Self::Web    => "🌐",
-            Self::Tui    => "⬛",
+            Self::Web => "🌐",
+            Self::Tui => "⬛",
         }
     }
 }
@@ -87,9 +87,9 @@ pub enum SidebarPosition {
 impl SidebarPosition {
     pub fn label(&self) -> &str {
         match self {
-            Self::Left   => "Left",
-            Self::Right  => "Right",
-            Self::Top    => "Top",
+            Self::Left => "Left",
+            Self::Right => "Right",
+            Self::Top => "Top",
             Self::Bottom => "Bottom",
         }
     }
@@ -109,8 +109,12 @@ pub struct SidebarConfig {
     pub width: u32,
 }
 
-fn default_true() -> bool { true }
-fn default_sidebar_width() -> u32 { 240 }
+fn default_true() -> bool {
+    true
+}
+fn default_sidebar_width() -> u32 {
+    240
+}
 
 impl Default for SidebarConfig {
     fn default() -> Self {
@@ -128,7 +132,7 @@ impl Default for SidebarConfig {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct DesktopConfig {
     #[serde(default)]
-    pub taskbar_pos:  TaskbarPosition,
+    pub taskbar_pos: TaskbarPosition,
     #[serde(default)]
     pub display_mode: DisplayMode,
     #[serde(default)]
@@ -223,7 +227,11 @@ pub fn DesktopSettings() -> Element {
 #[component]
 fn DisplayModeBtn(mode: DisplayMode, config: Signal<DesktopConfig>) -> Element {
     let is_active = config.read().display_mode == mode;
-    let border = if is_active { "var(--fs-color-primary)" } else { "var(--fs-color-border-default)" };
+    let border = if is_active {
+        "var(--fs-color-primary)"
+    } else {
+        "var(--fs-color-border-default)"
+    };
     let weight = if is_active { "600" } else { "400" };
     rsx! {
         button {
@@ -244,8 +252,12 @@ fn DisplayModeBtn(mode: DisplayMode, config: Signal<DesktopConfig>) -> Element {
 #[component]
 fn TaskbarPosBtn(pos: TaskbarPosition, config: Signal<DesktopConfig>) -> Element {
     let is_active = config.read().taskbar_pos == pos;
-    let border = if is_active { "var(--fs-color-primary)" } else { "var(--fs-color-border-default)" };
-    let label  = pos.label();
+    let border = if is_active {
+        "var(--fs-color-primary)"
+    } else {
+        "var(--fs-color-border-default)"
+    };
+    let label = pos.label();
     rsx! {
         button {
             style: "padding: 10px; border-radius: var(--fs-radius-md); border: 2px solid {border}; cursor: pointer; \
@@ -276,8 +288,12 @@ fn SidebarCollapseToggle(config: Signal<DesktopConfig>) -> Element {
 #[component]
 fn SidebarPosBtn(pos: SidebarPosition, config: Signal<DesktopConfig>) -> Element {
     let is_active = config.read().sidebar.position == pos;
-    let border = if is_active { "var(--fs-color-primary)" } else { "var(--fs-color-border-default)" };
-    let label  = pos.label();
+    let border = if is_active {
+        "var(--fs-color-primary)"
+    } else {
+        "var(--fs-color-border-default)"
+    };
+    let label = pos.label();
     rsx! {
         button {
             style: "padding: 10px; border-radius: var(--fs-radius-md); border: 2px solid {border}; cursor: pointer; \

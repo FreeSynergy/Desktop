@@ -5,7 +5,7 @@
 
 use sea_orm::DatabaseConnection;
 
-use crate::{DbError, db_path, schemas};
+use crate::{db_path, schemas, DbError};
 use fs_db::{DbBackend, DbConnection};
 
 /// Database handle for `fs-store.db`.
@@ -37,6 +37,9 @@ impl StoreDb {
 
     /// Explicitly close the connection pool.
     pub async fn close(self) -> Result<(), DbError> {
-        self.conn.close().await.map_err(|e| DbError::SeaOrm(e.to_string()))
+        self.conn
+            .close()
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))
     }
 }

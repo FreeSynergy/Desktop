@@ -2,7 +2,10 @@
 use dioxus::prelude::*;
 use fs_i18n;
 
-use crate::icons::{ICON_BELL, ICON_CLOSE, ICON_NOTIF_INFO, ICON_NOTIF_SUCCESS, ICON_NOTIF_WARNING, ICON_NOTIF_ERROR};
+use crate::icons::{
+    ICON_BELL, ICON_CLOSE, ICON_NOTIF_ERROR, ICON_NOTIF_INFO, ICON_NOTIF_SUCCESS,
+    ICON_NOTIF_WARNING,
+};
 
 /// Severity level of a notification.
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -17,25 +20,25 @@ pub enum NotificationKind {
 /// Trait that gives a notification kind its visual identity.
 pub trait NotificationStyle {
     fn accent_color(&self) -> &'static str;
-    fn status_icon(&self)  -> &'static str;
+    fn status_icon(&self) -> &'static str;
 }
 
 impl NotificationStyle for NotificationKind {
     fn accent_color(&self) -> &'static str {
         match self {
-            Self::Info    => "#06b6d4",
+            Self::Info => "#06b6d4",
             Self::Success => "#22c55e",
             Self::Warning => "#f59e0b",
-            Self::Error   => "#ef4444",
+            Self::Error => "#ef4444",
         }
     }
 
     fn status_icon(&self) -> &'static str {
         match self {
-            Self::Info    => ICON_NOTIF_INFO,
+            Self::Info => ICON_NOTIF_INFO,
             Self::Success => ICON_NOTIF_SUCCESS,
             Self::Warning => ICON_NOTIF_WARNING,
-            Self::Error   => ICON_NOTIF_ERROR,
+            Self::Error => ICON_NOTIF_ERROR,
         }
     }
 }
@@ -58,10 +61,20 @@ pub struct NotificationManager {
 
 impl NotificationManager {
     /// Push a new notification. Returns its ID.
-    pub fn push(&mut self, kind: NotificationKind, title: impl Into<String>, body: Option<String>) -> u64 {
+    pub fn push(
+        &mut self,
+        kind: NotificationKind,
+        title: impl Into<String>,
+        body: Option<String>,
+    ) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        self.items.push(Notification { id, kind, title: title.into(), body });
+        self.items.push(Notification {
+            id,
+            kind,
+            title: title.into(),
+            body,
+        });
         // Keep at most 5 toasts visible
         if self.items.len() > 5 {
             self.items.remove(0);
@@ -130,7 +143,16 @@ impl NotificationHistory {
     pub fn push(&mut self, kind: NotificationKind, title: impl Into<String>, body: Option<String>) {
         let id = self.next_id;
         self.next_id += 1;
-        self.entries.insert(0, HistoryEntry { id, kind, title: title.into(), body, read: false });
+        self.entries.insert(
+            0,
+            HistoryEntry {
+                id,
+                kind,
+                title: title.into(),
+                body,
+                read: false,
+            },
+        );
         if self.entries.len() > 50 {
             self.entries.truncate(50);
         }
@@ -153,13 +175,10 @@ impl NotificationHistory {
 
 /// Top-bar bell icon + dropdown panel.
 #[component]
-pub fn NotificationBell(
-    history: NotificationHistory,
-    on_mark_read: EventHandler<()>,
-) -> Element {
+pub fn NotificationBell(history: NotificationHistory, on_mark_read: EventHandler<()>) -> Element {
     let mut open = use_signal(|| false);
-    let unread   = history.unread_count();
-    let entries  = history.entries().to_vec();
+    let unread = history.unread_count();
+    let entries = history.entries().to_vec();
 
     rsx! {
         div { style: "position: relative; flex-shrink: 0;",
@@ -240,8 +259,12 @@ pub fn NotificationBell(
 #[component]
 fn BellEntry(entry: HistoryEntry) -> Element {
     let accent = entry.kind.accent_color();
-    let icon   = entry.kind.status_icon();
-    let bg     = if entry.read { "transparent" } else { "rgba(6,182,212,0.05)" };
+    let icon = entry.kind.status_icon();
+    let bg = if entry.read {
+        "transparent"
+    } else {
+        "rgba(6,182,212,0.05)"
+    };
 
     rsx! {
         div {

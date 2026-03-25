@@ -25,7 +25,7 @@
 ///
 /// The user can change the layout in Desktop settings (e.g. "help left or right?",
 /// "main sidebar left or right?"). The layout is stored per-user, not per-window.
-use std::sync::atomic::{AtomicU64, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use dioxus::prelude::Element;
 
@@ -47,7 +47,9 @@ fn next_z() -> u32 {
 pub struct WindowId(pub u64);
 
 impl WindowId {
-    pub fn next() -> Self { Self(NEXT_WINDOW_ID.fetch_add(1, Ordering::Relaxed)) }
+    pub fn next() -> Self {
+        Self(NEXT_WINDOW_ID.fetch_add(1, Ordering::Relaxed))
+    }
 }
 
 // ── Size ──────────────────────────────────────────────────────────────────────
@@ -55,22 +57,30 @@ impl WindowId {
 /// Initial size specification for a window.
 #[derive(Clone, Debug, PartialEq)]
 pub enum WindowSize {
-    Fixed      { width: f64, height: f64 },
+    Fixed { width: f64, height: f64 },
     Responsive { min_width: f64, max_width: f64 },
     Fullscreen,
 }
 
 impl Default for WindowSize {
-    fn default() -> Self { Self::Responsive { min_width: 400.0, max_width: 900.0 } }
+    fn default() -> Self {
+        Self::Responsive {
+            min_width: 400.0,
+            max_width: 900.0,
+        }
+    }
 }
 
 impl WindowSize {
     /// Returns (initial_width, initial_height) in pixels.
     pub fn initial_dimensions(&self) -> (f64, f64) {
         match self {
-            Self::Fixed { width, height }             => (*width, *height),
-            Self::Responsive { min_width, max_width } => ((min_width + max_width) / 2.0, 600.0),
-            Self::Fullscreen                          => (0.0, 0.0),
+            Self::Fixed { width, height } => (*width, *height),
+            Self::Responsive {
+                min_width,
+                max_width,
+            } => ((min_width + max_width) / 2.0, 600.0),
+            Self::Fullscreen => (0.0, 0.0),
         }
     }
 }
@@ -122,7 +132,9 @@ pub struct WindowLayout {
 }
 
 impl Default for WindowLayout {
-    fn default() -> Self { Self::standard() }
+    fn default() -> Self {
+        Self::standard()
+    }
 }
 
 impl WindowLayout {
@@ -130,9 +142,9 @@ impl WindowLayout {
     pub fn standard() -> Self {
         Self {
             main_sidebar: SidebarSlot::Left,
-            help_panel:   SidebarSlot::Right,
-            show_tabbar:  true,
-            show_bottom:  false,
+            help_panel: SidebarSlot::Right,
+            show_tabbar: true,
+            show_bottom: false,
         }
     }
 
@@ -140,9 +152,9 @@ impl WindowLayout {
     pub fn mirrored() -> Self {
         Self {
             main_sidebar: SidebarSlot::Right,
-            help_panel:   SidebarSlot::Left,
-            show_tabbar:  true,
-            show_bottom:  false,
+            help_panel: SidebarSlot::Left,
+            show_tabbar: true,
+            show_bottom: false,
         }
     }
 
@@ -150,9 +162,9 @@ impl WindowLayout {
     pub fn minimal() -> Self {
         Self {
             main_sidebar: SidebarSlot::Hidden,
-            help_panel:   SidebarSlot::Hidden,
-            show_tabbar:  false,
-            show_bottom:  false,
+            help_panel: SidebarSlot::Hidden,
+            show_tabbar: false,
+            show_bottom: false,
         }
     }
 
@@ -175,7 +187,10 @@ pub enum WindowButton {
     Ok,
     Cancel,
     Apply,
-    Custom { label_key: String, action_id: String },
+    Custom {
+        label_key: String,
+        action_id: String,
+    },
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -183,14 +198,18 @@ pub enum WindowButton {
 /// One entry in a window's left-side navigation sidebar.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WindowSidebarItem {
-    pub id:    String,
-    pub icon:  String,
+    pub id: String,
+    pub icon: String,
     pub label: String,
 }
 
 impl WindowSidebarItem {
     pub fn new(id: impl Into<String>, icon: impl Into<String>, label: impl Into<String>) -> Self {
-        Self { id: id.into(), icon: icon.into(), label: label.into() }
+        Self {
+            id: id.into(),
+            icon: icon.into(),
+            label: label.into(),
+        }
     }
 }
 
@@ -206,43 +225,64 @@ impl WindowSidebarItem {
 pub trait FsWindow {
     fn title_key(&self) -> &str;
 
-    fn icon(&self) -> &str                          { "🗗" }
-    fn default_size(&self) -> WindowSize            { WindowSize::default() }
-    fn sidebar_items(&self) -> Vec<WindowSidebarItem> { vec![] }
-    fn footer_buttons(&self) -> Vec<WindowButton>   { vec![WindowButton::Ok, WindowButton::Cancel] }
-    fn help_topic(&self) -> Option<&str>            { None }
-    fn closable(&self) -> bool                      { true }
-    fn scrollable(&self) -> bool                    { true }
-    fn desktop_index(&self) -> usize                { 0 }
+    fn icon(&self) -> &str {
+        "🗗"
+    }
+    fn default_size(&self) -> WindowSize {
+        WindowSize::default()
+    }
+    fn sidebar_items(&self) -> Vec<WindowSidebarItem> {
+        vec![]
+    }
+    fn footer_buttons(&self) -> Vec<WindowButton> {
+        vec![WindowButton::Ok, WindowButton::Cancel]
+    }
+    fn help_topic(&self) -> Option<&str> {
+        None
+    }
+    fn closable(&self) -> bool {
+        true
+    }
+    fn scrollable(&self) -> bool {
+        true
+    }
+    fn desktop_index(&self) -> usize {
+        0
+    }
 
     /// Override the default [`WindowLayout`] for this window type.
     ///
     /// The default is [`WindowLayout::standard()`] (main sidebar left, help panel right).
     /// Override this for apps that want a different panel arrangement by default,
     /// but note that the user's global layout preference takes precedence.
-    fn default_layout(&self) -> WindowLayout { WindowLayout::standard() }
+    fn default_layout(&self) -> WindowLayout {
+        WindowLayout::standard()
+    }
 
     /// Build a `Window` (runtime state) from this description.
-    fn into_window(self) -> Window where Self: Sized {
+    fn into_window(self) -> Window
+    where
+        Self: Sized,
+    {
         Window {
-            id:                  WindowId::next(),
-            title_key:           self.title_key().to_string(),
-            icon:                self.icon().to_string(),
-            size:                self.default_size(),
-            sidebar_items:       self.sidebar_items(),
-            buttons:             self.footer_buttons(),
-            help_topic:          self.help_topic().map(str::to_string),
-            closable:            self.closable(),
-            scrollable:          self.scrollable(),
-            layout:              self.default_layout(),
-            z_index:             0,
-            visible:             true,
-            minimized:           false,
-            maximized:           false,
-            active_sidebar_id:   None,
-            active_tab:          None,
+            id: WindowId::next(),
+            title_key: self.title_key().to_string(),
+            icon: self.icon().to_string(),
+            size: self.default_size(),
+            sidebar_items: self.sidebar_items(),
+            buttons: self.footer_buttons(),
+            help_topic: self.help_topic().map(str::to_string),
+            closable: self.closable(),
+            scrollable: self.scrollable(),
+            layout: self.default_layout(),
+            z_index: 0,
+            visible: true,
+            minimized: false,
+            maximized: false,
+            active_sidebar_id: None,
+            active_tab: None,
             has_unsaved_changes: false,
-            desktop_index:       self.desktop_index(),
+            desktop_index: self.desktop_index(),
         }
     }
 }
@@ -270,63 +310,84 @@ pub trait FsWindow {
 /// Panels that have no component assigned become invisible automatically.
 #[derive(Clone, PartialEq)]
 pub struct Window {
-    pub id:                  WindowId,
-    pub title_key:           String,
-    pub icon:                String,
-    pub size:                WindowSize,
-    pub sidebar_items:       Vec<WindowSidebarItem>,
-    pub buttons:             Vec<WindowButton>,
-    pub help_topic:          Option<String>,
-    pub closable:            bool,
-    pub scrollable:          bool,
+    pub id: WindowId,
+    pub title_key: String,
+    pub icon: String,
+    pub size: WindowSize,
+    pub sidebar_items: Vec<WindowSidebarItem>,
+    pub buttons: Vec<WindowButton>,
+    pub help_topic: Option<String>,
+    pub closable: bool,
+    pub scrollable: bool,
     /// Configurable panel layout — which side each bar lives on.
-    pub layout:              WindowLayout,
+    pub layout: WindowLayout,
     // ── runtime ──────────────────────────────────────────────────────────────
-    pub z_index:             u32,
-    pub visible:             bool,
-    pub minimized:           bool,
-    pub maximized:           bool,
-    pub active_sidebar_id:   Option<String>,
+    pub z_index: u32,
+    pub visible: bool,
+    pub minimized: bool,
+    pub maximized: bool,
+    pub active_sidebar_id: Option<String>,
     /// Active tab in the top tab bar (if shown).
-    pub active_tab:          Option<String>,
+    pub active_tab: Option<String>,
     pub has_unsaved_changes: bool,
     /// Virtual desktop this window lives on (0-indexed).
-    pub desktop_index:       usize,
+    pub desktop_index: usize,
 }
 
 impl Window {
     /// Quick constructor — all runtime state initialised to sane defaults.
     pub fn new(title_key: impl Into<String>) -> Self {
         Self {
-            id:                  WindowId::next(),
-            title_key:           title_key.into(),
-            icon:                "🗗".to_string(),
-            size:                WindowSize::default(),
-            sidebar_items:       vec![],
-            buttons:             vec![WindowButton::Ok, WindowButton::Cancel],
-            help_topic:          None,
-            closable:            true,
-            scrollable:          true,
-            layout:              WindowLayout::standard(),
-            z_index:             0,
-            visible:             true,
-            minimized:           false,
-            maximized:           false,
-            active_sidebar_id:   None,
-            active_tab:          None,
+            id: WindowId::next(),
+            title_key: title_key.into(),
+            icon: "🗗".to_string(),
+            size: WindowSize::default(),
+            sidebar_items: vec![],
+            buttons: vec![WindowButton::Ok, WindowButton::Cancel],
+            help_topic: None,
+            closable: true,
+            scrollable: true,
+            layout: WindowLayout::standard(),
+            z_index: 0,
+            visible: true,
+            minimized: false,
+            maximized: false,
+            active_sidebar_id: None,
+            active_tab: None,
             has_unsaved_changes: false,
-            desktop_index:       0,
+            desktop_index: 0,
         }
     }
 
-    pub fn with_size(mut self, size: WindowSize) -> Self              { self.size = size; self }
-    pub fn with_buttons(mut self, b: Vec<WindowButton>) -> Self       { self.buttons = b; self }
-    pub fn with_help(mut self, t: impl Into<String>) -> Self          { self.help_topic = Some(t.into()); self }
-    pub fn with_icon(mut self, icon: impl Into<String>) -> Self       { self.icon = icon.into(); self }
-    pub fn with_sidebar(mut self, items: Vec<WindowSidebarItem>) -> Self { self.sidebar_items = items; self }
-    pub fn with_desktop(mut self, index: usize) -> Self               { self.desktop_index = index; self }
+    pub fn with_size(mut self, size: WindowSize) -> Self {
+        self.size = size;
+        self
+    }
+    pub fn with_buttons(mut self, b: Vec<WindowButton>) -> Self {
+        self.buttons = b;
+        self
+    }
+    pub fn with_help(mut self, t: impl Into<String>) -> Self {
+        self.help_topic = Some(t.into());
+        self
+    }
+    pub fn with_icon(mut self, icon: impl Into<String>) -> Self {
+        self.icon = icon.into();
+        self
+    }
+    pub fn with_sidebar(mut self, items: Vec<WindowSidebarItem>) -> Self {
+        self.sidebar_items = items;
+        self
+    }
+    pub fn with_desktop(mut self, index: usize) -> Self {
+        self.desktop_index = index;
+        self
+    }
     /// Override the default chrome layout for this window.
-    pub fn with_layout(mut self, layout: WindowLayout) -> Self        { self.layout = layout; self }
+    pub fn with_layout(mut self, layout: WindowLayout) -> Self {
+        self.layout = layout;
+        self
+    }
 }
 
 // ── OpenWindow ────────────────────────────────────────────────────────────────
@@ -348,7 +409,7 @@ pub type WindowRenderFn = fn() -> Element;
 /// Both share the same `WindowFrame` rendering path — from one mould.
 #[derive(Clone)]
 pub struct OpenWindow {
-    pub meta:   Window,
+    pub meta: Window,
     pub render: WindowRenderFn,
 }
 
@@ -366,17 +427,24 @@ impl OpenWindow {
 
     /// Build from a `FsWindow` description + render function.
     pub fn from_fs<W: FsWindow>(desc: W, render: WindowRenderFn) -> Self {
-        Self { meta: desc.into_window(), render }
+        Self {
+            meta: desc.into_window(),
+            render,
+        }
     }
 }
 
 impl std::ops::Deref for OpenWindow {
     type Target = Window;
-    fn deref(&self) -> &Window { &self.meta }
+    fn deref(&self) -> &Window {
+        &self.meta
+    }
 }
 
 impl std::ops::DerefMut for OpenWindow {
-    fn deref_mut(&mut self) -> &mut Window { &mut self.meta }
+    fn deref_mut(&mut self) -> &mut Window {
+        &mut self.meta
+    }
 }
 
 // ── WindowHost trait ──────────────────────────────────────────────────────────
@@ -418,7 +486,7 @@ impl WindowHost for WindowManager {
 
     fn focus_window(&mut self, id: WindowId) {
         if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
-            w.meta.z_index   = next_z();
+            w.meta.z_index = next_z();
             w.meta.minimized = false;
         }
     }
@@ -433,7 +501,9 @@ impl WindowHost for WindowManager {
     fn maximize_window(&mut self, id: WindowId) {
         if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
             w.meta.maximized = !w.meta.maximized;
-            if w.meta.maximized { w.meta.minimized = false; }
+            if w.meta.maximized {
+                w.meta.minimized = false;
+            }
         }
     }
 
@@ -449,7 +519,9 @@ impl WindowHost for WindowManager {
         }
     }
 
-    fn open_windows(&self) -> &[OpenWindow] { &self.windows }
+    fn open_windows(&self) -> &[OpenWindow] {
+        &self.windows
+    }
 
     fn is_window_open(&self, id: WindowId) -> bool {
         self.windows.iter().any(|w| w.id == id)
@@ -458,18 +530,36 @@ impl WindowHost for WindowManager {
 
 // Backward-compatible shims — existing call sites continue to compile unchanged.
 impl WindowManager {
-    pub fn open(&mut self, w: OpenWindow)               { self.open_window(w) }
-    pub fn close(&mut self, id: WindowId)               { self.close_window(id) }
-    pub fn focus(&mut self, id: WindowId)               { self.focus_window(id) }
-    pub fn minimize(&mut self, id: WindowId)            { self.minimize_window(id) }
-    pub fn maximize(&mut self, id: WindowId)            { self.maximize_window(id) }
+    pub fn open(&mut self, w: OpenWindow) {
+        self.open_window(w)
+    }
+    pub fn close(&mut self, id: WindowId) {
+        self.close_window(id)
+    }
+    pub fn focus(&mut self, id: WindowId) {
+        self.focus_window(id)
+    }
+    pub fn minimize(&mut self, id: WindowId) {
+        self.minimize_window(id)
+    }
+    pub fn maximize(&mut self, id: WindowId) {
+        self.maximize_window(id)
+    }
     pub fn set_sidebar_active_compat(&mut self, id: WindowId, item_id: String) {
         self.set_sidebar_active(id, item_id)
     }
-    pub fn windows(&self) -> &[OpenWindow]              { self.open_windows() }
-    pub fn is_open(&self, id: WindowId) -> bool         { self.is_window_open(id) }
-    pub fn minimized_windows(&self) -> Vec<&OpenWindow> { self.windows.iter().filter(|w| w.minimized).collect() }
-    pub fn visible_windows(&self) -> Vec<&OpenWindow>   { self.windows.iter().filter(|w| !w.minimized).collect() }
+    pub fn windows(&self) -> &[OpenWindow] {
+        self.open_windows()
+    }
+    pub fn is_open(&self, id: WindowId) -> bool {
+        self.is_window_open(id)
+    }
+    pub fn minimized_windows(&self) -> Vec<&OpenWindow> {
+        self.windows.iter().filter(|w| w.minimized).collect()
+    }
+    pub fn visible_windows(&self) -> Vec<&OpenWindow> {
+        self.windows.iter().filter(|w| !w.minimized).collect()
+    }
 }
 
 // ── Legacy ────────────────────────────────────────────────────────────────────
@@ -477,5 +567,7 @@ impl WindowManager {
 /// Legacy alias — use `FsWindow` for new code.
 pub trait WindowContent: Send + Sync + 'static {
     fn title_key(&self) -> &str;
-    fn help_topic(&self) -> Option<&str> { None }
+    fn help_topic(&self) -> Option<&str> {
+        None
+    }
 }

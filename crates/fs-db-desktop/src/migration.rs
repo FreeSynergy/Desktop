@@ -66,13 +66,11 @@ async fn ensure_tracking_table(db: &DatabaseConnection) -> Result<(), DbError> {
 
 async fn is_applied(db: &DatabaseConnection, name: &str) -> Result<bool, DbError> {
     let sql = format!("SELECT COUNT(*) AS count FROM _migrations WHERE name = '{name}'");
-    let result = CountRow::find_by_statement(Statement::from_string(
-        db.get_database_backend(),
-        sql,
-    ))
-    .one(db)
-    .await
-    .map_err(|e| DbError::SeaOrm(e.to_string()))?;
+    let result =
+        CountRow::find_by_statement(Statement::from_string(db.get_database_backend(), sql))
+            .one(db)
+            .await
+            .map_err(|e| DbError::SeaOrm(e.to_string()))?;
     Ok(result.map(|r| r.count > 0).unwrap_or(false))
 }
 

@@ -41,16 +41,16 @@ pub struct PackageSettingsEntry {
 /// One config field extracted for the Settings Manager.
 #[derive(Clone, PartialEq, Debug)]
 pub struct SettingsFieldView {
-    pub key:           String,
-    pub label:         String,
+    pub key: String,
+    pub label: String,
     /// Always required — shown as a warning if empty.
-    pub help:          String,
-    pub kind_tag:      SettingsKindTag,
+    pub help: String,
+    pub kind_tag: SettingsKindTag,
     pub current_value: String,
-    pub required:      bool,
+    pub required: bool,
     pub needs_restart: bool,
     /// Options for select fields.
-    pub options:       Vec<(String, String)>,
+    pub options: Vec<(String, String)>,
 }
 
 /// Simplified kind for rendering.
@@ -69,12 +69,12 @@ pub enum SettingsKindTag {
 impl PackageSettingsEntry {
     /// Build an entry from a `Manageable` implementor.
     pub fn from_manageable(pkg: &dyn fs_pkg::manageable::Manageable) -> Self {
-        let meta   = pkg.meta();
+        let meta = pkg.meta();
         let fields = pkg.config_fields().iter().map(field_to_view).collect();
         Self {
-            id:       meta.id.to_string(),
-            name:     meta.name.clone(),
-            icon:     meta.icon.clone(),
+            id: meta.id.to_string(),
+            name: meta.name.clone(),
+            icon: meta.icon.clone(),
             category: meta.category.clone(),
             fields,
         }
@@ -83,34 +83,37 @@ impl PackageSettingsEntry {
 
 fn field_to_view(f: &ConfigField) -> SettingsFieldView {
     let (kind_tag, options) = match &f.kind {
-        ConfigFieldKind::Text      => (SettingsKindTag::Text,     vec![]),
-        ConfigFieldKind::Password  => (SettingsKindTag::Password, vec![]),
+        ConfigFieldKind::Text => (SettingsKindTag::Text, vec![]),
+        ConfigFieldKind::Password => (SettingsKindTag::Password, vec![]),
         ConfigFieldKind::Number { .. } => (SettingsKindTag::Number, vec![]),
-        ConfigFieldKind::Bool      => (SettingsKindTag::Bool,     vec![]),
+        ConfigFieldKind::Bool => (SettingsKindTag::Bool, vec![]),
         ConfigFieldKind::Select { options } => (
             SettingsKindTag::Select,
-            options.iter().map(|o| (o.value.clone(), o.label.clone())).collect(),
+            options
+                .iter()
+                .map(|o| (o.value.clone(), o.label.clone()))
+                .collect(),
         ),
-        ConfigFieldKind::Port     => (SettingsKindTag::Port,     vec![]),
-        ConfigFieldKind::Path     => (SettingsKindTag::Path,     vec![]),
+        ConfigFieldKind::Port => (SettingsKindTag::Port, vec![]),
+        ConfigFieldKind::Path => (SettingsKindTag::Path, vec![]),
         ConfigFieldKind::Textarea => (SettingsKindTag::Textarea, vec![]),
     };
 
     let current_value = match &f.value {
-        ConfigValue::Text(s)   => s.clone(),
-        ConfigValue::Bool(b)   => b.to_string(),
+        ConfigValue::Text(s) => s.clone(),
+        ConfigValue::Bool(b) => b.to_string(),
         ConfigValue::Number(n) => n.to_string(),
-        ConfigValue::Port(p)   => p.to_string(),
-        ConfigValue::Empty     => String::new(),
+        ConfigValue::Port(p) => p.to_string(),
+        ConfigValue::Empty => String::new(),
     };
 
     SettingsFieldView {
-        key:           f.key.clone(),
-        label:         f.label.clone(),
-        help:          f.help.clone(),
+        key: f.key.clone(),
+        label: f.label.clone(),
+        help: f.help.clone(),
         kind_tag,
         current_value,
-        required:      f.required,
+        required: f.required,
         needs_restart: f.needs_restart,
         options,
     }
@@ -167,19 +170,31 @@ pub struct PackageSettingsViewProps {
 /// Right panel:  selected package's config fields with help text.
 #[component]
 pub fn PackageSettingsView(props: PackageSettingsViewProps) -> Element {
-    let first_id = props.packages.first().map(|p| p.id.clone()).unwrap_or_default();
+    let first_id = props
+        .packages
+        .first()
+        .map(|p| p.id.clone())
+        .unwrap_or_default();
     let mut selected_id: Signal<String> = use_signal(|| first_id);
-    let mut search:      Signal<String> = use_signal(String::new);
+    let mut search: Signal<String> = use_signal(String::new);
 
     let filtered: Vec<PackageSettingsEntry> = {
         let q = search.read().to_lowercase();
-        props.packages.iter()
-            .filter(|p| q.is_empty() || p.name.to_lowercase().contains(&q) || p.category.to_lowercase().contains(&q))
+        props
+            .packages
+            .iter()
+            .filter(|p| {
+                q.is_empty()
+                    || p.name.to_lowercase().contains(&q)
+                    || p.category.to_lowercase().contains(&q)
+            })
             .cloned()
             .collect()
     };
 
-    let selected = props.packages.iter()
+    let selected = props
+        .packages
+        .iter()
         .find(|p| p.id == *selected_id.read())
         .cloned();
 
@@ -256,17 +271,25 @@ pub fn PackageSettingsView(props: PackageSettingsViewProps) -> Element {
 
 #[derive(Props, Clone, PartialEq)]
 struct SettingsSidebarRowProps {
-    pkg:       PackageSettingsEntry,
+    pkg: PackageSettingsEntry,
     is_active: bool,
     on_select: EventHandler<String>,
 }
 
 #[component]
 fn SettingsSidebarRow(props: SettingsSidebarRowProps) -> Element {
-    let pkg_id    = props.pkg.id.clone();
+    let pkg_id = props.pkg.id.clone();
     let has_fields = !props.pkg.fields.is_empty();
-    let bg    = if props.is_active { "var(--fs-sidebar-active-bg)" } else { "transparent" };
-    let color = if props.is_active { "var(--fs-sidebar-active)" } else { "var(--fs-text-secondary)" };
+    let bg = if props.is_active {
+        "var(--fs-sidebar-active-bg)"
+    } else {
+        "transparent"
+    };
+    let color = if props.is_active {
+        "var(--fs-sidebar-active)"
+    } else {
+        "var(--fs-text-secondary)"
+    };
 
     rsx! {
         div {
@@ -298,7 +321,7 @@ fn SettingsSidebarRow(props: SettingsSidebarRowProps) -> Element {
 
 #[derive(Props, Clone, PartialEq)]
 struct PackageSettingsPanelProps {
-    pkg:     PackageSettingsEntry,
+    pkg: PackageSettingsEntry,
     on_save: EventHandler<(String, String, String)>,
 }
 
@@ -356,15 +379,15 @@ fn PackageSettingsPanel(props: PackageSettingsPanelProps) -> Element {
 
 #[derive(Props, Clone, PartialEq)]
 struct SettingsFieldRowProps {
-    field:   SettingsFieldView,
-    pkg_id:  String,
+    field: SettingsFieldView,
+    pkg_id: String,
     on_save: EventHandler<(String, String, String)>,
 }
 
 #[component]
 fn SettingsFieldRow(props: SettingsFieldRowProps) -> Element {
-    let field   = &props.field;
-    let key_c   = field.key.clone();
+    let field = &props.field;
+    let key_c = field.key.clone();
     let pkg_id_c = props.pkg_id.clone();
     let mut val: Signal<String> = use_signal(|| field.current_value.clone());
 

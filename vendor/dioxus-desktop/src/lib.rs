@@ -18,6 +18,7 @@ mod file_upload;
 mod hooks;
 mod ipc;
 mod menubar;
+mod mobile;
 mod protocol;
 mod query;
 mod shortcut;
@@ -48,8 +49,10 @@ pub mod trayicon;
 // Public exports
 pub use assets::AssetRequest;
 pub use config::{Config, WindowCloseBehaviour};
-pub use desktop_context::{window, DesktopContext, DesktopService, WeakDesktopContext};
+pub use desktop_context::{
+    window, DesktopContext, DesktopService, PendingDesktopContext, WeakDesktopContext,
+};
 pub use event_handlers::WryEventHandler;
 pub use hooks::*;
-pub use shortcut::{ShortcutHandle, ShortcutRegistryError};
+pub use shortcut::{HotKeyState, ShortcutHandle, ShortcutRegistryError};
 pub use wry::RequestAsyncResponder;

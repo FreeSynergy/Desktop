@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use fs_db_desktop::{FsdDb, desktop::DbWidgetSlot};
+use fs_db_desktop::{desktop::DbWidgetSlot, FsdDb};
 
 use crate::widgets::{WidgetKind, WidgetSlot};
 
@@ -31,7 +31,11 @@ impl DbContext {
     pub fn load_theme(&self) -> String {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                self.0.desktop().active_theme().await.unwrap_or_else(|_| "midnight-blue".to_string())
+                self.0
+                    .desktop()
+                    .active_theme()
+                    .await
+                    .unwrap_or_else(|_| "midnight-blue".to_string())
             })
         })
     }
@@ -41,7 +45,8 @@ impl DbContext {
     pub fn load_widgets(&self) -> Vec<WidgetSlot> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                self.0.desktop()
+                self.0
+                    .desktop()
                     .widget_slots()
                     .await
                     .unwrap_or_default()
@@ -57,7 +62,8 @@ impl DbContext {
     pub fn load_language(&self) -> String {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                self.0.shared()
+                self.0
+                    .shared()
                     .get_setting_or("language", "de")
                     .await
                     .unwrap_or_else(|_| "de".to_string())
@@ -70,7 +76,8 @@ impl DbContext {
     pub fn load_wallpaper_css(&self) -> String {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                self.0.shared()
+                self.0
+                    .shared()
                     .get_setting_or("wallpaper_css", "")
                     .await
                     .unwrap_or_default()
@@ -96,12 +103,12 @@ impl DbContext {
                 .iter()
                 .enumerate()
                 .map(|(i, s)| DbWidgetSlot {
-                    id:         s.id,
-                    kind:       s.kind.as_str(),
-                    x:          s.x,
-                    y:          s.y,
-                    w:          s.w,
-                    h:          s.h,
+                    id: s.id,
+                    kind: s.kind.as_str(),
+                    x: s.x,
+                    y: s.y,
+                    w: s.w,
+                    h: s.h,
                     sort_order: i as u32,
                 })
                 .collect();
@@ -129,7 +136,14 @@ impl DbContext {
 
     fn db_slot_to_widget(db: DbWidgetSlot) -> Option<WidgetSlot> {
         let kind = WidgetKind::from_str(&db.kind)?;
-        Some(WidgetSlot { id: db.id, kind, x: db.x, y: db.y, w: db.w, h: db.h })
+        Some(WidgetSlot {
+            id: db.id,
+            kind,
+            x: db.x,
+            y: db.y,
+            w: db.w,
+            h: db.h,
+        })
     }
 }
 
@@ -140,7 +154,10 @@ impl DbContext {
 pub fn load_theme_from_db(db: &FsdDb) -> String {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
-            db.desktop().active_theme().await.unwrap_or_else(|_| "midnight-blue".to_string())
+            db.desktop()
+                .active_theme()
+                .await
+                .unwrap_or_else(|_| "midnight-blue".to_string())
         })
     })
 }
@@ -162,7 +179,10 @@ pub fn load_widgets_from_db(db: &FsdDb) -> Vec<WidgetSlot> {
 pub fn load_language_from_db(db: &FsdDb) -> String {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
-            db.shared().get_setting_or("language", "de").await.unwrap_or_else(|_| "de".to_string())
+            db.shared()
+                .get_setting_or("language", "de")
+                .await
+                .unwrap_or_else(|_| "de".to_string())
         })
     })
 }
@@ -170,12 +190,23 @@ pub fn load_language_from_db(db: &FsdDb) -> String {
 pub fn load_wallpaper_css_from_db(db: &FsdDb) -> String {
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
-            db.shared().get_setting_or("wallpaper_css", "").await.unwrap_or_default()
+            db.shared()
+                .get_setting_or("wallpaper_css", "")
+                .await
+                .unwrap_or_default()
         })
     })
 }
 
-pub fn save_theme_to_db(db: Arc<FsdDb>, name: String)           { DbContext(db).save_theme(name) }
-pub fn save_widgets_to_db(db: Arc<FsdDb>, slots: Vec<WidgetSlot>) { DbContext(db).save_widgets(slots) }
-pub fn save_language_to_db(db: Arc<FsdDb>, lang: String)        { DbContext(db).save_language(lang) }
-pub fn save_wallpaper_css_to_db(db: Arc<FsdDb>, css: String)    { DbContext(db).save_wallpaper_css(css) }
+pub fn save_theme_to_db(db: Arc<FsdDb>, name: String) {
+    DbContext(db).save_theme(name)
+}
+pub fn save_widgets_to_db(db: Arc<FsdDb>, slots: Vec<WidgetSlot>) {
+    DbContext(db).save_widgets(slots)
+}
+pub fn save_language_to_db(db: Arc<FsdDb>, lang: String) {
+    DbContext(db).save_language(lang)
+}
+pub fn save_wallpaper_css_to_db(db: Arc<FsdDb>, css: String) {
+    DbContext(db).save_wallpaper_css(css)
+}

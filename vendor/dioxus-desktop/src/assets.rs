@@ -1,4 +1,4 @@
-use dioxus_core::prelude::Callback;
+use dioxus_core::Callback;
 use rustc_hash::FxHashMap;
 use std::{cell::RefCell, rc::Rc};
 use wry::{http::Request, RequestAsyncResponder};
@@ -33,6 +33,10 @@ impl AssetHandlerRegistry {
         responder: RequestAsyncResponder,
     ) {
         if let Some(handler) = self.handlers.borrow().get(name) {
+            // Avoid handler being already borrowed on android
+            #[cfg(target_os = "android")]
+            let _lock = crate::android_sync_lock::android_runtime_lock();
+
             // And run the handler in the scope of the component that created it
             handler.f.call((request, responder));
         }

@@ -1,10 +1,10 @@
+use crate::icons::ICON_HELP;
 /// Help View — context-sensitive help and keyboard shortcuts reference.
 /// Also exports HelpSidebarPanel: the collapsible right-side help panel for the Desktop.
 use dioxus::prelude::*;
 use fs_components::{Sidebar, SidebarItem, SidebarSide, FS_SIDEBAR_CSS};
-use fs_settings::{ShortcutsConfig, register_actions, resolve_shortcut};
+use fs_settings::{register_actions, resolve_shortcut, ShortcutsConfig};
 use serde_json;
-use crate::icons::ICON_HELP;
 
 #[derive(Clone, PartialEq, Debug)]
 enum HelpSection {
@@ -15,30 +15,34 @@ enum HelpSection {
 impl HelpSection {
     fn id(&self) -> &'static str {
         match self {
-            Self::Topics    => "topics",
+            Self::Topics => "topics",
             Self::Shortcuts => "shortcuts",
         }
     }
 
     fn label(&self) -> &'static str {
         match self {
-            Self::Topics    => "Topics",
+            Self::Topics => "Topics",
             Self::Shortcuts => "Shortcuts",
         }
     }
 
     fn icon(&self) -> &'static str {
         match self {
-            Self::Topics    => r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>"#,
-            Self::Shortcuts => r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>"#,
+            Self::Topics => {
+                r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>"#
+            }
+            Self::Shortcuts => {
+                r#"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>"#
+            }
         }
     }
 
     fn from_id(id: &str) -> Option<Self> {
         match id {
-            "topics"    => Some(Self::Topics),
+            "topics" => Some(Self::Topics),
             "shortcuts" => Some(Self::Shortcuts),
-            _           => None,
+            _ => None,
         }
     }
 }
@@ -51,13 +55,41 @@ struct HelpTopic {
 }
 
 const TOPICS: &[HelpTopic] = &[
-    HelpTopic { id: "getting-started", title: "Getting Started",    summary: "Learn how to set up your first FreeSynergy.Node deployment." },
-    HelpTopic { id: "container-app",   title: "Container",          summary: "Manage services, bots, and containers from the Container App view." },
-    HelpTopic { id: "store",           title: "Module Store",        summary: "Browse, install, and update service modules from the store." },
-    HelpTopic { id: "studio",          title: "Studio",              summary: "Create custom modules, plugins, and language packs." },
-    HelpTopic { id: "settings",        title: "Settings",            summary: "Configure appearance, language, service roles, and AI connections." },
-    HelpTopic { id: "ai-assistant",    title: "AI Assistant",        summary: "Use your local Ollama instance as an integrated AI helper." },
-    HelpTopic { id: "troubleshooting", title: "Troubleshooting",     summary: "Common issues and how to resolve them." },
+    HelpTopic {
+        id: "getting-started",
+        title: "Getting Started",
+        summary: "Learn how to set up your first FreeSynergy.Node deployment.",
+    },
+    HelpTopic {
+        id: "container-app",
+        title: "Container",
+        summary: "Manage services, bots, and containers from the Container App view.",
+    },
+    HelpTopic {
+        id: "store",
+        title: "Module Store",
+        summary: "Browse, install, and update service modules from the store.",
+    },
+    HelpTopic {
+        id: "studio",
+        title: "Studio",
+        summary: "Create custom modules, plugins, and language packs.",
+    },
+    HelpTopic {
+        id: "settings",
+        title: "Settings",
+        summary: "Configure appearance, language, service roles, and AI connections.",
+    },
+    HelpTopic {
+        id: "ai-assistant",
+        title: "AI Assistant",
+        summary: "Use your local Ollama instance as an integrated AI helper.",
+    },
+    HelpTopic {
+        id: "troubleshooting",
+        title: "Troubleshooting",
+        summary: "Common issues and how to resolve them.",
+    },
 ];
 
 const ALL_SECTIONS: &[HelpSection] = &[HelpSection::Topics, HelpSection::Shortcuts];
@@ -68,7 +100,8 @@ const ALL_SECTIONS: &[HelpSection] = &[HelpSection::Topics, HelpSection::Shortcu
 pub fn HelpApp() -> Element {
     let mut active = use_signal(|| HelpSection::Topics);
 
-    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS.iter()
+    let sidebar_items: Vec<SidebarItem> = ALL_SECTIONS
+        .iter()
         .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
         .collect();
 
@@ -121,7 +154,11 @@ fn TopicsView() -> Element {
     let q = query.read().to_lowercase();
     let filtered: Vec<&HelpTopic> = TOPICS
         .iter()
-        .filter(|t| q.is_empty() || t.title.to_lowercase().contains(&q) || t.summary.to_lowercase().contains(&q))
+        .filter(|t| {
+            q.is_empty()
+                || t.title.to_lowercase().contains(&q)
+                || t.summary.to_lowercase().contains(&q)
+        })
         .collect();
 
     rsx! {
@@ -258,7 +295,7 @@ enum SidebarTab {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ChatMsg {
-    pub role:    &'static str,
+    pub role: &'static str,
     pub content: String,
 }
 
@@ -276,36 +313,33 @@ pub struct ChatMsg {
 /// drag-resizable (divider above it).
 #[component]
 pub fn HelpSidebarPanel(
-    #[props(default)]
-    on_ai_offline: Option<EventHandler<()>>,
-    #[props(default)]
-    on_ai_online: Option<EventHandler<()>>,
-    #[props(default)]
-    active_help_topic: Option<String>,
+    #[props(default)] on_ai_offline: Option<EventHandler<()>>,
+    #[props(default)] on_ai_online: Option<EventHandler<()>>,
+    #[props(default)] active_help_topic: Option<String>,
 ) -> Element {
     let mut tab = use_signal(|| SidebarTab::Topics);
 
     // ── Panel geometry ────────────────────────────────────────────────────
-    let mut panel_width:  Signal<f64> = use_signal(|| 280.0);
-    let mut ai_height:    Signal<f64> = use_signal(|| 260.0);
+    let mut panel_width: Signal<f64> = use_signal(|| 280.0);
+    let mut ai_height: Signal<f64> = use_signal(|| 260.0);
 
     // Width-resize drag state
-    let mut resizing_w:  Signal<bool> = use_signal(|| false);
-    let mut resize_w_sx: Signal<f64>  = use_signal(|| 0.0);
-    let mut resize_w_sw: Signal<f64>  = use_signal(|| 280.0);
+    let mut resizing_w: Signal<bool> = use_signal(|| false);
+    let mut resize_w_sx: Signal<f64> = use_signal(|| 0.0);
+    let mut resize_w_sw: Signal<f64> = use_signal(|| 280.0);
 
     // AI-section height resize drag state
-    let mut resizing_ai:  Signal<bool> = use_signal(|| false);
-    let mut resize_ai_sy: Signal<f64>  = use_signal(|| 0.0);
-    let mut resize_ai_sh: Signal<f64>  = use_signal(|| 260.0);
+    let mut resizing_ai: Signal<bool> = use_signal(|| false);
+    let mut resize_ai_sy: Signal<f64> = use_signal(|| 0.0);
+    let mut resize_ai_sh: Signal<f64> = use_signal(|| 260.0);
 
     // ── AI health ─────────────────────────────────────────────────────────
-    let mut ai_online:     Signal<bool> = use_signal(|| false);
+    let mut ai_online: Signal<bool> = use_signal(|| false);
     let mut ai_was_online: Signal<bool> = use_signal(|| false);
 
     {
         let on_offline = on_ai_offline.clone();
-        let on_online  = on_ai_online.clone();
+        let on_online = on_ai_online.clone();
         use_future(move || async move {
             loop {
                 let url = fs_ai::ai_api_url();
@@ -325,9 +359,13 @@ pub fn HelpSidebarPanel(
                 if is_now != was {
                     ai_was_online.set(is_now);
                     if is_now {
-                        if let Some(ref cb) = on_online  { cb.call(()); }
+                        if let Some(ref cb) = on_online {
+                            cb.call(());
+                        }
                     } else if was {
-                        if let Some(ref cb) = on_offline { cb.call(()); }
+                        if let Some(ref cb) = on_offline {
+                            cb.call(());
+                        }
                     }
                 }
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
@@ -337,15 +375,15 @@ pub fn HelpSidebarPanel(
 
     // ── Chat state ────────────────────────────────────────────────────────
     let mut messages: Signal<Vec<ChatMsg>> = use_signal(Vec::new);
-    let mut input     = use_signal(String::new);
-    let mut thinking  = use_signal(|| false);
-    let ai_url        = fs_ai::ai_api_url();
+    let mut input = use_signal(String::new);
+    let mut thinking = use_signal(|| false);
+    let ai_url = fs_ai::ai_api_url();
 
     // ── Derived values ────────────────────────────────────────────────────
     let is_ai_online = *ai_online.read();
-    let is_resizing  = *resizing_w.read() || *resizing_ai.read();
-    let pw           = *panel_width.read();
-    let aih          = *ai_height.read();
+    let is_resizing = *resizing_w.read() || *resizing_ai.read();
+    let pw = *panel_width.read();
+    let aih = *ai_height.read();
 
     // The help icon as the sole tab-strip entry.
     let help_item = SidebarItem::new("help", ICON_HELP, "Help");
@@ -706,7 +744,7 @@ fn SidebarTopicsView(#[props(default)] active_topic: Option<String>) -> Element 
 /// Compact shortcuts list for the sidebar.
 #[component]
 fn SidebarShortcutsView() -> Element {
-    let config  = ShortcutsConfig::load();
+    let config = ShortcutsConfig::load();
     let actions = register_actions();
 
     rsx! {
@@ -755,24 +793,16 @@ async fn chat_request(api_base: &str, messages: &[ChatMsg]) -> String {
         "temperature": 0.4,
     });
 
-    let result = reqwest::Client::new()
-        .post(&url)
-        .json(&body)
-        .send()
-        .await;
+    let result = reqwest::Client::new().post(&url).json(&body).send().await;
 
     match result {
         Err(e) => format!("Request failed: {e}"),
-        Ok(resp) => {
-            match resp.json::<serde_json::Value>().await {
-                Err(e) => format!("Parse error: {e}"),
-                Ok(json) => {
-                    json["choices"][0]["message"]["content"]
-                        .as_str()
-                        .unwrap_or("(no response)")
-                        .to_string()
-                }
-            }
-        }
+        Ok(resp) => match resp.json::<serde_json::Value>().await {
+            Err(e) => format!("Parse error: {e}"),
+            Ok(json) => json["choices"][0]["message"]["content"]
+                .as_str()
+                .unwrap_or("(no response)")
+                .to_string(),
+        },
     }
 }

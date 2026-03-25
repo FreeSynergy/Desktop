@@ -1,26 +1,31 @@
-use crate::document::NATIVE_EVAL_JS;
+use std::path::PathBuf;
+
 use crate::{assets::*, webview::WebviewEdits};
+use crate::{document::NATIVE_EVAL_JS, file_upload::FileDialogRequest};
+use base64::prelude::BASE64_STANDARD;
+use dioxus_core::AnyhowContext;
+use dioxus_html::{SerializedFileData, SerializedFormObject};
 use dioxus_interpreter_js::unified_bindings::SLEDGEHAMMER_JS;
 use dioxus_interpreter_js::NATIVE_JS;
-use std::path::{Path, PathBuf};
 use wry::{
     http::{status::StatusCode, Request, Response},
-    RequestAsyncResponder, Result,
+    RequestAsyncResponder,
 };
 
-#[cfg(any(target_os = "android", target_os = "windows"))]
-const EDITS_PATH: &str = "http://dioxus.index.html/__edits";
+#[cfg(target_os = "android")]
+const BASE_URI: &str = "https://dioxus.index.html/";
+
+#[cfg(target_os = "windows")]
+const BASE_URI: &str = "http://dioxus.index.html/";
 
 #[cfg(not(any(target_os = "android", target_os = "windows")))]
-const EDITS_PATH: &str = "dioxus://index.html/__edits";
+const BASE_URI: &str = "dioxus://index.html/";
 
-#[cfg(any(target_os = "android", target_os = "windows"))]
-const EVENTS_PATH: &str = "http://dioxus.index.html/__events";
+#[cfg(debug_assertions)]
+static DEFAULT_INDEX: &str = include_str!("./assets/dev.index.html");
 
-#[cfg(not(any(target_os = "android", target_os = "windows")))]
-const EVENTS_PATH: &str = "dioxus://index.html/__events";
-
-static DEFAULT_INDEX: &str = include_str!("./index.html");
+#[cfg(not(debug_assertions))]
+static DEFAULT_INDEX: &str = include_str!("./assets/prod.index.html");
 
 #[allow(clippy::too_many_arguments)] // just for now, should fix this eventually
 /// Handle a request from the webview
@@ -39,21 +44,32 @@ pub(super) fn desktop_handler(
     headless: bool,
 ) {
     // Try to serve the index file first
-    if let Some(index_bytes) =
-        index_request(&request, custom_head, custom_index, root_name, headless)
-    {
+    if let Some(index_bytes) = index_request(
+        &request,
+        custom_head,
+        custom_index,
+        root_name,
+        headless,
+        edit_state,
+    ) {
         return responder.respond(index_bytes);
     }
 
     // If the request is asking for edits (ie binary protocol streaming), do that
     let trimmed_uri = request.uri().path().trim_matches('/');
-    if trimmed_uri == "__edits" {
-        return edit_state.wry_queue.handle_request(responder);
-    }
 
     // If the request is asking for an event response, do that
     if trimmed_uri == "__events" {
         return edit_state.handle_event(request, responder);
+    }
+
+    // If the request is asking for a file dialog, handle that, returning the list of files selected
+    if trimmed_uri == "__file_dialog" {
+        if let Err(err) = file_dialog_responder_sync(request, responder) {
+            tracing::error!("Failed to handle file dialog request: {err:?}");
+        }
+
+        return;
     }
 
     // todo: we want to move the custom assets onto a different protocol or something
@@ -64,7 +80,7 @@ pub(super) fn desktop_handler(
         }
     }
 
-    match serve_asset(request) {
+    match dioxus_asset_resolver::native::serve_asset(request.uri().path()) {
         Ok(res) => responder.respond(res),
         Err(_e) => responder.respond(
             Response::builder()
@@ -73,52 +89,6 @@ pub(super) fn desktop_handler(
                 .unwrap(),
         ),
     }
-}
-
-fn serve_asset(request: Request<Vec<u8>>) -> Result<Response<Vec<u8>>> {
-    // If the user provided a custom asset handler, then call it and return the response if the request was handled.
-    // The path is the first part of the URI, so we need to trim the leading slash.
-    let mut uri_path = PathBuf::from(
-        urlencoding::decode(request.uri().path())
-            .expect("expected URL to be UTF-8 encoded")
-            .as_ref(),
-    );
-
-    // Attempt to serve from the asset dir on android using its loader
-    #[cfg(target_os = "android")]
-    {
-        if let Some(asset) = to_java_load_asset(request.uri().path()) {
-            return Ok(Response::builder()
-                .header("Content-Type", get_mime_by_ext(&uri_path))
-                .header("Access-Control-Allow-Origin", "*")
-                .body(asset)?);
-        }
-    }
-
-    // If the asset doesn't exist, or starts with `/assets/`, then we'll try to serve out of the bundle
-    // This lets us handle both absolute and relative paths without being too "special"
-    // It just means that our macos bundle is a little "special" because we need to place an `assets`
-    // dir in the `Resources` dir.
-    //
-    // If there's no asset root, we use the cargo manifest dir as the root, or the current dir
-    if !uri_path.exists() || uri_path.starts_with("/assets/") {
-        let bundle_root = get_asset_root();
-        let relative_path = uri_path.strip_prefix("/").unwrap();
-        uri_path = bundle_root.join(relative_path);
-    }
-
-    // If the asset exists, then we can serve it!
-    if uri_path.exists() {
-        let mime_type = get_mime_from_path(&uri_path);
-        return Ok(Response::builder()
-            .header("Content-Type", mime_type?)
-            .header("Access-Control-Allow-Origin", "*")
-            .body(std::fs::read(uri_path)?)?);
-    }
-
-    Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .body(String::from("Not Found").into_bytes())?)
 }
 
 /// Build the index.html file we use for bootstrapping a new app
@@ -136,6 +106,7 @@ fn index_request(
     custom_index: Option<String>,
     root_name: &str,
     headless: bool,
+    edit_state: &WebviewEdits,
 ) -> Option<Response<Vec<u8>>> {
     // If the request is for the root, we'll serve the index.html file.
     if request.uri().path() != "/" {
@@ -147,7 +118,6 @@ fn index_request(
 
     // Insert a custom head if provided
     // We look just for the closing head tag. If a user provided a custom index with weird syntax, this might fail
-
     if let Some(head) = custom_head {
         index.insert_str(index.find("</head>").expect("Head element to exist"), &head);
     }
@@ -157,7 +127,7 @@ fn index_request(
     // Might want to document this
     index.insert_str(
         index.find("</body>").expect("Body element to exist"),
-        &module_loader(root_name, headless),
+        &module_loader(root_name, headless, edit_state),
     );
 
     Response::builder()
@@ -172,8 +142,14 @@ fn index_request(
 /// The arguments here:
 /// - root_name: the root element (by Id) that we stream edits into
 /// - headless: is this page being loaded but invisible? Important because not all windows are visible and the
-///             interpreter can't connect until the window is ready.
-fn module_loader(root_id: &str, headless: bool) -> String {
+///   interpreter can't connect until the window is ready.
+/// - port: the port that the websocket server is listening on for edits
+/// - webview_id: the id of the webview that we're loading this into. This is used to differentiate between
+///   multiple webviews in the same application, so that we can send edits to the correct one.
+fn module_loader(root_id: &str, headless: bool, edit_state: &WebviewEdits) -> String {
+    let edits_path = edit_state.wry_queue.edits_path();
+    let expected_key = edit_state.wry_queue.required_server_key();
+
     format!(
         r#"
 <script type="module">
@@ -184,16 +160,16 @@ fn module_loader(root_id: &str, headless: bool) -> String {
     {NATIVE_JS}
 
     // The native interpreter extends the sledgehammer interpreter with a few extra methods that we use for IPC
-    window.interpreter = new NativeInterpreter("{EDITS_PATH}", "{EVENTS_PATH}");
+    window.interpreter = new NativeInterpreter("{BASE_URI}", {headless});
 
     // Wait for the page to load before sending the initialize message
     window.onload = function() {{
         let root_element = window.document.getElementById("{root_id}");
         if (root_element != null) {{
             window.interpreter.initialize(root_element);
-            window.ipc.postMessage(window.interpreter.serializeIpcMessage("initialize"));
+            window.interpreter.sendIpcMessage("initialize");
         }}
-        window.interpreter.waitForRequest({headless});
+        window.interpreter.waitForRequest("{edits_path}", "{expected_key}");
     }}
 </script>
 <script type="module">
@@ -204,119 +180,96 @@ fn module_loader(root_id: &str, headless: bool) -> String {
     )
 }
 
-/// Get the asset directory, following tauri/cargo-bundles directory discovery approach
-///
-/// Currently supports:
-/// - [x] macOS
-/// - [x] iOS
-/// - [x] Windows
-/// - [x] Linux (appimage)
-/// - [ ] Linux (rpm)
-/// - [ ] Linux (deb)
-/// - [ ] Android
-#[allow(unreachable_code)]
-fn get_asset_root() -> PathBuf {
-    let cur_exe = std::env::current_exe().unwrap();
+fn file_dialog_responder_sync(
+    request: wry::http::Request<Vec<u8>>,
+    responder: wry::RequestAsyncResponder,
+) -> dioxus_core::Result<()> {
+    // Handle the file dialog request
+    // We can't use the body, just the headers
+    let header = request
+        .headers()
+        .get("x-dioxus-data")
+        .context("Failed to get x-dioxus-data header")?;
 
-    #[cfg(target_os = "macos")]
+    let data_from_header = base64::Engine::decode(&BASE64_STANDARD, header.as_bytes())
+        .context("Failed to decode x-dioxus-data header from base64")?;
+
+    let file_dialog: FileDialogRequest = serde_json::from_slice(&data_from_header)
+        .context("Failed to parse x-dioxus-data header as JSON")?;
+
+    #[cfg(feature = "tokio_runtime")]
+    tokio::spawn(async move {
+        let file_list = file_dialog.get_file_event_async().await;
+        _ = respond_to_file_dialog(file_dialog, file_list, responder);
+    });
+
+    #[cfg(not(feature = "tokio_runtime"))]
     {
-        return cur_exe
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("Resources");
+        let file_list = file_dialog.get_file_event_sync();
+        respond_to_file_dialog(file_dialog, file_list, responder)?;
     }
 
-    // For all others, the structure looks like this:
-    // app.(exe/appimage)
-    //   main.exe
-    //   assets/
-    cur_exe.parent().unwrap().to_path_buf()
+    Ok(())
 }
 
-/// Get the mime type from a path-like string
-fn get_mime_from_path(asset: &Path) -> Result<&'static str> {
-    if asset.extension().is_some_and(|ext| ext == "svg") {
-        return Ok("image/svg+xml");
-    }
+fn respond_to_file_dialog(
+    mut file_dialog: FileDialogRequest,
+    file_list: Vec<PathBuf>,
+    responder: wry::RequestAsyncResponder,
+) -> dioxus_core::Result<()> {
+    // Get the position of the entry we're updating, so we can insert new entries in the same place
+    // If we can't find it, just append to the end. This is usually due to the input not being in a form element.
+    let position_of_entry = file_dialog
+        .values
+        .iter()
+        .position(|x| x.key == file_dialog.target_name)
+        .unwrap_or(file_dialog.values.len());
 
-    match infer::get_from_path(asset)?.map(|f| f.mime_type()) {
-        Some(f) if f != "text/plain" => Ok(f),
-        _other => Ok(get_mime_by_ext(asset)),
-    }
-}
+    // Remove any existing entries
+    file_dialog
+        .values
+        .retain(|x| x.key != file_dialog.target_name);
 
-/// Get the mime type from a URI using its extension
-fn get_mime_by_ext(trimmed: &Path) -> &'static str {
-    match trimmed.extension().and_then(|e| e.to_str()) {
-        // The common assets are all utf-8 encoded
-        Some("js") => "text/javascript; charset=utf-8",
-        Some("css") => "text/css; charset=utf-8",
-        Some("json") => "application/json; charset=utf-8",
-        Some("svg") => "image/svg+xml; charset=utf-8",
-        Some("html") => "text/html; charset=utf-8",
-
-        // the rest... idk? probably not
-        Some("mjs") => "text/javascript; charset=utf-8",
-        Some("bin") => "application/octet-stream",
-        Some("csv") => "text/csv",
-        Some("ico") => "image/vnd.microsoft.icon",
-        Some("jsonld") => "application/ld+json",
-        Some("rtf") => "application/rtf",
-        Some("mp4") => "video/mp4",
-        // Assume HTML when a TLD is found for eg. `dioxus:://dioxuslabs.app` | `dioxus://hello.com`
-        Some(_) => "text/html; charset=utf-8",
-        // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-        // using octet stream according to this:
-        None => "application/octet-stream",
-    }
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn to_java_load_asset(filepath: &str) -> Option<Vec<u8>> {
-    let normalized = filepath
-        .trim_start_matches("/assets/")
-        .trim_start_matches('/');
-
-    // in debug mode, the asset might be under `/data/local/tmp/dx/` - attempt to read it from there if it exists
-    #[cfg(debug_assertions)]
-    {
-        let path = dioxus_cli_config::android_session_cache_dir().join(normalized);
-        if path.exists() {
-            return std::fs::read(path).ok();
-        }
-    }
-
-    use std::ptr::NonNull;
-
-    let ctx = ndk_context::android_context();
-    let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    // Query the Asset Manager
-    let asset_manager_ptr = env
-        .call_method(
-            unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) },
-            "getAssets",
-            "()Landroid/content/res/AssetManager;",
-            &[],
-        )
-        .expect("Failed to get asset manager")
-        .l()
-        .expect("Failed to get asset manager as object");
-
-    unsafe {
-        let asset_manager =
-            ndk_sys::AAssetManager_fromJava(env.get_native_interface(), *asset_manager_ptr);
-
-        let asset_manager = ndk::asset::AssetManager::from_ptr(
-            NonNull::new(asset_manager).expect("Invalid asset manager"),
+    // And then insert the new ones
+    for path in file_list {
+        let file = std::fs::metadata(&path).context("Failed to get file metadata")?;
+        file_dialog.values.insert(
+            position_of_entry,
+            SerializedFormObject {
+                key: file_dialog.target_name.clone(),
+                text: None,
+                file: Some(SerializedFileData {
+                    size: file.len(),
+                    last_modified: file
+                        .modified()
+                        .context("Failed to get file modified time")?
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis())
+                        .unwrap_or_default() as _,
+                    content_type: Some(
+                        dioxus_asset_resolver::native::get_mime_from_ext(
+                            path.extension().and_then(|s| s.to_str()),
+                        )
+                        .to_string(),
+                    ),
+                    contents: Default::default(),
+                    path,
+                }),
+            },
         );
-
-        let cstr = std::ffi::CString::new(normalized).unwrap();
-
-        let mut asset = asset_manager.open(&cstr)?;
-        Some(asset.buffer().unwrap().to_vec())
     }
+
+    // And then respond with the updated file dialog
+    let response_data = serde_json::to_vec(&file_dialog)
+        .context("Failed to serialize FileDialogRequest to JSON")?;
+
+    responder.respond(
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(response_data)
+            .context("Failed to build response")?,
+    );
+
+    Ok(())
 }

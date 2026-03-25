@@ -29,10 +29,7 @@ pub enum PersonalCapability {
     /// User has personal tasks in a task service (Vikunja).
     TaskManager { service_id: String },
     /// User has a personal mail inbox.
-    Mailbox {
-        service_id: String,
-        address: String,
-    },
+    Mailbox { service_id: String, address: String },
     /// User has a personal LLM assistant configured.
     LlmAssistant {
         provider: String, // "ollama", "claude", "openai-compatible"
@@ -44,24 +41,42 @@ impl PersonalCapability {
     /// Static metadata (icon, kind label) — single source of truth per variant.
     pub fn meta(&self) -> CapabilityMeta {
         match self {
-            Self::MessengerAccount { .. } => CapabilityMeta { icon: "💬", kind: "Messenger"     },
-            Self::TaskManager { .. }      => CapabilityMeta { icon: "✅", kind: "Task Manager"  },
-            Self::Mailbox { .. }          => CapabilityMeta { icon: "📬", kind: "Mailbox"        },
-            Self::LlmAssistant { .. }     => CapabilityMeta { icon: "🤖", kind: "LLM Assistant" },
+            Self::MessengerAccount { .. } => CapabilityMeta {
+                icon: "💬",
+                kind: "Messenger",
+            },
+            Self::TaskManager { .. } => CapabilityMeta {
+                icon: "✅",
+                kind: "Task Manager",
+            },
+            Self::Mailbox { .. } => CapabilityMeta {
+                icon: "📬",
+                kind: "Mailbox",
+            },
+            Self::LlmAssistant { .. } => CapabilityMeta {
+                icon: "🤖",
+                kind: "LLM Assistant",
+            },
         }
     }
 
-    pub fn icon(&self) -> &'static str    { self.meta().icon }
-    pub fn kind_label(&self) -> &'static str { self.meta().kind }
+    pub fn icon(&self) -> &'static str {
+        self.meta().icon
+    }
+    pub fn kind_label(&self) -> &'static str {
+        self.meta().kind
+    }
 
     /// Instance-specific display label (uses variant fields — cannot be in meta).
     pub fn label(&self) -> String {
         match self {
-            Self::MessengerAccount { platform, username, .. } => {
+            Self::MessengerAccount {
+                platform, username, ..
+            } => {
                 format!("{} (@{})", capitalize(platform), username)
             }
             Self::TaskManager { service_id } => format!("{} ({})", self.kind_label(), service_id),
-            Self::Mailbox { address, .. }    => format!("{} ({})", self.kind_label(), address),
+            Self::Mailbox { address, .. } => format!("{} ({})", self.kind_label(), address),
             Self::LlmAssistant { provider, model } => format!("LLM: {} / {}", provider, model),
         }
     }
@@ -147,7 +162,10 @@ pub struct SshKey {
 impl UserProfile {
     fn path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-        PathBuf::from(home).join(".config").join("fsn").join("profile.toml")
+        PathBuf::from(home)
+            .join(".config")
+            .join("fsn")
+            .join("profile.toml")
     }
 
     /// Load profile from `~/.config/fsn/profile.toml`. Returns default if absent.
@@ -173,16 +191,16 @@ impl UserProfile {
 /// Profile app component.
 #[component]
 pub fn ProfileApp() -> Element {
-    let mut profile  = use_signal(UserProfile::load);
+    let mut profile = use_signal(UserProfile::load);
     let mut save_msg = use_signal(|| Option::<String>::None);
-    let mut new_key_label  = use_signal(String::new);
-    let mut new_key_value  = use_signal(String::new);
-    let mut show_add_key   = use_signal(|| false);
+    let mut new_key_label = use_signal(String::new);
+    let mut new_key_value = use_signal(String::new);
+    let mut show_add_key = use_signal(|| false);
 
     // Linked account form state
-    let mut show_link     = use_signal(|| false);
+    let mut show_link = use_signal(|| false);
     let mut link_provider = use_signal(String::new);
-    let mut link_subject  = use_signal(String::new);
+    let mut link_subject = use_signal(String::new);
     let mut link_username = use_signal(String::new);
 
     // Personal capabilities form state
@@ -203,7 +221,7 @@ pub fn ProfileApp() -> Element {
 
     // LLM Assistant form fields
     let mut cap_llm_provider = use_signal(|| "ollama".to_string());
-    let mut cap_llm_model    = use_signal(|| "llama3".to_string());
+    let mut cap_llm_model = use_signal(|| "llama3".to_string());
 
     rsx! {
         div {

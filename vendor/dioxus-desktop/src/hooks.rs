@@ -2,12 +2,9 @@ use std::rc::Rc;
 
 use crate::{
     assets::*, ipc::UserWindowEvent, shortcut::IntoAccelerator, window, DesktopContext,
-    ShortcutHandle, ShortcutRegistryError, WryEventHandler,
+    HotKeyState, ShortcutHandle, ShortcutRegistryError, WryEventHandler,
 };
-use dioxus_core::{
-    prelude::{consume_context, use_hook_with_cleanup},
-    use_hook, Runtime,
-};
+use dioxus_core::{consume_context, use_hook, use_hook_with_cleanup, Runtime};
 
 use dioxus_hooks::use_callback;
 use tao::{event::Event, event_loop::EventLoopWindowTarget};
@@ -22,16 +19,16 @@ pub fn use_window() -> DesktopContext {
 pub fn use_wry_event_handler(
     mut handler: impl FnMut(&Event<UserWindowEvent>, &EventLoopWindowTarget<UserWindowEvent>) + 'static,
 ) -> WryEventHandler {
-    use dioxus_core::prelude::current_scope_id;
+    use dioxus_core::current_scope_id;
 
     // Capture the current runtime and scope ID.
-    let runtime = Runtime::current().unwrap();
-    let scope_id = current_scope_id().unwrap();
+    let runtime = Runtime::current();
+    let scope_id = current_scope_id();
 
     use_hook_with_cleanup(
         move || {
             window().create_wry_event_handler(move |event, target| {
-                runtime.on_scope(scope_id, || handler(event, target))
+                runtime.in_scope(scope_id, || handler(event, target))
             })
         },
         move |handler| handler.remove(),
@@ -116,13 +113,14 @@ pub fn use_asset_handler(
 /// Get a closure that executes any JavaScript in the WebView context.
 pub fn use_global_shortcut(
     accelerator: impl IntoAccelerator,
-    mut handler: impl FnMut() + 'static,
+    handler: impl FnMut(HotKeyState) + 'static,
 ) -> Result<ShortcutHandle, ShortcutRegistryError> {
     // wrap the user's handler in something that keeps it up to date
-    let cb = use_callback(move |_| handler());
+    let cb = use_callback(handler);
 
     use_hook_with_cleanup(
-        move || window().create_shortcut(accelerator.accelerator(), move || cb(())),
+        #[allow(clippy::redundant_closure)]
+        move || window().create_shortcut(accelerator.accelerator(), move |state| cb(state)),
         |handle| {
             if let Ok(handle) = handle {
                 handle.remove();

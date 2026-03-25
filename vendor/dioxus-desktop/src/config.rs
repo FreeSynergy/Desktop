@@ -1,10 +1,13 @@
-use dioxus_core::LaunchConfig;
-use std::borrow::Cow;
+use dioxus_core::{LaunchConfig, VirtualDom};
 use std::path::PathBuf;
-use tao::event_loop::{EventLoop, EventLoopWindowTarget};
+use std::{borrow::Cow, sync::Arc};
 use tao::window::{Icon, WindowBuilder};
+use tao::{
+    event_loop::{EventLoop, EventLoopWindowTarget},
+    window::Window,
+};
 use wry::http::{Request as HttpRequest, Response as HttpResponse};
-use wry::RequestAsyncResponder;
+use wry::{RequestAsyncResponder, WebViewId};
 
 use crate::ipc::UserWindowEvent;
 use crate::menubar::{default_menu_bar, DioxusMenu};
@@ -17,16 +20,15 @@ type CustomEventHandler = Box<
         ),
 >;
 
-/// The behaviour of the application when the last window is closed.
-#[derive(Copy, Clone, Eq, PartialEq)]
+/// The closing behaviour of specific application window.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum WindowCloseBehaviour {
-    /// Default behaviour, closing the last window exits the app
-    LastWindowExitsApp,
-    /// Closing the last window will not actually close it, just hide it
-    LastWindowHides,
-    /// Closing the last window will close it but the app will keep running so that new windows can be opened
-    CloseWindow,
+    /// Window will hide instead of closing
+    WindowHides,
+
+    /// Window will close
+    WindowCloses,
 }
 
 /// The state of the menu builder. We need to keep track of if the state is default
@@ -61,9 +63,15 @@ pub struct Config {
     pub(crate) custom_index: Option<String>,
     pub(crate) root_name: String,
     pub(crate) background_color: Option<(u8, u8, u8, u8)>,
-    pub(crate) last_window_close_behavior: WindowCloseBehaviour,
+    pub(crate) exit_on_last_window_close: bool,
+    pub(crate) window_close_behavior: WindowCloseBehaviour,
     pub(crate) custom_event_handler: Option<CustomEventHandler>,
     pub(crate) disable_file_drop_handler: bool,
+    pub(crate) disable_dma_buf_on_wayland: bool,
+    pub(crate) additional_windows_args: Option<String>,
+
+    #[allow(clippy::type_complexity)]
+    pub(crate) on_window: Option<Box<dyn FnMut(Arc<Window>, &mut VirtualDom) + 'static>>,
     pub(crate) navigation_handler: Option<Box<dyn Fn(String) -> bool + 'static>>,
 }
 
@@ -71,12 +79,12 @@ impl LaunchConfig for Config {}
 
 pub(crate) type WryProtocol = (
     String,
-    Box<dyn Fn(HttpRequest<Vec<u8>>) -> HttpResponse<Cow<'static, [u8]>> + 'static>,
+    Box<dyn Fn(WebViewId, HttpRequest<Vec<u8>>) -> HttpResponse<Cow<'static, [u8]>> + 'static>,
 );
 
 pub(crate) type AsyncWryProtocol = (
     String,
-    Box<dyn Fn(HttpRequest<Vec<u8>>, RequestAsyncResponder) + 'static>,
+    Box<dyn Fn(WebViewId, HttpRequest<Vec<u8>>, RequestAsyncResponder) + 'static>,
 );
 
 impl Config {
@@ -108,9 +116,13 @@ impl Config {
             custom_index: None,
             root_name: "main".to_string(),
             background_color: None,
-            last_window_close_behavior: WindowCloseBehaviour::LastWindowExitsApp,
+            exit_on_last_window_close: true,
+            window_close_behavior: WindowCloseBehaviour::WindowCloses,
             custom_event_handler: None,
             disable_file_drop_handler: false,
+            disable_dma_buf_on_wayland: true,
+            on_window: None,
+            additional_windows_args: None,
             navigation_handler: None,
         }
     }
@@ -132,6 +144,13 @@ impl Config {
     /// Set whether or not the right-click context menu should be disabled.
     pub fn with_disable_context_menu(mut self, disable: bool) -> Self {
         self.disable_context_menu = disable;
+        self
+    }
+
+    /// Set whether or not the file drop handler should be disabled.
+    /// On Windows the drop handler must be disabled for HTML drag and drop APIs to work.
+    pub fn with_disable_drag_drop_handler(mut self, disable: bool) -> Self {
+        self.disable_file_drop_handler = disable;
         self
     }
 
@@ -164,9 +183,19 @@ impl Config {
         self
     }
 
+    /// When the last window is closed, the application will exit.
+    ///
+    /// This is the default behaviour.
+    ///
+    /// If the last window is hidden, the application will not exit.
+    pub fn with_exits_when_last_window_closes(mut self, exit: bool) -> Self {
+        self.exit_on_last_window_close = exit;
+        self
+    }
+
     /// Sets the behaviour of the application when the last window is closed.
     pub fn with_close_behaviour(mut self, behaviour: WindowCloseBehaviour) -> Self {
-        self.last_window_close_behavior = behaviour;
+        self.window_close_behavior = behaviour;
         self
     }
 
@@ -183,7 +212,7 @@ impl Config {
     /// Set a custom protocol
     pub fn with_custom_protocol<F>(mut self, name: impl ToString, handler: F) -> Self
     where
-        F: Fn(HttpRequest<Vec<u8>>) -> HttpResponse<Cow<'static, [u8]>> + 'static,
+        F: Fn(WebViewId, HttpRequest<Vec<u8>>) -> HttpResponse<Cow<'static, [u8]>> + 'static,
     {
         self.protocols.push((name.to_string(), Box::new(handler)));
         self
@@ -199,7 +228,7 @@ impl Config {
     /// #
     /// # fn main() {
     /// let cfg = Config::new()
-    ///     .with_asynchronous_custom_protocol("asset", |request, responder| {
+    ///     .with_asynchronous_custom_protocol("asset", |_webview_id, request, responder| {
     ///         tokio::spawn(async move {
     ///             responder.respond(
     ///                 HTTPResponse::builder()
@@ -217,7 +246,7 @@ impl Config {
     /// See [`wry`](wry::WebViewBuilder::with_asynchronous_custom_protocol) for more details on implementation
     pub fn with_asynchronous_custom_protocol<F>(mut self, name: impl ToString, handler: F) -> Self
     where
-        F: Fn(HttpRequest<Vec<u8>>, RequestAsyncResponder) + 'static,
+        F: Fn(WebViewId, HttpRequest<Vec<u8>>, RequestAsyncResponder) + 'static,
     {
         self.asynchronous_protocols
             .push((name.to_string(), Box::new(handler)));
@@ -281,34 +310,41 @@ impl Config {
         self
     }
 
-    /// Set a custom navigation handler to control which URLs the WebView is allowed to navigate to.
+    /// Allows modifying the window and virtual dom right after they are built, but before the webview is created.
     ///
-    /// The handler receives the target URL as a `String` and must return `true` to allow navigation
-    /// or `false` to block it.
+    /// This is important for z-ordering textures in child windows. Note that this callback runs on
+    /// every window creation, so it's up to you to
+    pub fn with_on_window(mut self, f: impl FnMut(Arc<Window>, &mut VirtualDom) + 'static) -> Self {
+        self.on_window = Some(Box::new(f));
+        self
+    }
+
+    /// Allow or block WebView navigations via a handler.
     ///
-    /// When not set, the default behavior applies: internal `dioxus://` URLs are allowed, and
-    /// external `http://` or `https://` URLs are opened in the system browser via
-    /// [`webbrowser::open`](https://docs.rs/webbrowser) and blocked in the WebView.
+    /// The handler receives the navigation URL and returns `true` to allow, `false` to block.
+    /// Use `with_all_navigation()` on `DesktopConfig` to allow all external URLs.
     ///
-    /// This is useful for applications that embed web content (e.g. via `<iframe>`) and need
-    /// fine-grained control over navigation, or that want to suppress the automatic
-    /// system-browser-open behavior.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use dioxus_desktop::Config;
-    /// let cfg = Config::new()
-    ///     .with_navigation_handler(|url| {
-    ///         // Allow dioxus internal URLs and a specific external domain
-    ///         url.starts_with("dioxus://") || url.starts_with("https://trusted.example.com")
-    ///     });
-    /// ```
+    /// Tracking: <https://github.com/DioxusLabs/dioxus/pull/5390>
     pub fn with_navigation_handler(
         mut self,
         handler: impl Fn(String) -> bool + 'static,
     ) -> Self {
         self.navigation_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Set whether or not DMA-BUF usage should be disabled on Wayland.
+    ///
+    /// Defaults to true to avoid issues on some systems. If you want to enable DMA-BUF usage, set this to false.
+    /// See <https://github.com/DioxusLabs/dioxus/issues/4528#issuecomment-3476430611>
+    pub fn with_disable_dma_buf_on_wayland(mut self, disable: bool) -> Self {
+        self.disable_dma_buf_on_wayland = disable;
+        self
+    }
+
+    /// Add additional windows only launch arguments for webview2
+    pub fn with_windows_browser_args(mut self, additional_args: impl ToString) -> Self {
+        self.additional_windows_args = Some(additional_args.to_string());
         self
     }
 }

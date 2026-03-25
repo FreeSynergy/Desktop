@@ -30,17 +30,17 @@ impl WebTaskbarState {
     /// Cycle: Fixed → SlideUp → Hidden → Fixed.
     pub fn cycle(self) -> Self {
         match self {
-            Self::Fixed   => Self::SlideUp,
+            Self::Fixed => Self::SlideUp,
             Self::SlideUp => Self::Hidden,
-            Self::Hidden  => Self::Fixed,
+            Self::Hidden => Self::Fixed,
         }
     }
 
     pub fn label(self) -> &'static str {
         match self {
-            Self::Fixed   => "Fixed",
+            Self::Fixed => "Fixed",
             Self::SlideUp => "Slide Up",
-            Self::Hidden  => "Hidden",
+            Self::Hidden => "Hidden",
         }
     }
 }
@@ -82,9 +82,9 @@ pub fn WebDesktop(props: WebDesktopProps) -> Element {
     let mut taskbar_state: Signal<WebTaskbarState> = use_signal(WebTaskbarState::default);
 
     let taskbar_bottom = match *taskbar_state.read() {
-        WebTaskbarState::Fixed   => "0px",
-        WebTaskbarState::SlideUp => "calc(48px - 100%)",  // only handle visible
-        WebTaskbarState::Hidden  => "-48px",
+        WebTaskbarState::Fixed => "0px",
+        WebTaskbarState::SlideUp => "calc(48px - 100%)", // only handle visible
+        WebTaskbarState::Hidden => "-48px",
     };
 
     rsx! {
@@ -149,7 +149,9 @@ fn WebTopBar(
     notification_count: u32,
     on_menu: Option<EventHandler<()>>,
 ) -> Element {
-    let initial: String = user_name.chars().next()
+    let initial: String = user_name
+        .chars()
+        .next()
         .map(|c| c.to_uppercase().to_string())
         .unwrap_or_else(|| "?".into());
 
@@ -228,10 +230,7 @@ fn WebTopBar(
 // ── Taskbar body ──────────────────────────────────────────────────────────────
 
 #[component]
-fn WebTaskbarBody(
-    apps: Vec<AppEntry>,
-    on_launch: Option<EventHandler<String>>,
-) -> Element {
+fn WebTaskbarBody(apps: Vec<AppEntry>, on_launch: Option<EventHandler<String>>) -> Element {
     rsx! {
         div {
             class: "fs-web-taskbar__body",

@@ -6,7 +6,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "shortcuts")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id:        i64,
+    pub id: i64,
     pub action_id: String,
     pub key_combo: String,
 }

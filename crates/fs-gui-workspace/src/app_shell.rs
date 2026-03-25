@@ -18,7 +18,7 @@ impl AppMode {
     pub fn css_dimensions(&self) -> &'static str {
         match self {
             Self::Window | Self::Tui => "height: 100%; width: 100%;",
-            Self::Standalone         => "height: 100vh; width: 100vw;",
+            Self::Standalone => "height: 100vh; width: 100vw;",
         }
     }
 }
@@ -300,14 +300,12 @@ pub fn AppShell(mode: AppMode, children: Element) -> Element {
 #[component]
 pub fn ScreenWrapper(
     max_width: Option<String>,
-    #[props(default = true)]
-    scroll: bool,
-    #[props(default = "24px".to_string())]
-    padding: String,
+    #[props(default = true)] scroll: bool,
+    #[props(default = "24px".to_string())] padding: String,
     children: Element,
 ) -> Element {
     let overflow = if scroll { "auto" } else { "hidden" };
-    let max_w    = max_width.as_deref().unwrap_or("none");
+    let max_w = max_width.as_deref().unwrap_or("none");
     rsx! {
         div {
             class: "fs-screen-wrapper",
@@ -366,11 +364,7 @@ pub fn LayoutB(props: LayoutBProps) -> Element {
 
 /// Layout C — centered card (fs-profile, login screens).
 #[component]
-pub fn LayoutC(
-    #[props(default = 640)]
-    max_width: u32,
-    children: Element,
-) -> Element {
+pub fn LayoutC(#[props(default = 640)] max_width: u32, children: Element) -> Element {
     rsx! {
         div {
             class: "fs-layout-c fs-page-fade",

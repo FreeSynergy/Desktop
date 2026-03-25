@@ -2,7 +2,7 @@
 use chrono::Local;
 use dioxus::prelude::*;
 
-use crate::icons::{ICON_BELL, ICON_SYNC, ICON_NETWORK, ICON_STORE};
+use crate::icons::{ICON_BELL, ICON_NETWORK, ICON_STORE, ICON_SYNC};
 use crate::window::WindowId;
 
 /// Homarr Dashboard Icons CDN base URL.
@@ -52,7 +52,11 @@ impl AppEntry {
     }
 
     /// Convenience constructor: no icon URL, no group.
-    pub fn new(id: impl Into<String>, label_key: impl Into<String>, icon: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        label_key: impl Into<String>,
+        icon: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             label_key: label_key.into(),
@@ -68,9 +72,15 @@ impl AppEntry {
 /// Builds the default pinned apps list.
 /// Only the Store is pinned by default; all other apps appear after installation.
 pub fn default_apps() -> Vec<AppEntry> {
-    vec![
-        AppEntry { id: "store".into(), label_key: "Store".into(), icon: ICON_STORE.into(), icon_url: Some(we10x_icon_url("apps/scalable", "system-software-install")), group: Some("System".into()), pinned: true, windows: vec![] },
-    ]
+    vec![AppEntry {
+        id: "store".into(),
+        label_key: "Store".into(),
+        icon: ICON_STORE.into(),
+        icon_url: Some(we10x_icon_url("apps/scalable", "system-software-install")),
+        group: Some("System".into()),
+        pinned: true,
+        windows: vec![],
+    }]
 }
 
 /// Taskbar component — renders the bottom panel.

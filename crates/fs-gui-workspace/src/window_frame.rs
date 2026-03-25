@@ -84,32 +84,41 @@ pub const FSNOBJ_CSS: &str = r#"
 
 #[derive(Props, Clone, PartialEq)]
 pub struct WindowFrameProps {
-    pub window:      OpenWindow,
-    pub on_close:    EventHandler<WindowId>,
-    pub on_focus:    EventHandler<WindowId>,
+    pub window: OpenWindow,
+    pub on_close: EventHandler<WindowId>,
+    pub on_focus: EventHandler<WindowId>,
     pub on_minimize: EventHandler<WindowId>,
     pub on_maximize: EventHandler<WindowId>,
     /// Highest z_index among all open windows.
     /// The hover-boost only lifts this window above the current top,
     /// so intentionally focused windows are never displaced by hover.
     #[props(default = 0)]
-    pub top_z:       u32,
+    pub top_z: u32,
 }
 
 // ── Resize direction ──────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum ResizeDir { N, S, E, W, NE, NW, SE, SW }
+enum ResizeDir {
+    N,
+    S,
+    E,
+    W,
+    NE,
+    NW,
+    SE,
+    SW,
+}
 
 #[derive(Clone, Debug, PartialEq, Default)]
 struct ResizeState {
-    dir:      Option<ResizeDir>,
+    dir: Option<ResizeDir>,
     start_mx: f64,
     start_my: f64,
-    start_x:  f64,
-    start_y:  f64,
-    start_w:  f64,
-    start_h:  f64,
+    start_x: f64,
+    start_y: f64,
+    start_w: f64,
+    start_h: f64,
 }
 
 // ── WindowFrame ───────────────────────────────────────────────────────────────
@@ -118,24 +127,28 @@ struct ResizeState {
 #[component]
 pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let win = &props.window;
-    let id  = win.id;
+    let id = win.id;
 
     // ── Position + size (in pixels) ───────────────────────────────────────────
-    let init_pos = (100.0 + (id.0 % 8) as f64 * 40.0, 60.0 + (id.0 % 6) as f64 * 40.0);
+    let init_pos = (
+        100.0 + (id.0 % 8) as f64 * 40.0,
+        60.0 + (id.0 % 6) as f64 * 40.0,
+    );
     let _init_dim = win.size.initial_dimensions();
 
-    let mut pos:  Signal<(f64, f64)> = use_signal(|| init_pos);
-    let mut dim:  Signal<(f64, f64)> = use_signal(|| {
-        match &win.size {
-            WindowSize::Fixed { width, height }             => (*width, *height),
-            WindowSize::Responsive { min_width, max_width } => ((min_width + max_width) / 2.0, 600.0),
-            WindowSize::Fullscreen                          => (0.0, 0.0),
-        }
+    let mut pos: Signal<(f64, f64)> = use_signal(|| init_pos);
+    let mut dim: Signal<(f64, f64)> = use_signal(|| match &win.size {
+        WindowSize::Fixed { width, height } => (*width, *height),
+        WindowSize::Responsive {
+            min_width,
+            max_width,
+        } => ((min_width + max_width) / 2.0, 600.0),
+        WindowSize::Fullscreen => (0.0, 0.0),
     });
 
     // ── Drag state ────────────────────────────────────────────────────────────
-    let mut dragging:   Signal<bool>           = use_signal(|| false);
-    let mut drag_off:   Signal<(f64, f64)>     = use_signal(|| (0.0, 0.0));
+    let mut dragging: Signal<bool> = use_signal(|| false);
+    let mut drag_off: Signal<(f64, f64)> = use_signal(|| (0.0, 0.0));
 
     // ── Resize state ──────────────────────────────────────────────────────────
     let mut resize: Signal<ResizeState> = use_signal(ResizeState::default);
@@ -150,12 +163,12 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     // A click (on_focus) makes the focus permanent via WindowManager.
     let mut hovered: Signal<bool> = use_signal(|| false);
 
-    let (px, py)   = *pos.read();
-    let (pw, ph)   = *dim.read();
+    let (px, py) = *pos.read();
+    let (pw, ph) = *dim.read();
     let is_dragging = *dragging.read();
     let is_resizing = resize.read().dir.is_some();
     let has_overlay = is_dragging || is_resizing;
-    let is_max      = win.maximized;
+    let is_max = win.maximized;
     // Peek: temporarily above the current top, but only when not already on top.
     let effective_z = if *hovered.read() && win.z_index < props.top_z {
         props.top_z + 1
@@ -178,7 +191,7 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
         // Bug B fix: add max-height so window cannot overflow the viewport.
         let (w_style, h_style) = match &win.size {
             WindowSize::Fullscreen => ("100%".to_string(), "100%".to_string()),
-            _                      => (format!("{pw}px"), format!("{ph}px")),
+            _ => (format!("{pw}px"), format!("{ph}px")),
         };
         format!(
             "position: absolute; left: {px}px; top: {py}px; \
@@ -201,8 +214,8 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
         "grabbing"
     } else {
         match resize.read().dir {
-            Some(ResizeDir::N)  | Some(ResizeDir::S)  => "ns-resize",
-            Some(ResizeDir::E)  | Some(ResizeDir::W)  => "ew-resize",
+            Some(ResizeDir::N) | Some(ResizeDir::S) => "ns-resize",
+            Some(ResizeDir::E) | Some(ResizeDir::W) => "ew-resize",
             Some(ResizeDir::NW) | Some(ResizeDir::SE) => "nwse-resize",
             Some(ResizeDir::NE) | Some(ResizeDir::SW) => "nesw-resize",
             None => "default",
@@ -213,9 +226,9 @@ pub fn WindowFrame(props: WindowFrameProps) -> Element {
     let has_sidebar = !win.sidebar_items.is_empty();
 
     // Extract Copy values so closures don't need to move all of `props`
-    let maximized          = win.maximized;
+    let maximized = win.maximized;
     let has_unsaved_changes = win.has_unsaved_changes;
-    let render             = win.render;
+    let render = win.render;
 
     rsx! {
         // ── Window frame ───────────────────────────────────────────────────────
@@ -453,7 +466,7 @@ struct ResizeHandlesProps {
 fn ResizeHandles(props: ResizeHandlesProps) -> Element {
     macro_rules! handle {
         ($dir:expr, $style:literal) => {{
-            let dir  = $dir;
+            let dir = $dir;
             let pos_sig = props.pos;
             let dim_sig = props.dim;
             rsx! {
@@ -495,17 +508,16 @@ fn ResizeHandles(props: ResizeHandlesProps) -> Element {
     }
 }
 
-
 // ── Window controls (titlebar buttons) ───────────────────────────────────────
 
 const ICON_MINIMIZE: &str = r#"<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="5" x2="8" y2="5"/></svg>"#;
 const ICON_MAXIMIZE: &str = r#"<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="0.5"/></svg>"#;
-const ICON_CLOSE:    &str = r#"<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>"#;
+const ICON_CLOSE: &str = r#"<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>"#;
 
 #[component]
 fn WindowControls(
-    closable:   bool,
-    on_close:   EventHandler<MouseEvent>,
+    closable: bool,
+    on_close: EventHandler<MouseEvent>,
     on_minimize: EventHandler<MouseEvent>,
     on_maximize: EventHandler<MouseEvent>,
 ) -> Element {
@@ -543,9 +555,9 @@ fn WindowControls(
 
 #[derive(Props, Clone, PartialEq)]
 struct UnsavedChangesDialogProps {
-    on_save:    EventHandler<()>,
+    on_save: EventHandler<()>,
     on_discard: EventHandler<()>,
-    on_cancel:  EventHandler<()>,
+    on_cancel: EventHandler<()>,
 }
 
 /// Modal dialog shown when closing a window with unsaved changes.
@@ -636,7 +648,10 @@ fn WindowFooterButton(button: WindowButton, on_close: EventHandler<bool>) -> Ele
                 "Apply"
             }
         },
-        WindowButton::Custom { label_key, action_id: _ } => rsx! {
+        WindowButton::Custom {
+            label_key,
+            action_id: _,
+        } => rsx! {
             button {
                 class: "fs-btn fs-btn--ghost",
                 style: "padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: inherit; \
@@ -653,11 +668,11 @@ fn WindowFooterButton(button: WindowButton, on_close: EventHandler<bool>) -> Ele
 
 #[derive(Props, Clone, PartialEq)]
 pub struct MinimizedWindowIconProps {
-    pub window:     OpenWindow,
-    pub pos_x:      f64,
-    pub pos_y:      f64,
+    pub window: OpenWindow,
+    pub pos_x: f64,
+    pub pos_y: f64,
     pub on_restore: EventHandler<WindowId>,
-    pub on_move:    EventHandler<(f64, f64)>,
+    pub on_move: EventHandler<(f64, f64)>,
 }
 
 /// Renders a minimized window as a draggable icon with pulsing green dot.
@@ -666,16 +681,16 @@ pub struct MinimizedWindowIconProps {
 /// We track drag_start and measure movement — if < 5px, treat as a click (restore).
 #[component]
 pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
-    let id  = props.window.id;
-    let mut icon_pos:   Signal<(f64, f64)> = use_signal(|| (props.pos_x, props.pos_y));
-    let mut dragging:   Signal<bool>       = use_signal(|| false);
-    let mut drag_off:   Signal<(f64, f64)> = use_signal(|| (0.0, 0.0));
+    let id = props.window.id;
+    let mut icon_pos: Signal<(f64, f64)> = use_signal(|| (props.pos_x, props.pos_y));
+    let mut dragging: Signal<bool> = use_signal(|| false);
+    let mut drag_off: Signal<(f64, f64)> = use_signal(|| (0.0, 0.0));
     let mut drag_start: Signal<(f64, f64)> = use_signal(|| (0.0, 0.0));
 
     let (ix, iy) = *icon_pos.read();
     let is_dragging = *dragging.read();
     let title = props.window.title_key.trim_start_matches("app-");
-    let icon  = &props.window.icon;
+    let icon = &props.window.icon;
 
     rsx! {
         div {
@@ -734,7 +749,6 @@ pub fn MinimizedWindowIcon(props: MinimizedWindowIconProps) -> Element {
     }
 }
 
-
 // ── WindowContent ─────────────────────────────────────────────────────────────
 
 /// Thin wrapper that calls a `WindowRenderFn` inside its own Dioxus scope.
@@ -756,28 +770,29 @@ fn WindowContent(render: WindowRenderFn) -> Element {
 fn format_window_title(title_key: &str) -> String {
     let id = title_key.strip_prefix("app-").unwrap_or(title_key);
     match id {
-        "store"            => "Store".to_string(),
-        "settings"         => "Settings".to_string(),
-        "container"        => "Container Manager".to_string(),
-        "bot-manager"      => "Bot Manager".to_string(),
+        "store" => "Store".to_string(),
+        "settings" => "Settings".to_string(),
+        "container" => "Container Manager".to_string(),
+        "bot-manager" => "Bot Manager".to_string(),
         "language-manager" => "Language Manager".to_string(),
-        "theme-manager"    => "Theme Manager".to_string(),
-        "icons-manager"    => "Icons Manager".to_string(),
-        "managers"         => "Managers".to_string(),
-        "profile"          => "Profile".to_string(),
-        "browser"          => "Browser".to_string(),
-        "lenses"           => "Lenses".to_string(),
-        "builder"          => "Builder".to_string(),
-        "tasks"            => "Tasks".to_string(),
-        "ai"               => "AI Assistant".to_string(),
-        "help"             => "Help".to_string(),
-        other              => {
+        "theme-manager" => "Theme Manager".to_string(),
+        "icons-manager" => "Icons Manager".to_string(),
+        "managers" => "Managers".to_string(),
+        "profile" => "Profile".to_string(),
+        "browser" => "Browser".to_string(),
+        "lenses" => "Lenses".to_string(),
+        "builder" => "Builder".to_string(),
+        "tasks" => "Tasks".to_string(),
+        "ai" => "AI Assistant".to_string(),
+        "help" => "Help".to_string(),
+        other => {
             // Convert kebab-case to Title Case as fallback for unknown apps.
-            other.split('-')
+            other
+                .split('-')
                 .map(|word| {
                     let mut chars = word.chars();
                     match chars.next() {
-                        None    => String::new(),
+                        None => String::new(),
                         Some(c) => c.to_uppercase().to_string() + chars.as_str(),
                     }
                 })

@@ -16,17 +16,17 @@ pub fn AppearanceSettings() -> Element {
     let ctx: Option<AppContext> = try_use_context();
 
     // Local fallback signals for standalone mode (no Desktop / no AppContext).
-    let mut local_theme         = use_signal(|| "midnight-blue".to_string());
-    let mut local_anim          = use_signal(|| true);
-    let mut local_opacity       = use_signal(|| 0.80f64);
-    let mut local_chrome_style  = use_signal(|| "kde".to_string());
-    let mut local_btn_style     = use_signal(|| "rounded".to_string());
+    let mut local_theme = use_signal(|| "midnight-blue".to_string());
+    let mut local_anim = use_signal(|| true);
+    let mut local_opacity = use_signal(|| 0.80f64);
+    let mut local_chrome_style = use_signal(|| "kde".to_string());
+    let mut local_btn_style = use_signal(|| "rounded".to_string());
     let mut local_sidebar_style = use_signal(|| "solid".to_string());
 
     let mut wallpaper_url = use_signal(String::new);
 
     // Theme editor state
-    let mut custom_css   = use_signal(String::new);
+    let mut custom_css = use_signal(String::new);
     let mut editor_error = use_signal(|| Option::<String>::None);
     let mut editor_saved = use_signal(|| false);
 
@@ -35,49 +35,80 @@ pub fn AppearanceSettings() -> Element {
     let mut theme_remove_confirm: Signal<Option<String>> = use_signal(|| None);
 
     // Read current values — from AppContext if available, else from local signals.
-    let current_theme  = ctx.map(|c| c.theme.read().clone())
-                            .unwrap_or_else(|| local_theme.read().clone());
-    let anim_enabled   = ctx.map(|c| *c.anim_enabled.read())
-                            .unwrap_or_else(|| *local_anim.read());
-    let chrome_opacity = ctx.map(|c| *c.chrome_opacity.read())
-                            .unwrap_or_else(|| *local_opacity.read());
-    let chrome_style   = ctx.map(|c| c.chrome_style.read().clone())
-                            .unwrap_or_else(|| local_chrome_style.read().clone());
-    let btn_style      = ctx.map(|c| c.btn_style.read().clone())
-                            .unwrap_or_else(|| local_btn_style.read().clone());
-    let sidebar_style  = ctx.map(|c| c.sidebar_style.read().clone())
-                            .unwrap_or_else(|| local_sidebar_style.read().clone());
-    let opacity_pct    = (chrome_opacity * 100.0) as u32;
-    let opacity_label  = if anim_enabled { "On" } else { "Off" };
+    let current_theme = ctx
+        .map(|c| c.theme.read().clone())
+        .unwrap_or_else(|| local_theme.read().clone());
+    let anim_enabled = ctx
+        .map(|c| *c.anim_enabled.read())
+        .unwrap_or_else(|| *local_anim.read());
+    let chrome_opacity = ctx
+        .map(|c| *c.chrome_opacity.read())
+        .unwrap_or_else(|| *local_opacity.read());
+    let chrome_style = ctx
+        .map(|c| c.chrome_style.read().clone())
+        .unwrap_or_else(|| local_chrome_style.read().clone());
+    let btn_style = ctx
+        .map(|c| c.btn_style.read().clone())
+        .unwrap_or_else(|| local_btn_style.read().clone());
+    let sidebar_style = ctx
+        .map(|c| c.sidebar_style.read().clone())
+        .unwrap_or_else(|| local_sidebar_style.read().clone());
+    let opacity_pct = (chrome_opacity * 100.0) as u32;
+    let opacity_label = if anim_enabled { "On" } else { "Off" };
 
     // Write helpers — route to AppContext if available, else to local signals.
     let set_theme = move |value: String| {
-        if let Some(mut c) = ctx { c.theme.set(value); } else { local_theme.set(value); }
+        if let Some(mut c) = ctx {
+            c.theme.set(value);
+        } else {
+            local_theme.set(value);
+        }
     };
     let mut set_anim = move |enabled: bool| {
-        if let Some(mut c) = ctx { c.anim_enabled.set(enabled); } else { local_anim.set(enabled); }
+        if let Some(mut c) = ctx {
+            c.anim_enabled.set(enabled);
+        } else {
+            local_anim.set(enabled);
+        }
     };
     let mut set_opacity = move |v: f64| {
-        if let Some(mut c) = ctx { c.chrome_opacity.set(v); } else { local_opacity.set(v); }
+        if let Some(mut c) = ctx {
+            c.chrome_opacity.set(v);
+        } else {
+            local_opacity.set(v);
+        }
     };
     let mut set_chrome_style = move |v: String| {
-        if let Some(mut c) = ctx { c.chrome_style.set(v); } else { local_chrome_style.set(v); }
+        if let Some(mut c) = ctx {
+            c.chrome_style.set(v);
+        } else {
+            local_chrome_style.set(v);
+        }
     };
     let mut set_btn_style = move |v: String| {
-        if let Some(mut c) = ctx { c.btn_style.set(v); } else { local_btn_style.set(v); }
+        if let Some(mut c) = ctx {
+            c.btn_style.set(v);
+        } else {
+            local_btn_style.set(v);
+        }
     };
     let mut set_sidebar_style = move |v: String| {
-        if let Some(mut c) = ctx { c.sidebar_style.set(v); } else { local_sidebar_style.set(v); }
+        if let Some(mut c) = ctx {
+            c.sidebar_style.set(v);
+        } else {
+            local_sidebar_style.set(v);
+        }
     };
     let set_wallpaper = move |css: String| {
-        if let Some(mut c) = ctx { c.wallpaper.set(css); }
+        if let Some(mut c) = ctx {
+            c.wallpaper.set(css);
+        }
     };
 
     // Built-in themes: (id, label, preview colors: bg, primary, text)
     // Only Midnight Blue is bundled. Other themes come from the Store (see "Installed Themes").
-    let themes: &[(&str, &str, &str)] = &[
-        ("midnight-blue", "Midnight Blue", "#0c1222,#4d8bf5,#e8edf5"),
-    ];
+    let themes: &[(&str, &str, &str)] =
+        &[("midnight-blue", "Midnight Blue", "#0c1222,#4d8bf5,#e8edf5")];
 
     rsx! {
         div {
@@ -626,4 +657,3 @@ pub fn AppearanceSettings() -> Element {
         }
     }
 }
-

@@ -17,7 +17,7 @@ impl SplitState {
     pub fn next(&self) -> Self {
         match self {
             Self::Collapsed => Self::Half,
-            Self::Half      => Self::FullRight,
+            Self::Half => Self::FullRight,
             Self::FullRight => Self::Collapsed,
         }
     }
@@ -38,7 +38,7 @@ pub struct SplitViewProps {
 #[component]
 pub fn SplitView(props: SplitViewProps) -> Element {
     let mut drag_start: Signal<Option<(f64, f64)>> = use_signal(|| None);
-    let mut master_px: Signal<f64>                 = use_signal(|| 280.0);
+    let mut master_px: Signal<f64> = use_signal(|| 280.0);
     let is_half = props.state == SplitState::Half;
 
     let master_style = match &props.state {

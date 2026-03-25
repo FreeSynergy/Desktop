@@ -11,7 +11,12 @@ pub struct ContextMenuItem {
 
 impl ContextMenuItem {
     pub fn new(id: &'static str, label: impl Into<String>) -> Self {
-        Self { id, label: label.into(), icon: None, danger: false }
+        Self {
+            id,
+            label: label.into(),
+            icon: None,
+            danger: false,
+        }
     }
 
     pub fn with_icon(mut self, icon: &'static str) -> Self {
@@ -35,7 +40,12 @@ pub struct ContextMenuState {
 
 impl ContextMenuState {
     pub fn open_at(x: f64, y: f64, items: Vec<ContextMenuItem>) -> Self {
-        Self { open: true, x, y, items }
+        Self {
+            open: true,
+            x,
+            y,
+            items,
+        }
     }
 }
 

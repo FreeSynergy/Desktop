@@ -27,20 +27,45 @@ pub struct ServiceRole {
 
 /// All known service roles in the FSN ecosystem.
 pub const KNOWN_ROLES: &[(&str, &str, &str, bool)] = &[
-    ("proxy",      "Reverse Proxy",   "HTTP reverse proxy with TLS termination (Zentinel)",  true),
-    ("auth",       "Authentication",  "Handles user login and identity (OIDC/SCIM)",         true),
-    ("mail",       "Mail",            "Sends and receives email",                             true),
-    ("git",        "Git",             "Hosts Git repositories",                               false),
-    ("wiki",       "Wiki",            "Documentation and knowledge base",                     false),
-    ("chat",       "Chat",            "Real-time messaging",                                  false),
-    ("tasks",      "Tasks",           "Task and project management",                          false),
-    ("tickets",    "Tickets",         "Issue tracking and helpdesk",                          false),
-    ("collab",     "Collaboration",   "Real-time document editing",                           false),
-    ("maps",       "Maps",            "Mapping and geospatial data",                          false),
-    ("monitoring", "Monitoring",      "Metrics, logs, and alerting",                          false),
-    ("database",   "Database",        "Primary relational database",                          false),
-    ("cache",      "Cache",           "Key-value cache",                                      false),
-    ("llm",        "AI / LLM",        "Local AI language model for text generation",          false),
+    (
+        "proxy",
+        "Reverse Proxy",
+        "HTTP reverse proxy with TLS termination (Zentinel)",
+        true,
+    ),
+    (
+        "auth",
+        "Authentication",
+        "Handles user login and identity (OIDC/SCIM)",
+        true,
+    ),
+    ("mail", "Mail", "Sends and receives email", true),
+    ("git", "Git", "Hosts Git repositories", false),
+    ("wiki", "Wiki", "Documentation and knowledge base", false),
+    ("chat", "Chat", "Real-time messaging", false),
+    ("tasks", "Tasks", "Task and project management", false),
+    ("tickets", "Tickets", "Issue tracking and helpdesk", false),
+    (
+        "collab",
+        "Collaboration",
+        "Real-time document editing",
+        false,
+    ),
+    ("maps", "Maps", "Mapping and geospatial data", false),
+    (
+        "monitoring",
+        "Monitoring",
+        "Metrics, logs, and alerting",
+        false,
+    ),
+    ("database", "Database", "Primary relational database", false),
+    ("cache", "Cache", "Key-value cache", false),
+    (
+        "llm",
+        "AI / LLM",
+        "Local AI language model for text generation",
+        false,
+    ),
 ];
 
 /// The currently configured service role assignments.
@@ -78,7 +103,9 @@ pub fn load_role_assignments() -> ServiceRoleConfig {
     let path = crate::config_path("settings.toml");
     let content = std::fs::read_to_string(&path).unwrap_or_default();
     let parsed: PartialSettings = toml::from_str(&content).unwrap_or_default();
-    ServiceRoleConfig { assignments: parsed.service_roles }
+    ServiceRoleConfig {
+        assignments: parsed.service_roles,
+    }
 }
 
 /// Persist service role assignments into `~/.config/fsn/settings.toml`.
@@ -93,7 +120,8 @@ pub fn save_role_assignments(config: &ServiceRoleConfig) -> Result<(), String> {
 
     // Load existing TOML to preserve all other settings.
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
-    let mut doc: toml::Value = toml::from_str(&existing).unwrap_or(toml::Value::Table(Default::default()));
+    let mut doc: toml::Value =
+        toml::from_str(&existing).unwrap_or(toml::Value::Table(Default::default()));
 
     if let toml::Value::Table(ref mut root) = doc {
         let mut role_table = toml::value::Table::new();
@@ -156,10 +184,17 @@ impl ServiceRoleRegistry {
         }
 
         for path in walkdir_toml(modules_dir) {
-            let Ok(content) = std::fs::read_to_string(&path) else { continue };
-            let Ok(parsed) = toml::from_str::<MinimalModuleFile>(&content) else { continue };
+            let Ok(content) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(parsed) = toml::from_str::<MinimalModuleFile>(&content) else {
+                continue;
+            };
             for role in parsed.meta.roles.provides {
-                providers.entry(role).or_default().push(parsed.meta.name.clone());
+                providers
+                    .entry(role)
+                    .or_default()
+                    .push(parsed.meta.name.clone());
             }
         }
 
@@ -168,7 +203,10 @@ impl ServiceRoleRegistry {
 
     /// All module names that claim to provide `role_id`.
     pub fn providers_for(&self, role_id: &str) -> &[String] {
-        self.providers.get(role_id).map(Vec::as_slice).unwrap_or(&[])
+        self.providers
+            .get(role_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
     }
 }
 
@@ -177,11 +215,15 @@ fn modules_dir() -> PathBuf {
         return PathBuf::from(dir);
     }
     // Check settings for local store path.
-    let settings_content = std::fs::read_to_string(crate::config_path("settings.toml")).unwrap_or_default();
+    let settings_content =
+        std::fs::read_to_string(crate::config_path("settings.toml")).unwrap_or_default();
     if let Ok(v) = toml::from_str::<toml::Value>(&settings_content) {
         if let Some(stores) = v.get("stores").and_then(|s| s.as_array()) {
             for store in stores {
-                let enabled = store.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
+                let enabled = store
+                    .get("enabled")
+                    .and_then(|e| e.as_bool())
+                    .unwrap_or(true);
                 if enabled {
                     if let Some(local) = store.get("local_path").and_then(|p| p.as_str()) {
                         return PathBuf::from(local).join("Node").join("modules");
@@ -192,11 +234,17 @@ fn modules_dir() -> PathBuf {
     }
     // XDG fallback.
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".local").join("share").join("fsn").join("modules")
+    PathBuf::from(home)
+        .join(".local")
+        .join("share")
+        .join("fsn")
+        .join("modules")
 }
 
 fn walkdir_toml(dir: &std::path::Path) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
     let mut result = Vec::new();
     for e in entries.flatten() {
         let path = e.path();
@@ -214,8 +262,8 @@ fn walkdir_toml(dir: &std::path::Path) -> Vec<PathBuf> {
 /// Service Roles settings component.
 #[component]
 pub fn ServiceRoles() -> Element {
-    let config   = use_signal(load_role_assignments);
-    let registry     = use_signal(ServiceRoleRegistry::build);
+    let config = use_signal(load_role_assignments);
+    let registry = use_signal(ServiceRoleRegistry::build);
     let mut save_msg = use_signal(|| Option::<String>::None);
 
     rsx! {

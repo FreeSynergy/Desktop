@@ -6,11 +6,11 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "audit_log")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id:         i64,
-    pub actor:      String,
-    pub action:     String,
-    pub target:     Option<String>,
-    pub outcome:    String,
+    pub id: i64,
+    pub actor: String,
+    pub action: String,
+    pub target: Option<String>,
+    pub outcome: String,
     pub created_at: i64,
 }
 

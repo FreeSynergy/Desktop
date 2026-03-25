@@ -4,13 +4,13 @@
 /// no custom sidebar code here.  The domain enum `LangPanel` maps sidebar item
 /// keys to the concrete pane to render on the right.
 use dioxus::prelude::*;
-use fs_components::{Sidebar, SidebarItem as NavItem, SidebarSection, SidebarMode};
+use fs_components::{Sidebar, SidebarItem as NavItem, SidebarMode, SidebarSection};
 use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_i18n;
 use fs_manager_language::{
-    DateFormat, FormatVariant, HasFlag, Language, LanguageManager, LocaleSettings,
-    NumberFormat, TimeFormat,
     git_contributor::{ContributorStatus, GitContributorCheck},
+    DateFormat, FormatVariant, HasFlag, Language, LanguageManager, LocaleSettings, NumberFormat,
+    TimeFormat,
 };
 use fs_store::{LocaleEntry, Manifest, StoreClient};
 use serde::Deserialize;
@@ -20,13 +20,26 @@ use crate::translation_editor::TranslationEditor;
 // ── Store catalog helper ─────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-struct MinPkg { id: String, name: String, version: String, category: String }
+struct MinPkg {
+    id: String,
+    name: String,
+    version: String,
+    category: String,
+}
 
 impl Manifest for MinPkg {
-    fn id(&self)       -> &str { &self.id }
-    fn name(&self)     -> &str { &self.name }
-    fn version(&self)  -> &str { &self.version }
-    fn category(&self) -> &str { &self.category }
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn version(&self) -> &str {
+        &self.version
+    }
+    fn category(&self) -> &str {
+        &self.category
+    }
 }
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -52,30 +65,34 @@ pub fn load_active_language() -> String {
 /// Local view of a `LocaleEntry` — implements PartialEq for use as Dioxus prop.
 #[derive(Clone, PartialEq, Debug)]
 struct LocaleInfo {
-    code:         String,
-    name:         String,
-    version:      String,
+    code: String,
+    name: String,
+    version: String,
     completeness: u8,
-    direction:    String,
-    path:         Option<String>,
+    direction: String,
+    path: Option<String>,
 }
 
 impl From<LocaleEntry> for LocaleInfo {
     fn from(l: LocaleEntry) -> Self {
         Self {
-            code:         l.code,
-            name:         l.name,
-            version:      l.version,
+            code: l.code,
+            name: l.name,
+            version: l.version,
             completeness: l.completeness,
-            direction:    l.direction,
-            path:         l.path,
+            direction: l.direction,
+            path: l.path,
         }
     }
 }
 
 /// A language entry for display / selection.
 #[derive(Clone, PartialEq)]
-struct LangEntry { code: String, name: String, builtin: bool }
+struct LangEntry {
+    code: String,
+    name: String,
+    builtin: bool,
+}
 
 /// Which panel is currently shown in the detail pane.
 ///
@@ -94,9 +111,9 @@ enum LangPanel {
 impl LangPanel {
     fn to_key(&self) -> String {
         match self {
-            Self::Default        => "default".into(),
+            Self::Default => "default".into(),
             Self::Language(code) => code.clone(),
-            Self::Install        => "install".into(),
+            Self::Install => "install".into(),
         }
     }
 
@@ -112,28 +129,41 @@ impl LangPanel {
 
 /// Tabs in the per-language detail pane.
 #[derive(Clone, PartialEq, Debug)]
-enum LangDetailTab { Info, Edit }
+enum LangDetailTab {
+    Info,
+    Edit,
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn load_installed() -> Vec<LangEntry> {
     let mut entries: Vec<LangEntry> = BUILTIN_LANGUAGES
         .iter()
-        .map(|(c, n)| LangEntry { code: c.to_string(), name: n.to_string(), builtin: true })
+        .map(|(c, n)| LangEntry {
+            code: c.to_string(),
+            name: n.to_string(),
+            builtin: true,
+        })
         .collect();
     let builtin_codes: Vec<&str> = BUILTIN_LANGUAGES.iter().map(|(c, _)| *c).collect();
     for pkg in PackageRegistry::by_kind(PackageKind::Language) {
         if !builtin_codes.contains(&pkg.id.as_str()) {
-            entries.push(LangEntry { code: pkg.id, name: pkg.name, builtin: false });
+            entries.push(LangEntry {
+                code: pkg.id,
+                name: pkg.name,
+                builtin: false,
+            });
         }
     }
     entries
 }
 
 async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
-    let home   = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
     let fs_dir = std::path::PathBuf::from(&home).join(".local/share/fsn");
-    let base   = locale.path.clone()
+    let base = locale
+        .path
+        .clone()
         .unwrap_or_else(|| format!("Node/i18n/{}", locale.code));
     let url = format!("{base}/ui.toml");
 
@@ -153,14 +183,14 @@ async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
     };
 
     PackageRegistry::install(InstalledPackage {
-        id:           locale.code.clone(),
-        name:         locale.name.clone(),
-        kind:         PackageKind::Language,
-        version:      locale.version.clone(),
-        icon:         String::new(),
+        id: locale.code.clone(),
+        name: locale.name.clone(),
+        kind: PackageKind::Language,
+        version: locale.version.clone(),
+        icon: String::new(),
         file_path,
         installed_by: None,
-        pinned:       false,
+        pinned: false,
     })
     .map_err(|e| format!("Registry error: {e}"))
 }
@@ -169,8 +199,8 @@ async fn install_language_pack(locale: LocaleInfo) -> Result<(), String> {
 
 #[component]
 pub fn LanguageSettings() -> Element {
-    let installed       = use_signal(load_installed);
-    let mut panel       = use_signal(|| LangPanel::Default);
+    let installed = use_signal(load_installed);
+    let mut panel = use_signal(|| LangPanel::Default);
     let mut editor_lang: Signal<Option<(String, String)>> = use_signal(|| None);
 
     // Full-screen translation editor replaces the whole view when open.
@@ -184,18 +214,30 @@ pub fn LanguageSettings() -> Element {
         };
     }
 
-    let sel         = panel.read().clone();
-    let detail_code = if let LangPanel::Language(c) = &sel { Some(c.clone()) } else { None };
+    let sel = panel.read().clone();
+    let detail_code = if let LangPanel::Language(c) = &sel {
+        Some(c.clone())
+    } else {
+        None
+    };
 
     // Build sidebar items from the installed language list.
     // Flag SVG is used as icon when available; falls back to "🌐".
     // Builtin languages get a "✦" badge.
-    let lang_items: Vec<NavItem> = installed.read().iter().map(|e| {
-        let flag = Language::from_code(&e.code).flag_svg().to_string();
-        let icon = if flag.is_empty() { "🌐".into() } else { flag };
-        let item = NavItem::new(e.code.clone(), icon, e.name.clone());
-        if e.builtin { item.with_badge("✦") } else { item }
-    }).collect();
+    let lang_items: Vec<NavItem> = installed
+        .read()
+        .iter()
+        .map(|e| {
+            let flag = Language::from_code(&e.code).flag_svg().to_string();
+            let icon = if flag.is_empty() { "🌐".into() } else { flag };
+            let item = NavItem::new(e.code.clone(), icon, e.name.clone());
+            if e.builtin {
+                item.with_badge("✦")
+            } else {
+                item
+            }
+        })
+        .collect();
 
     rsx! {
         div {
@@ -285,11 +327,11 @@ pub fn LanguageSettings() -> Element {
 /// Active-language picker + locale format settings.
 #[component]
 fn DefaultPane(installed: Vec<LangEntry>) -> Element {
-    let mut selected  = use_signal(load_active_language);
+    let mut selected = use_signal(load_active_language);
     let mut saved_msg = use_signal(|| Option::<bool>::None);
-    let inv       = use_signal(LocaleSettings::load_inventory);
+    let inv = use_signal(LocaleSettings::load_inventory);
 
-    let mgr       = LanguageManager::new();
+    let mgr = LanguageManager::new();
     let effective = mgr.effective_settings();
 
     rsx! {
@@ -723,9 +765,8 @@ fn LangInfoRow(label: String, value: String) -> Element {
 /// Edit tab — SSH/GitHub contributor status + translation editor launcher.
 #[component]
 fn LangEditPane(entry: LangEntry, on_edit: EventHandler<(String, String)>) -> Element {
-    let contrib = use_signal(|| {
-        GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown)
-    });
+    let contrib =
+        use_signal(|| GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown));
     {
         let mut contrib = contrib.clone();
         use_future(move || async move {
@@ -885,9 +926,7 @@ fn InstallPane(installed_ids: Vec<String>, on_installed: EventHandler<LangEntry>
     }
 }
 
-
-const SELECT_STYLE: &str =
-    "padding: 5px 10px; font-size: 13px; \
+const SELECT_STYLE: &str = "padding: 5px 10px; font-size: 13px; \
      background: var(--fs-color-bg-surface); \
      border: 1px solid var(--fs-color-border-default); \
      border-radius: var(--fs-radius-sm); \
@@ -948,9 +987,9 @@ fn TabBtn(label: String, is_active: bool, onclick: EventHandler<MouseEvent>) -> 
 /// Language radio row used in the Default pane's language picker.
 #[component]
 fn LangRow(
-    code:      String,
-    name:      String,
-    selected:  bool,
+    code: String,
+    name: String,
+    selected: bool,
     on_select: EventHandler<MouseEvent>,
 ) -> Element {
     let bg = if selected {
@@ -977,12 +1016,12 @@ fn LangRow(
 #[component]
 fn AvailableLanguages(
     installed_ids: Vec<String>,
-    on_installed:  EventHandler<LangEntry>,
+    on_installed: EventHandler<LangEntry>,
 ) -> Element {
     let all_locales: Signal<Vec<LocaleInfo>> = use_signal(Vec::new);
-    let mut loading: Signal<bool>            = use_signal(|| true);
-    let mut error:   Signal<Option<String>>  = use_signal(|| None);
-    let busy:        Signal<Option<String>>  = use_signal(|| None);
+    let mut loading: Signal<bool> = use_signal(|| true);
+    let mut error: Signal<Option<String>> = use_signal(|| None);
+    let busy: Signal<Option<String>> = use_signal(|| None);
 
     {
         let all_locales = all_locales.clone();
@@ -994,9 +1033,8 @@ fn AvailableLanguages(
                     .await
                 {
                     Ok(catalog) => {
-                        all_locales.set(
-                            catalog.locales.into_iter().map(LocaleInfo::from).collect()
-                        );
+                        all_locales
+                            .set(catalog.locales.into_iter().map(LocaleInfo::from).collect());
                         error.set(None);
                     }
                     Err(e) => error.set(Some(format!("Could not load catalog: {e}"))),
@@ -1081,7 +1119,7 @@ fn AvailableLanguages(
 
 #[component]
 fn AvailableLangRow(
-    locale:     LocaleInfo,
+    locale: LocaleInfo,
     installing: bool,
     on_install: EventHandler<LocaleInfo>,
 ) -> Element {

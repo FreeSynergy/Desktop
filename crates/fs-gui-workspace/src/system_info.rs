@@ -21,17 +21,28 @@ pub enum Platform {
 
 impl Platform {
     pub fn detect() -> Self {
-        #[cfg(target_os = "linux")]   { Platform::Linux }
-        #[cfg(target_os = "macos")]   { Platform::MacOs }
-        #[cfg(target_os = "windows")] { Platform::Windows }
+        #[cfg(target_os = "linux")]
+        {
+            Platform::Linux
+        }
+        #[cfg(target_os = "macos")]
+        {
+            Platform::MacOs
+        }
+        #[cfg(target_os = "windows")]
+        {
+            Platform::Windows
+        }
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-        { Platform::Unknown }
+        {
+            Platform::Unknown
+        }
     }
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::Linux   => "Linux",
-            Self::MacOs   => "macOS",
+            Self::Linux => "Linux",
+            Self::MacOs => "macOS",
             Self::Windows => "Windows",
             Self::Unknown => "Unknown",
         }
@@ -55,14 +66,26 @@ pub enum Architecture {
 
 impl Architecture {
     pub fn detect() -> Self {
-        #[cfg(target_arch = "x86_64")]  { Architecture::X86_64 }
-        #[cfg(target_arch = "aarch64")] { Architecture::Aarch64 }
+        #[cfg(target_arch = "x86_64")]
+        {
+            Architecture::X86_64
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            Architecture::Aarch64
+        }
         #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        { Architecture::Unknown }
+        {
+            Architecture::Unknown
+        }
     }
 
     pub fn label(&self) -> &'static str {
-        match self { Self::X86_64 => "x86-64", Self::Aarch64 => "ARM64", Self::Unknown => "?" }
+        match self {
+            Self::X86_64 => "x86-64",
+            Self::Aarch64 => "ARM64",
+            Self::Unknown => "?",
+        }
     }
 }
 
@@ -100,10 +123,10 @@ pub enum RunMode {
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct SystemInfo {
-    pub platform:     Platform,
+    pub platform: Platform,
     pub architecture: Architecture,
-    pub mode:         RunMode,
-    pub hostname:     String,
+    pub mode: RunMode,
+    pub hostname: String,
     /// Version string of the running FSN Node, if connected.
     pub node_version: Option<String>,
 }
@@ -112,10 +135,10 @@ impl SystemInfo {
     /// Detect the current system at startup.
     pub fn detect() -> Self {
         Self {
-            platform:     Platform::detect(),
+            platform: Platform::detect(),
             architecture: Architecture::detect(),
-            mode:         RunMode::default(),
-            hostname:     detect_hostname(),
+            mode: RunMode::default(),
+            hostname: detect_hostname(),
             node_version: None,
         }
     }
@@ -148,9 +171,9 @@ impl SystemInfo {
     /// Short human-readable description of the current mode.
     pub fn mode_label(&self) -> &'static str {
         match self.mode {
-            RunMode::Node        => "Node + Desktop",
+            RunMode::Node => "Node + Desktop",
             RunMode::DesktopOnly => "Desktop",
-            RunMode::Server      => "Server (headless)",
+            RunMode::Server => "Server (headless)",
         }
     }
 }

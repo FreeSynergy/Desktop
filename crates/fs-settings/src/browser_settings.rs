@@ -62,11 +62,14 @@ pub fn BrowserSettings() -> Element {
 
 #[component]
 fn SearchEngineBtn(engine: SearchEngine, config: Signal<BrowserConfig>) -> Element {
-    let id        = engine.id.clone();
+    let id = engine.id.clone();
     let is_active = config.read().search_engine == engine.id;
-    let border    = if is_active { "var(--fs-color-primary, #06b6d4)" }
-                    else         { "var(--fs-color-border-default, #334155)" };
-    let weight    = if is_active { "600" } else { "400" };
+    let border = if is_active {
+        "var(--fs-color-primary, #06b6d4)"
+    } else {
+        "var(--fs-color-border-default, #334155)"
+    };
+    let weight = if is_active { "600" } else { "400" };
 
     rsx! {
         button {

@@ -1,24 +1,24 @@
 pub mod ai_view;
-pub mod icons;
-pub mod builtin_apps;
-pub mod theme_loader;
 pub mod app_shell;
+pub mod builtin_apps;
 pub mod context_menu;
 pub mod db;
-pub mod spinner;
-pub mod widgets;
 pub mod desktop;
 pub mod header;
 pub mod help_view;
+pub mod icons;
 pub mod launcher;
 pub mod multiwindow;
 pub mod notification;
 pub mod sidebar;
+pub mod spinner;
 pub mod split_view;
-pub mod taskbar;
-pub mod wallpaper;
 pub mod system_info;
+pub mod taskbar;
+pub mod theme_loader;
+pub mod wallpaper;
 pub mod web_desktop;
+pub mod widgets;
 pub mod window;
 pub mod window_frame;
 
@@ -32,8 +32,12 @@ const I18N_SNIPPETS: &[(&str, &str)] = &[
 struct ShellI18nPlugin;
 
 impl fs_i18n::SnippetPlugin for ShellI18nPlugin {
-    fn name(&self) -> &str { "fs-gui-workspace" }
-    fn snippets(&self) -> &[(&str, &str)] { I18N_SNIPPETS }
+    fn name(&self) -> &str {
+        "fs-gui-workspace"
+    }
+    fn snippets(&self) -> &[(&str, &str)] {
+        I18N_SNIPPETS
+    }
 }
 
 // ── App-level i18n init ───────────────────────────────────────────────────────
@@ -89,30 +93,31 @@ pub fn init_i18n() {
 
 pub use ai_view::AiApp;
 pub use app_shell::{AppMode, AppShell, LayoutA, LayoutB, LayoutC, ScreenWrapper};
+pub use context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
 pub use desktop::Desktop;
 pub use header::{Breadcrumb, ShellHeader};
 pub use help_view::{HelpApp, HelpSidebarPanel};
 pub use launcher::{AppLauncher, LauncherState};
-pub use multiwindow::{MultiwindowHandle, use_multiwindow};
-pub use context_menu::{ContextMenu, ContextMenuItem, ContextMenuState};
-pub use notification::{Notification, NotificationHistory, NotificationKind, NotificationManager, NotificationStack};
-pub use sidebar::{SidebarEntry, ManagerBundle, default_sidebar_sections, default_pinned_items};
+pub use multiwindow::{use_multiwindow, MultiwindowHandle};
+pub use notification::{
+    Notification, NotificationHistory, NotificationKind, NotificationManager, NotificationStack,
+};
+pub use sidebar::{default_pinned_items, default_sidebar_sections, ManagerBundle, SidebarEntry};
 pub use split_view::{SplitState, SplitView};
-pub use taskbar::{Taskbar, LangSwitcher};
+pub use taskbar::{LangSwitcher, Taskbar};
 pub use web_desktop::{WebDesktop, WebTaskbarState};
 pub use window::{
-    FsWindow, OpenWindow, Window, WindowButton, WindowContent,
-    WindowHost, WindowId, WindowManager, WindowRenderFn, WindowSize,
-    WindowSidebarItem,
+    FsWindow, OpenWindow, Window, WindowButton, WindowContent, WindowHost, WindowId, WindowManager,
+    WindowRenderFn, WindowSidebarItem, WindowSize,
 };
 
 // Re-export desktop launch abstraction so fs-app can use fs_shell::launch_desktop.
 #[cfg(feature = "desktop")]
 pub use fs_components::{launch_desktop, spawn_window, DesktopConfig};
-pub use window_frame::WindowFrame;
 pub use spinner::{LoadingOverlay, LoadingSpinner, SpinnerSize};
 pub use system_info::{Architecture, Platform, RunMode, SystemInfo, SYSTEM_INFO};
 pub use widgets::{
-    ClockWidget, SystemInfoWidget, QuickNotesWidget, PlaceholderWidget,
-    WidgetKind, WidgetSlot, render_widget, load_widget_layout, save_widget_layout,
+    load_widget_layout, render_widget, save_widget_layout, ClockWidget, PlaceholderWidget,
+    QuickNotesWidget, SystemInfoWidget, WidgetKind, WidgetSlot,
 };
+pub use window_frame::WindowFrame;

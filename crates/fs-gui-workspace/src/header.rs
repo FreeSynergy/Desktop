@@ -1,8 +1,10 @@
+use crate::icons::{
+    ICON_CHEVRON_DOWN, ICON_CHEVRON_RIGHT, ICON_PROFILE, ICON_SETTINGS, ICON_SIGN_OUT,
+};
+use crate::notification::{NotificationBell, NotificationHistory};
 /// ShellHeader — 60px fixed header with menu bar, breadcrumbs and user avatar menu.
 use dioxus::prelude::*;
 use fs_i18n;
-use crate::icons::{ICON_PROFILE, ICON_SETTINGS, ICON_SIGN_OUT, ICON_CHEVRON_RIGHT, ICON_CHEVRON_DOWN};
-use crate::notification::{NotificationBell, NotificationHistory};
 
 /// A single breadcrumb entry.
 #[derive(Clone, PartialEq, Debug)]
@@ -13,7 +15,10 @@ pub struct Breadcrumb {
 
 impl Breadcrumb {
     pub fn new(label: impl Into<String>) -> Self {
-        Self { label: label.into(), icon: None }
+        Self {
+            label: label.into(),
+            icon: None,
+        }
     }
 }
 
@@ -34,8 +39,15 @@ pub struct SubAction {
 /// A single action in a menu dropdown.
 #[derive(Clone, PartialEq, Debug)]
 pub enum MenuAction {
-    Action { label: String, shortcut: Option<&'static str>, id: &'static str },
-    SubMenu { label: String, items: Vec<SubAction> },
+    Action {
+        label: String,
+        shortcut: Option<&'static str>,
+        id: &'static str,
+    },
+    SubMenu {
+        label: String,
+        items: Vec<SubAction>,
+    },
     Separator,
 }
 
@@ -44,33 +56,74 @@ fn default_menu() -> Vec<MenuItem> {
         MenuItem {
             label: "FreeSynergy".into(),
             items: vec![
-                MenuAction::Action { label: fs_i18n::t("shell.menu.about").into(),    shortcut: None,               id: "about" },
-                MenuAction::Action { label: fs_i18n::t("settings.title").into(),      shortcut: Some("Ctrl+,"),     id: "settings" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.launcher").into(), shortcut: Some("Ctrl+Space"), id: "launcher" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.about").into(),
+                    shortcut: None,
+                    id: "about",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("settings.title").into(),
+                    shortcut: Some("Ctrl+,"),
+                    id: "settings",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.launcher").into(),
+                    shortcut: Some("Ctrl+Space"),
+                    id: "launcher",
+                },
                 MenuAction::Separator,
-                MenuAction::Action { label: fs_i18n::t("shell.menu.quit").into(),     shortcut: Some("Ctrl+Q"),     id: "quit" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.quit").into(),
+                    shortcut: Some("Ctrl+Q"),
+                    id: "quit",
+                },
             ],
         },
         MenuItem {
             label: fs_i18n::t("shell.menu.view").into(),
             items: vec![
-                MenuAction::Action { label: fs_i18n::t("shell.menu.fullscreen").into(), shortcut: Some("F11"), id: "fullscreen" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.fullscreen").into(),
+                    shortcut: Some("F11"),
+                    id: "fullscreen",
+                },
                 MenuAction::Separator,
                 MenuAction::SubMenu {
                     label: fs_i18n::t("shell.menu.theme").into(),
                     items: vec![
-                        SubAction { label: "Midnight Blue".into(), id: "theme-midnight-blue" },
-                        SubAction { label: "Cloud White".into(),   id: "theme-cloud-white" },
-                        SubAction { label: "Cupertino".into(),     id: "theme-cupertino" },
-                        SubAction { label: "Nordic".into(),        id: "theme-nordic" },
-                        SubAction { label: "Rose Pine".into(),     id: "theme-rose-pine" },
+                        SubAction {
+                            label: "Midnight Blue".into(),
+                            id: "theme-midnight-blue",
+                        },
+                        SubAction {
+                            label: "Cloud White".into(),
+                            id: "theme-cloud-white",
+                        },
+                        SubAction {
+                            label: "Cupertino".into(),
+                            id: "theme-cupertino",
+                        },
+                        SubAction {
+                            label: "Nordic".into(),
+                            id: "theme-nordic",
+                        },
+                        SubAction {
+                            label: "Rose Pine".into(),
+                            id: "theme-rose-pine",
+                        },
                     ],
                 },
                 MenuAction::SubMenu {
                     label: fs_i18n::t("shell.menu.rendering_mode").into(),
                     items: vec![
-                        SubAction { label: "Desktop".into(), id: "render-desktop" },
-                        SubAction { label: "Web".into(),     id: "render-web" },
+                        SubAction {
+                            label: "Desktop".into(),
+                            id: "render-desktop",
+                        },
+                        SubAction {
+                            label: "Web".into(),
+                            id: "render-web",
+                        },
                     ],
                 },
             ],
@@ -78,31 +131,79 @@ fn default_menu() -> Vec<MenuItem> {
         MenuItem {
             label: fs_i18n::t("shell.menu.services").into(),
             items: vec![
-                MenuAction::Action { label: fs_i18n::t("shell.menu.open_container").into(), shortcut: None, id: "open-container-app" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.open_container").into(),
+                    shortcut: None,
+                    id: "open-container-app",
+                },
                 MenuAction::Separator,
-                MenuAction::Action { label: fs_i18n::t("shell.menu.start_all").into(), shortcut: None, id: "start-all" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.stop_all").into(),  shortcut: None, id: "stop-all" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.start_all").into(),
+                    shortcut: None,
+                    id: "start-all",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.stop_all").into(),
+                    shortcut: None,
+                    id: "stop-all",
+                },
             ],
         },
         MenuItem {
             label: fs_i18n::t("shell.menu.tools").into(),
             items: vec![
-                MenuAction::Action { label: fs_i18n::t("shell.menu.open_store").into(),       shortcut: Some("Ctrl+S"), id: "open-store" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.open_studio").into(),      shortcut: None,           id: "open-studio" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.open_tasks").into(),       shortcut: Some("Ctrl+T"), id: "open-tasks" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.open_bots").into(),        shortcut: None,           id: "open-bots" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.open_store").into(),
+                    shortcut: Some("Ctrl+S"),
+                    id: "open-store",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.open_studio").into(),
+                    shortcut: None,
+                    id: "open-studio",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.open_tasks").into(),
+                    shortcut: Some("Ctrl+T"),
+                    id: "open-tasks",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.open_bots").into(),
+                    shortcut: None,
+                    id: "open-bots",
+                },
                 MenuAction::Separator,
-                MenuAction::Action { label: fs_i18n::t("shell.menu.install_package").into(), shortcut: Some("Ctrl+I"), id: "install-package" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.install_package").into(),
+                    shortcut: Some("Ctrl+I"),
+                    id: "install-package",
+                },
             ],
         },
         MenuItem {
             label: fs_i18n::t("shell.menu.help").into(),
             items: vec![
-                MenuAction::Action { label: fs_i18n::t("shell.menu.help").into(),               shortcut: Some("F1"), id: "help" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.keyboard_shortcuts").into(), shortcut: None,       id: "shortcuts" },
-                MenuAction::Action { label: fs_i18n::t("shell.menu.documentation").into(),      shortcut: None,       id: "documentation" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.help").into(),
+                    shortcut: Some("F1"),
+                    id: "help",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.keyboard_shortcuts").into(),
+                    shortcut: None,
+                    id: "shortcuts",
+                },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.documentation").into(),
+                    shortcut: None,
+                    id: "documentation",
+                },
                 MenuAction::Separator,
-                MenuAction::Action { label: fs_i18n::t("shell.menu.report_bug").into(), shortcut: None, id: "report-bug" },
+                MenuAction::Action {
+                    label: fs_i18n::t("shell.menu.report_bug").into(),
+                    shortcut: None,
+                    id: "report-bug",
+                },
             ],
         },
     ]
@@ -114,12 +215,9 @@ pub fn ShellHeader(
     breadcrumbs: Vec<Breadcrumb>,
     user_name: String,
     user_avatar: Option<String>,
-    #[props(default)]
-    on_menu_action: Option<EventHandler<String>>,
-    #[props(default)]
-    history: NotificationHistory,
-    #[props(default)]
-    on_mark_read: Option<EventHandler<()>>,
+    #[props(default)] on_menu_action: Option<EventHandler<String>>,
+    #[props(default)] history: NotificationHistory,
+    #[props(default)] on_mark_read: Option<EventHandler<()>>,
 ) -> Element {
     rsx! {
         header {
@@ -283,7 +381,11 @@ fn MenuBarItem(
     on_close: EventHandler<()>,
     on_action: EventHandler<String>,
 ) -> Element {
-    let bg = if is_open { "var(--fs-bg-elevated)" } else { "transparent" };
+    let bg = if is_open {
+        "var(--fs-bg-elevated)"
+    } else {
+        "transparent"
+    };
     rsx! {
         div { style: "position: relative;",
             button {
@@ -465,8 +567,10 @@ fn Breadcrumbs(items: Vec<Breadcrumb>) -> Element {
 
 #[component]
 fn AvatarMenu(user_name: String, user_avatar: Option<String>) -> Element {
-    let mut open    = use_signal(|| false);
-    let initial: String = user_name.chars().next()
+    let mut open = use_signal(|| false);
+    let initial: String = user_name
+        .chars()
+        .next()
         .map(|c| c.to_uppercase().to_string())
         .unwrap_or_else(|| "?".into());
     rsx! {

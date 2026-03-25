@@ -32,42 +32,42 @@ impl WidgetKind {
     /// Human-readable label shown in the widget picker.
     pub fn label(&self) -> String {
         match self {
-            WidgetKind::Clock         => "Clock".to_string(),
-            WidgetKind::SystemInfo    => "System Info".to_string(),
-            WidgetKind::Messages      => "Messages".to_string(),
-            WidgetKind::MyTasks       => "My Tasks".to_string(),
-            WidgetKind::QuickNotes    => "Quick Notes".to_string(),
-            WidgetKind::Weather       => "Weather".to_string(),
+            WidgetKind::Clock => "Clock".to_string(),
+            WidgetKind::SystemInfo => "System Info".to_string(),
+            WidgetKind::Messages => "Messages".to_string(),
+            WidgetKind::MyTasks => "My Tasks".to_string(),
+            WidgetKind::QuickNotes => "Quick Notes".to_string(),
+            WidgetKind::Weather => "Weather".to_string(),
             WidgetKind::BotStatus(id) => format!("Bot: {id}"),
-            WidgetKind::Custom(id)    => id.clone(),
+            WidgetKind::Custom(id) => id.clone(),
         }
     }
 
     /// Default (width, height) in pixels for a newly placed widget.
     pub fn default_size(&self) -> (f64, f64) {
         match self {
-            WidgetKind::Clock         => (220.0, 140.0),
-            WidgetKind::SystemInfo    => (280.0, 190.0),
-            WidgetKind::QuickNotes    => (300.0, 230.0),
-            WidgetKind::Messages      => (320.0, 220.0),
-            WidgetKind::MyTasks       => (320.0, 220.0),
-            WidgetKind::Weather        => (260.0, 160.0),
-            WidgetKind::BotStatus(_)   => (260.0, 140.0),
-            WidgetKind::Custom(_)      => (280.0, 180.0),
+            WidgetKind::Clock => (220.0, 140.0),
+            WidgetKind::SystemInfo => (280.0, 190.0),
+            WidgetKind::QuickNotes => (300.0, 230.0),
+            WidgetKind::Messages => (320.0, 220.0),
+            WidgetKind::MyTasks => (320.0, 220.0),
+            WidgetKind::Weather => (260.0, 160.0),
+            WidgetKind::BotStatus(_) => (260.0, 140.0),
+            WidgetKind::Custom(_) => (280.0, 180.0),
         }
     }
 
     /// Emoji icon used as fallback when no icon URL is available.
     pub fn icon(&self) -> &'static str {
         match self {
-            WidgetKind::Clock         => "🕐",
-            WidgetKind::SystemInfo    => "🖥",
-            WidgetKind::Messages      => "📬",
-            WidgetKind::MyTasks       => "✅",
-            WidgetKind::QuickNotes    => "📝",
-            WidgetKind::Weather        => "🌤",
-            WidgetKind::BotStatus(_)   => "🤖",
-            WidgetKind::Custom(_)      => "🧩",
+            WidgetKind::Clock => "🕐",
+            WidgetKind::SystemInfo => "🖥",
+            WidgetKind::Messages => "📬",
+            WidgetKind::MyTasks => "✅",
+            WidgetKind::QuickNotes => "📝",
+            WidgetKind::Weather => "🌤",
+            WidgetKind::BotStatus(_) => "🤖",
+            WidgetKind::Custom(_) => "🧩",
         }
     }
 
@@ -110,26 +110,26 @@ impl WidgetKind {
     /// Persistence key string.
     pub fn as_str(&self) -> String {
         match self {
-            WidgetKind::Clock         => "Clock".to_string(),
-            WidgetKind::SystemInfo    => "SystemInfo".to_string(),
-            WidgetKind::Messages      => "Messages".to_string(),
-            WidgetKind::MyTasks       => "MyTasks".to_string(),
-            WidgetKind::QuickNotes    => "QuickNotes".to_string(),
-            WidgetKind::Weather        => "Weather".to_string(),
-            WidgetKind::BotStatus(id)  => format!("bot:{id}"),
-            WidgetKind::Custom(id)     => format!("custom:{id}"),
+            WidgetKind::Clock => "Clock".to_string(),
+            WidgetKind::SystemInfo => "SystemInfo".to_string(),
+            WidgetKind::Messages => "Messages".to_string(),
+            WidgetKind::MyTasks => "MyTasks".to_string(),
+            WidgetKind::QuickNotes => "QuickNotes".to_string(),
+            WidgetKind::Weather => "Weather".to_string(),
+            WidgetKind::BotStatus(id) => format!("bot:{id}"),
+            WidgetKind::Custom(id) => format!("custom:{id}"),
         }
     }
 
     /// Parse from persistence key string.
     pub fn from_str(s: &str) -> Option<WidgetKind> {
         match s {
-            "Clock"      => Some(WidgetKind::Clock),
+            "Clock" => Some(WidgetKind::Clock),
             "SystemInfo" => Some(WidgetKind::SystemInfo),
-            "Messages"   => Some(WidgetKind::Messages),
-            "MyTasks"    => Some(WidgetKind::MyTasks),
+            "Messages" => Some(WidgetKind::Messages),
+            "MyTasks" => Some(WidgetKind::MyTasks),
             "QuickNotes" => Some(WidgetKind::QuickNotes),
-            "Weather"    => Some(WidgetKind::Weather),
+            "Weather" => Some(WidgetKind::Weather),
             s if s.starts_with("bot:") => {
                 Some(WidgetKind::BotStatus(s["bot:".len()..].to_string()))
             }
@@ -169,23 +169,31 @@ pub struct WidgetSlot {
 /// Default widget layout: Clock + SystemInfo side by side.
 pub fn default_widget_layout() -> Vec<WidgetSlot> {
     let kinds = [WidgetKind::Clock, WidgetKind::SystemInfo];
-    kinds.iter().enumerate().map(|(i, kind)| {
-        let (w, h) = kind.default_size();
-        WidgetSlot {
-            id:   i as u32,
-            kind: kind.clone(),
-            x:    24.0 + (i as f64) * 296.0,
-            y:    24.0,
-            w,
-            h,
-        }
-    }).collect()
+    kinds
+        .iter()
+        .enumerate()
+        .map(|(i, kind)| {
+            let (w, h) = kind.default_size();
+            WidgetSlot {
+                id: i as u32,
+                kind: kind.clone(),
+                x: 24.0 + (i as f64) * 296.0,
+                y: 24.0,
+                w,
+                h,
+            }
+        })
+        .collect()
 }
 
 /// Loads widget layout from `fs-desktop.db`. Falls back to default if empty.
 pub fn load_widget_layout(db: &fs_db_desktop::FsdDb) -> Vec<WidgetSlot> {
     let slots = crate::db::load_widgets_from_db(db);
-    if slots.is_empty() { default_widget_layout() } else { slots }
+    if slots.is_empty() {
+        default_widget_layout()
+    } else {
+        slots
+    }
 }
 
 /// Persists the current widget layout to `fs-desktop.db` (async, fire-and-forget).
@@ -206,13 +214,13 @@ pub trait WidgetRenderer {
 impl WidgetRenderer for WidgetKind {
     fn render(&self, w: f64, h: f64) -> Element {
         match self {
-            WidgetKind::Clock         => rsx! { ClockWidget { w, h } },
-            WidgetKind::SystemInfo    => rsx! { SystemInfoWidget { w, h } },
-            WidgetKind::QuickNotes    => rsx! { QuickNotesWidget { w, h } },
-            WidgetKind::Messages      => rsx! { MessagesWidget { w, h } },
-            WidgetKind::MyTasks       => rsx! { MyTasksWidget { w, h } },
+            WidgetKind::Clock => rsx! { ClockWidget { w, h } },
+            WidgetKind::SystemInfo => rsx! { SystemInfoWidget { w, h } },
+            WidgetKind::QuickNotes => rsx! { QuickNotesWidget { w, h } },
+            WidgetKind::Messages => rsx! { MessagesWidget { w, h } },
+            WidgetKind::MyTasks => rsx! { MyTasksWidget { w, h } },
             WidgetKind::BotStatus(id) => rsx! { BotStatusWidget { bot_name: id.clone(), w, h } },
-            other                     => rsx! { PlaceholderWidget { kind: other.clone() } },
+            other => rsx! { PlaceholderWidget { kind: other.clone() } },
         }
     }
 }
@@ -260,9 +268,9 @@ pub fn ClockWidget(w: f64, h: f64) -> Element {
     });
 
     // Scale fonts proportionally; only grow, never shrink below the default.
-    let scale      = content_scale(w, h, 220.0, 140.0, 4.0);
-    let time_font  = 36.0 * scale;
-    let date_font  = 13.0 * scale;
+    let scale = content_scale(w, h, 220.0, 140.0, 4.0);
+    let time_font = 36.0 * scale;
+    let date_font = 13.0 * scale;
 
     rsx! {
         div {
@@ -297,11 +305,11 @@ pub fn ClockWidget(w: f64, h: f64) -> Element {
 /// Snapshot of system information.
 #[derive(Clone, Default)]
 struct SysInfo {
-    hostname:   String,
-    uptime:     String,
-    mem_used:   String,
-    mem_total:  String,
-    disk_used:  String,
+    hostname: String,
+    uptime: String,
+    mem_used: String,
+    mem_total: String,
+    disk_used: String,
     disk_total: String,
 }
 
@@ -316,7 +324,9 @@ pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
 
     use_future(move || async move {
         loop {
-            let snapshot = tokio::task::spawn_blocking(read_sys_info).await.unwrap_or_default();
+            let snapshot = tokio::task::spawn_blocking(read_sys_info)
+                .await
+                .unwrap_or_default();
             info.set(snapshot);
             tokio::time::sleep(std::time::Duration::from_secs(10)).await;
         }
@@ -324,11 +334,11 @@ pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
 
     let i = info.read();
 
-    let scale      = content_scale(w, h, 280.0, 190.0, 3.0);
-    let font_size  = (13.0 * scale).clamp(10.0, 32.0);
+    let scale = content_scale(w, h, 280.0, 190.0, 3.0);
+    let font_size = (13.0 * scale).clamp(10.0, 32.0);
     let title_size = (12.0 * scale).clamp(9.0, 28.0);
-    let gap        = (10.0 * scale).clamp(4.0, 24.0);
-    let icon_size  = (16.0 * scale).clamp(12.0, 40.0);
+    let gap = (10.0 * scale).clamp(4.0, 24.0);
+    let icon_size = (16.0 * scale).clamp(12.0, 40.0);
 
     rsx! {
         div {
@@ -368,13 +378,7 @@ pub fn SystemInfoWidget(w: f64, h: f64) -> Element {
 // ── SysRow ────────────────────────────────────────────────────────────────────
 
 #[component]
-fn SysRow(
-    icon:      String,
-    label:     String,
-    value:     String,
-    font_size: f64,
-    icon_size: f64,
-) -> Element {
+fn SysRow(icon: String, label: String, value: String, font_size: f64, icon_size: f64) -> Element {
     let label_min_w = font_size * 4.5; // ~4.5 chars wide at current font size
 
     rsx! {
@@ -410,7 +414,7 @@ fn SysRow(
 pub fn QuickNotesWidget(w: f64, h: f64) -> Element {
     let mut text = use_signal(|| String::new());
 
-    let scale     = content_scale(w, h, 300.0, 230.0, 3.0);
+    let scale = content_scale(w, h, 300.0, 230.0, 3.0);
     let font_size = (13.0 * scale).clamp(11.0, 32.0);
     // Header + padding ≈ 60px scaled, remainder goes to the textarea.
     let textarea_h = (h - 60.0 * scale).max(60.0);
@@ -459,7 +463,7 @@ pub fn QuickNotesWidget(w: f64, h: f64) -> Element {
 #[component]
 pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
     let label = kind.label();
-    let icon  = kind.icon().to_string();
+    let icon = kind.icon().to_string();
 
     rsx! {
         div {
@@ -493,10 +497,10 @@ pub fn PlaceholderWidget(kind: WidgetKind) -> Element {
 /// Displays an empty state until the message bus (Phase G) is connected.
 #[component]
 pub fn MessagesWidget(w: f64, h: f64) -> Element {
-    let scale      = content_scale(w, h, 320.0, 220.0, 3.0);
-    let font_size  = (13.0 * scale).clamp(10.0, 32.0);
+    let scale = content_scale(w, h, 320.0, 220.0, 3.0);
+    let font_size = (13.0 * scale).clamp(10.0, 32.0);
     let title_size = (12.0 * scale).clamp(9.0, 28.0);
-    let icon_size  = (28.0 * scale).clamp(20.0, 64.0);
+    let icon_size = (28.0 * scale).clamp(20.0, 64.0);
 
     rsx! {
         div {
@@ -548,25 +552,25 @@ pub fn MessagesWidget(w: f64, h: f64) -> Element {
 /// Completed tasks are struck through. State is not persisted across restarts.
 #[derive(Clone)]
 struct Task {
-    id:   u32,
+    id: u32,
     text: String,
     done: bool,
 }
 
 #[component]
 pub fn MyTasksWidget(w: f64, h: f64) -> Element {
-    let mut tasks:         Signal<Vec<Task>> = use_signal(Vec::new);
-    let mut new_task_text: Signal<String>    = use_signal(String::new);
-    let mut next_id:       Signal<u32>       = use_signal(|| 0);
+    let mut tasks: Signal<Vec<Task>> = use_signal(Vec::new);
+    let mut new_task_text: Signal<String> = use_signal(String::new);
+    let mut next_id: Signal<u32> = use_signal(|| 0);
 
-    let scale      = content_scale(w, h, 320.0, 220.0, 3.0);
-    let font_size  = (13.0 * scale).clamp(10.0, 30.0);
+    let scale = content_scale(w, h, 320.0, 220.0, 3.0);
+    let font_size = (13.0 * scale).clamp(10.0, 30.0);
     let title_size = (12.0 * scale).clamp(9.0, 26.0);
-    let gap        = (4.0  * scale).clamp(2.0, 10.0);
+    let gap = (4.0 * scale).clamp(2.0, 10.0);
 
-    let task_list  = tasks.read().clone();
+    let task_list = tasks.read().clone();
     let done_count = task_list.iter().filter(|t| t.done).count();
-    let total      = task_list.len();
+    let total = task_list.len();
 
     rsx! {
         div {
@@ -685,11 +689,11 @@ pub fn MyTasksWidget(w: f64, h: f64) -> Element {
 
 fn read_sys_info() -> SysInfo {
     SysInfo {
-        hostname:   read_hostname(),
-        uptime:     read_uptime(),
-        mem_used:   read_mem_used(),
-        mem_total:  read_mem_total(),
-        disk_used:  read_disk_used(),
+        hostname: read_hostname(),
+        uptime: read_uptime(),
+        mem_used: read_mem_used(),
+        mem_total: read_mem_total(),
+        disk_used: read_disk_used(),
         disk_total: read_disk_total(),
     }
 }
@@ -709,9 +713,9 @@ fn read_uptime() -> String {
         .and_then(|s| s.parse().ok())
         .unwrap_or(0.0);
     let secs = secs as u64;
-    let days  = secs / 86400;
+    let days = secs / 86400;
     let hours = (secs % 86400) / 3600;
-    let mins  = (secs % 3600) / 60;
+    let mins = (secs % 3600) / 60;
     if days > 0 {
         format!("{days}d {hours}h {mins}m")
     } else if hours > 0 {
@@ -745,7 +749,7 @@ fn read_mem_total() -> String {
 }
 
 fn read_mem_used() -> String {
-    let total     = parse_meminfo_kb("MemTotal:");
+    let total = parse_meminfo_kb("MemTotal:");
     let available = parse_meminfo_kb("MemAvailable:");
     kb_to_display(total.saturating_sub(available))
 }
@@ -769,9 +773,13 @@ fn disk_stat(used: bool) -> String {
     let _ = lines.next(); // header
     let data = lines.next().unwrap_or("");
     let mut parts = data.split_whitespace();
-    let used_kb:  u64 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    let used_kb: u64 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let total_kb: u64 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
-    if used { kb_to_display(used_kb) } else { kb_to_display(total_kb) }
+    if used {
+        kb_to_display(used_kb)
+    } else {
+        kb_to_display(total_kb)
+    }
 }
 
 // ── BotStatusWidget ───────────────────────────────────────────────────────────
@@ -783,13 +791,13 @@ fn disk_stat(used: bool) -> String {
 #[component]
 pub fn BotStatusWidget(bot_name: String, w: f64, h: f64) -> Element {
     let scale = content_scale(w, h, 260.0, 140.0, 1.6);
-    let font  = 12.0 * scale;
+    let font = 12.0 * scale;
     let title = 14.0 * scale;
 
     // In a real implementation this would read from the bot's SQLite DB.
     // For now we show a static status that will be wired up via Bus in Phase P.
     let status_color = "#22c55e";
-    let status_text  = "● Running";
+    let status_text = "● Running";
 
     rsx! {
         div {

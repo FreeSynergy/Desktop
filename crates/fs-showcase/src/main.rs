@@ -46,9 +46,9 @@ mod showcase {
     #[allow(non_snake_case)]
     pub fn showcase_app() -> Element {
         let mut btn_loading = use_signal(|| false);
-        let mut input_val   = use_signal(|| String::new());
-        let mut checked     = use_signal(|| false);
-        let mut select_val  = use_signal(|| "md".to_string());
+        let mut input_val = use_signal(|| String::new());
+        let mut checked = use_signal(|| false);
+        let mut select_val = use_signal(|| "md".to_string());
 
         rsx! {
             style {
@@ -229,7 +229,7 @@ mod showcase {
     #[component]
     fn ToastTrigger(level: String, label: String) -> Element {
         let mut toast = use_toast();
-        let lv  = level.clone();
+        let lv = level.clone();
         let lbl = label.clone();
 
         rsx! {

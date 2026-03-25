@@ -24,19 +24,27 @@ use crate::icons::{ICON_MANAGERS, ICON_SETTINGS};
 /// Domain types implement this trait and supply their own id, icon, and label.
 pub trait SidebarEntry {
     fn sidebar_item(&self) -> SidebarItem;
-    fn is_pinned(&self) -> bool { false }
+    fn is_pinned(&self) -> bool {
+        false
+    }
 }
 
 /// An installed package knows how to render itself as a sidebar item.
 impl SidebarEntry for InstalledPackage {
     fn sidebar_item(&self) -> SidebarItem {
-        let key   = format!("shell.nav.{}", self.id);
+        let key = format!("shell.nav.{}", self.id);
         let label = fs_i18n::t(&key);
-        let label = if label == key { self.name.clone() } else { label.into() };
+        let label = if label == key {
+            self.name.clone()
+        } else {
+            label.into()
+        };
         SidebarItem::new(self.id.clone(), self.icon.clone(), label)
     }
 
-    fn is_pinned(&self) -> bool { self.pinned }
+    fn is_pinned(&self) -> bool {
+        self.pinned
+    }
 }
 
 // ── ManagerBundle ─────────────────────────────────────────────────────────────

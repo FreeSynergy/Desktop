@@ -21,11 +21,11 @@ const EN_TOML: &str = include_str!("../assets/i18n/en.toml");
 
 #[derive(Clone, PartialEq, Debug)]
 struct TranslationEntry {
-    key:        String,
-    en_value:   String,
+    key: String,
+    en_value: String,
     /// Current value in the target language (empty = untranslated).
     target_val: String,
-    edited:     bool,
+    edited: bool,
 }
 
 impl TranslationEntry {
@@ -47,11 +47,15 @@ fn flatten_toml(toml_str: &str) -> Vec<(String, String)> {
 
 fn flatten_table(table: &toml::Table, prefix: String, out: &mut Vec<(String, String)>) {
     for (k, v) in table {
-        let full_key = if prefix.is_empty() { k.clone() } else { format!("{prefix}.{k}") };
+        let full_key = if prefix.is_empty() {
+            k.clone()
+        } else {
+            format!("{prefix}.{k}")
+        };
         match v {
             toml::Value::String(s) => out.push((full_key, s.clone())),
-            toml::Value::Table(t)  => flatten_table(t, full_key, out),
-            other                  => out.push((full_key, other.to_string())),
+            toml::Value::Table(t) => flatten_table(t, full_key, out),
+            other => out.push((full_key, other.to_string())),
         }
     }
 }
@@ -82,7 +86,7 @@ fn load_installed_translation(lang_code: &str) -> Vec<(String, String)> {
 }
 
 fn build_entries(lang_code: &str) -> Vec<TranslationEntry> {
-    let en_pairs  = flatten_toml(EN_TOML);
+    let en_pairs = flatten_toml(EN_TOML);
     let tgt_pairs = load_installed_translation(lang_code);
     let tgt_map: std::collections::HashMap<String, String> = tgt_pairs.into_iter().collect();
 
@@ -90,7 +94,12 @@ fn build_entries(lang_code: &str) -> Vec<TranslationEntry> {
         .into_iter()
         .map(|(key, en_value)| {
             let target_val = tgt_map.get(&key).cloned().unwrap_or_default();
-            TranslationEntry { key, en_value, target_val, edited: false }
+            TranslationEntry {
+                key,
+                en_value,
+                target_val,
+                edited: false,
+            }
         })
         .collect()
 }
@@ -99,9 +108,9 @@ fn build_entries(lang_code: &str) -> Vec<TranslationEntry> {
 
 /// Auto-generates the LLM prompt: EN reference + missing keys.
 fn build_llm_prompt(
-    lang_name:    &str,
-    lang_code:    &str,
-    entries:      &[TranslationEntry],
+    lang_name: &str,
+    lang_code: &str,
+    entries: &[TranslationEntry],
     user_request: &str,
 ) -> String {
     let missing: Vec<&TranslationEntry> = entries
@@ -125,7 +134,10 @@ fn build_llm_prompt(
     }
 
     if !user_request.trim().is_empty() {
-        prompt.push_str(&format!("\nAdditional instruction: {}", user_request.trim()));
+        prompt.push_str(&format!(
+            "\nAdditional instruction: {}",
+            user_request.trim()
+        ));
     }
 
     prompt
@@ -218,16 +230,15 @@ async fn call_llm_service(service_name: &str, prompt: String) -> Result<String, 
 pub fn TranslationEditor(
     lang_code: String,
     lang_name: String,
-    on_close:  EventHandler<()>,
+    on_close: EventHandler<()>,
 ) -> Element {
-    let entries          = use_signal(|| build_entries(&lang_code));
+    let entries = use_signal(|| build_entries(&lang_code));
     let mut filter_empty = use_signal(|| false);
     let mut search_query = use_signal(String::new);
 
     // Git contributor status
-    let contrib = use_signal(|| {
-        GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown)
-    });
+    let contrib =
+        use_signal(|| GitContributorCheck::cached().unwrap_or(ContributorStatus::Unknown));
     {
         let mut contrib = contrib.clone();
         use_future(move || async move {
@@ -239,28 +250,32 @@ pub fn TranslationEditor(
     }
 
     // LLM: check if an "llm" service role is configured
-    let role_cfg         = load_role_assignments();
-    let llm_service      = role_cfg.get("llm").map(|s| s.to_string());
-    let llm_available    = llm_service.is_some();
+    let role_cfg = load_role_assignments();
+    let llm_service = role_cfg.get("llm").map(|s| s.to_string());
+    let llm_available = llm_service.is_some();
     let llm_service_name = llm_service.unwrap_or_default();
 
     // LLM panel state
-    let mut show_llm_panel  = use_signal(|| false);
-    let mut llm_request     = use_signal(String::new);
-    let llm_busy        = use_signal(|| false);
+    let mut show_llm_panel = use_signal(|| false);
+    let mut llm_request = use_signal(String::new);
+    let llm_busy = use_signal(|| false);
     let llm_proposals: Signal<Vec<(String, String)>> = use_signal(Vec::new);
-    let llm_error       = use_signal(|| Option::<String>::None);
+    let llm_error = use_signal(|| Option::<String>::None);
 
     // Push state
     let push_msg = use_signal(|| Option::<Result<String, String>>::None);
 
     // Derived counts
-    let total      = entries.read().len();
+    let total = entries.read().len();
     let translated = entries.read().iter().filter(|e| e.is_translated()).count();
-    let pct        = if total > 0 { (translated * 100) / total } else { 0 };
+    let pct = if total > 0 {
+        (translated * 100) / total
+    } else {
+        0
+    };
 
     // Filtered entries
-    let query      = search_query.read().to_lowercase();
+    let query = search_query.read().to_lowercase();
     let show_empty = *filter_empty.read();
     let visible: Vec<(usize, TranslationEntry)> = entries
         .read()
@@ -781,10 +796,7 @@ pub fn TranslationEditor(
 // ── TranslationRow ────────────────────────────────────────────────────────────
 
 #[component]
-fn TranslationRow(
-    entry:     TranslationEntry,
-    on_change: EventHandler<String>,
-) -> Element {
+fn TranslationRow(entry: TranslationEntry, on_change: EventHandler<String>) -> Element {
     let row_bg = if entry.edited {
         "background: rgba(234,179,8,0.06);"
     } else if !entry.is_translated() {

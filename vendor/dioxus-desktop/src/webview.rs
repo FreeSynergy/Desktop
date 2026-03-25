@@ -1,28 +1,24 @@
-use crate::element::DesktopElement;
-use crate::file_upload::DesktopFileDragEvent;
+use crate::file_upload::{DesktopFileData, DesktopFileDragEvent};
 use crate::menubar::DioxusMenu;
+use crate::PendingDesktopContext;
 use crate::{
-    app::SharedContext,
-    assets::AssetHandlerRegistry,
-    edits::WryQueue,
-    file_upload::{NativeFileEngine, NativeFileHover},
-    ipc::UserWindowEvent,
-    protocol,
-    waker::tao_waker,
-    Config, DesktopContext, DesktopService,
+    app::SharedContext, assets::AssetHandlerRegistry, edits::WryQueue,
+    file_upload::NativeFileHover, ipc::UserWindowEvent, protocol, waker::tao_waker, Config,
+    DesktopContext, DesktopService,
 };
 use crate::{document::DesktopDocument, WeakDesktopContext};
+use crate::{element::DesktopElement, file_upload::DesktopFormData};
 use base64::prelude::BASE64_STANDARD;
-use dioxus_core::{Runtime, ScopeId, VirtualDom};
+use dioxus_core::{consume_context, provide_context, Runtime, ScopeId, VirtualDom};
 use dioxus_document::Document;
 use dioxus_history::{History, MemoryHistory};
 use dioxus_hooks::to_owned;
-use dioxus_html::{HasFileData, HtmlEvent, PlatformEventData};
+use dioxus_html::{FileData, FormValue, HtmlEvent, PlatformEventData, SerializedFileData};
 use futures_util::{pin_mut, FutureExt};
-use std::cell::OnceCell;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
+use std::{cell::OnceCell, time::Duration};
 use std::{rc::Rc, task::Waker};
-use wry::{DragDropEvent, RequestAsyncResponder, WebContext, WebViewBuilder};
+use wry::{DragDropEvent, RequestAsyncResponder, WebContext, WebViewBuilder, WebViewId};
 
 #[derive(Clone)]
 pub(crate) struct WebviewEdits {
@@ -87,7 +83,7 @@ impl WebviewEdits {
             }
             Err(err) => {
                 tracing::error!(
-                    "Error parsing user_event: {:?}.Contents: {:?}, raw: {:#?}",
+                    "Error parsing user_event: {:?}. \n Contents: {:?}, \nraw: {:#?}",
                     err,
                     String::from_utf8(request.body().to_vec()),
                     request
@@ -118,7 +114,7 @@ impl WebviewEdits {
         let desktop_context = desktop_context.upgrade().unwrap();
 
         let query = desktop_context.query.clone();
-        let recent_file = desktop_context.file_hover.clone();
+        let hovered_file = desktop_context.file_hover.clone();
 
         // check for a mounted event placeholder and replace it with a desktop specific element
         let as_any = match data {
@@ -126,22 +122,66 @@ impl WebviewEdits {
                 let element = DesktopElement::new(element, desktop_context.clone(), query.clone());
                 Rc::new(PlatformEventData::new(Box::new(element)))
             }
+            dioxus_html::EventData::Form(form) => {
+                Rc::new(PlatformEventData::new(Box::new(DesktopFormData {
+                    value: form.value,
+                    valid: form.valid,
+                    values: form
+                        .values
+                        .into_iter()
+                        .map(|obj| {
+                            if let Some(text) = obj.text {
+                                return (obj.key, FormValue::Text(text));
+                            }
+
+                            if let Some(file_data) = obj.file {
+                                if file_data.path.capacity() == 0 {
+                                    return (obj.key, FormValue::File(None));
+                                }
+
+                                return (
+                                    obj.key,
+                                    FormValue::File(Some(FileData::new(DesktopFileData(
+                                        file_data.path,
+                                    )))),
+                                );
+                            };
+
+                            (obj.key, FormValue::Text(String::new()))
+                        })
+                        .collect(),
+                })))
+            }
+            // Which also includes drops...
             dioxus_html::EventData::Drag(ref drag) => {
                 // we want to override this with a native file engine, provided by the most recent drag event
-                if drag.files().is_some() {
-                    let file_event = recent_file.current().unwrap();
-                    let paths = match file_event {
-                        wry::DragDropEvent::Enter { paths, .. } => paths,
-                        wry::DragDropEvent::Drop { paths, .. } => paths,
-                        _ => vec![],
-                    };
-                    Rc::new(PlatformEventData::new(Box::new(DesktopFileDragEvent {
-                        mouse: drag.mouse.clone(),
-                        files: Arc::new(NativeFileEngine::new(paths)),
-                    })))
-                } else {
-                    data.into_any()
-                }
+                let full_file_paths = hovered_file.current_paths();
+
+                let xfer_data = drag.data_transfer.clone();
+                let new_file_data = xfer_data
+                    .files
+                    .iter()
+                    .map(|f| {
+                        let new_path = full_file_paths
+                            .iter()
+                            .find(|p| p.ends_with(&f.path))
+                            .unwrap_or(&f.path);
+                        SerializedFileData {
+                            path: new_path.clone(),
+                            ..f.clone()
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                let new_xfer_data = dioxus_html::SerializedDataTransfer {
+                    files: new_file_data,
+                    ..xfer_data
+                };
+
+                Rc::new(PlatformEventData::new(Box::new(DesktopFileDragEvent {
+                    mouse: drag.mouse.clone(),
+                    data_transfer: new_xfer_data,
+                    files: full_file_paths,
+                })))
             }
             _ => data.into_any(),
         };
@@ -175,7 +215,7 @@ pub(crate) struct WebviewInstance {
 impl WebviewInstance {
     pub(crate) fn new(
         mut cfg: Config,
-        dom: VirtualDom,
+        mut dom: VirtualDom,
         shared: Rc<SharedContext>,
     ) -> WebviewInstance {
         let mut window = cfg.window.clone();
@@ -203,10 +243,14 @@ impl WebviewInstance {
             ));
         }
 
-        let window = window.build(&shared.target).unwrap();
+        let window = Arc::new(window.build(&shared.target).unwrap());
+        if let Some(on_build) = cfg.on_window.as_mut() {
+            on_build(window.clone(), &mut dom);
+        }
 
         // https://developer.apple.com/documentation/appkit/nswindowcollectionbehavior/nswindowcollectionbehaviormanaged
         #[cfg(target_os = "macos")]
+        #[allow(deprecated)]
         {
             use cocoa::appkit::NSWindowCollectionBehavior;
             use cocoa::base::id;
@@ -221,7 +265,7 @@ impl WebviewInstance {
         }
 
         let mut web_context = WebContext::new(cfg.data_dir.clone());
-        let edit_queue = WryQueue::default();
+        let edit_queue = shared.websocket.create_queue();
         let asset_handlers = AssetHandlerRegistry::new();
         let edits = WebviewEdits::new(dom.runtime(), edit_queue.clone());
         let file_hover = NativeFileHover::default();
@@ -235,7 +279,14 @@ impl WebviewInstance {
                 asset_handlers,
                 edits
             ];
-            move |request, responder: RequestAsyncResponder| {
+
+            #[cfg(feature = "tokio_runtime")]
+            let tokio_rt = tokio::runtime::Handle::current();
+
+            move |_id: WebViewId, request, responder: RequestAsyncResponder| {
+                #[cfg(feature = "tokio_runtime")]
+                let _guard = tokio_rt.enter();
+
                 protocol::desktop_handler(
                     request,
                     asset_handlers.clone(),
@@ -263,23 +314,17 @@ impl WebviewInstance {
 
         let file_drop_handler = {
             to_owned![file_hover];
-
-            #[cfg(windows)]
             let (proxy, window_id) = (shared.proxy.to_owned(), window.id());
-
             move |evt: DragDropEvent| {
-                // Update the most recent file drop event - when the event comes in from the webview we can use the
-                // most recent event to build a new event with the files in it.
-                #[cfg(not(windows))]
-                file_hover.set(evt);
-
-                // Windows webview blocks HTML-native events when the drop handler is provided.
-                // The problem is that the HTML-native events don't provide the file, so we need this.
-                // Solution: this glue code to mimic drag drop events.
-                #[cfg(windows)]
-                {
+                if cfg!(not(windows)) {
+                    // Update the most recent file drop event - when the event comes in from the webview we can use the
+                    // most recent event to build a new event with the files in it.
+                    file_hover.set(evt);
+                } else {
+                    // Windows webview blocks HTML-native events when the drop handler is provided.
+                    // The problem is that the HTML-native events don't provide the file, so we need this.
+                    // Solution: this glue code to mimic drag drop events.
                     file_hover.set(evt.clone());
-
                     match evt {
                         wry::DragDropEvent::Drop {
                             paths: _,
@@ -303,39 +348,9 @@ impl WebviewInstance {
             }
         };
 
-        #[cfg(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "android"
-        ))]
-        let mut webview = if cfg.as_child_window {
-            WebViewBuilder::new_as_child(&window)
-        } else {
-            WebViewBuilder::new(&window)
-        };
+        let page_loaded = AtomicBool::new(false);
 
-        #[cfg(not(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "android"
-        )))]
-        let mut webview = {
-            use tao::platform::unix::WindowExtUnix;
-            use wry::WebViewBuilderExtUnix;
-            let vbox = window.default_vbox().unwrap();
-            WebViewBuilder::new_gtk(vbox)
-        };
-
-        // Disable the webview default shortcuts to disable the reload shortcut
-        #[cfg(target_os = "windows")]
-        {
-            use wry::WebViewBuilderExtWindows;
-            webview = webview.with_browser_accelerator_keys(false);
-        }
-
-        webview = webview
+        let mut webview = WebViewBuilder::new_with_web_context(&mut web_context)
             .with_bounds(wry::Rect {
                 position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(0.0, 0.0)),
                 size: wry::dpi::Size::Physical(wry::dpi::PhysicalSize::new(
@@ -349,22 +364,45 @@ impl WebviewInstance {
             .with_navigation_handler({
                 let custom_handler = cfg.navigation_handler.take();
                 move |var: String| {
+                    // If a custom handler is set (e.g. for the Browser app), delegate to it.
                     if let Some(ref handler) = custom_handler {
                         return handler(var);
                     }
-                    // Default: allow dioxus:// only; open http/https in system browser.
-                    if var.starts_with("dioxus://") || var.starts_with("http://dioxus.") {
-                        true
+                    // Default: only allow dioxus:// protocol (initial load), open
+                    // http/https/mailto in the system browser, block everything else.
+                    if var.starts_with("dioxus://")
+                        || var.starts_with("http://dioxus.")
+                        || var.starts_with("https://dioxus.")
+                    {
+                        let page_loaded = page_loaded.swap(true, std::sync::atomic::Ordering::SeqCst);
+                        !page_loaded
                     } else {
-                        if var.starts_with("http://") || var.starts_with("https://") {
+                        if var.starts_with("http://")
+                            || var.starts_with("https://")
+                            || var.starts_with("mailto:")
+                        {
                             _ = webbrowser::open(&var);
                         }
                         false
                     }
                 }
-            })
-            .with_asynchronous_custom_protocol(String::from("dioxus"), request_handler)
-            .with_web_context(&mut web_context);
+            }) // navigation handler (default: block; override via Config::with_navigation_handler)
+            .with_asynchronous_custom_protocol(String::from("dioxus"), request_handler);
+
+        // Enable https scheme on android, needed for secure context API, like the geolocation API
+        #[cfg(target_os = "android")]
+        {
+            use wry::WebViewBuilderExtAndroid as _;
+
+            webview = webview.with_https_scheme(true);
+        };
+
+        // Disable the webview default shortcuts to disable the reload shortcut
+        #[cfg(target_os = "windows")]
+        {
+            use wry::WebViewBuilderExtWindows;
+            webview = webview.with_browser_accelerator_keys(false);
+        }
 
         if !cfg.disable_file_drop_handler {
             webview = webview.with_drag_drop_handler(file_drop_handler);
@@ -375,11 +413,25 @@ impl WebviewInstance {
         }
 
         for (name, handler) in cfg.protocols.drain(..) {
-            webview = webview.with_custom_protocol(name, handler);
+            #[cfg(feature = "tokio_runtime")]
+            let tokio_rt = tokio::runtime::Handle::current();
+
+            webview = webview.with_custom_protocol(name, move |a, b| {
+                #[cfg(feature = "tokio_runtime")]
+                let _guard = tokio_rt.enter();
+                handler(a, b)
+            });
         }
 
         for (name, handler) in cfg.asynchronous_protocols.drain(..) {
-            webview = webview.with_asynchronous_custom_protocol(name, handler);
+            #[cfg(feature = "tokio_runtime")]
+            let tokio_rt = tokio::runtime::Handle::current();
+
+            webview = webview.with_asynchronous_custom_protocol(name, move |a, b, c| {
+                #[cfg(feature = "tokio_runtime")]
+                let _guard = tokio_rt.enter();
+                handler(a, b, c)
+            });
         }
 
         const INITIALIZATION_SCRIPT: &str = r#"
@@ -402,8 +454,6 @@ impl WebviewInstance {
             webview = webview.with_devtools(true);
         }
 
-        let webview = webview.build().unwrap();
-
         let menu = if cfg!(not(any(target_os = "android", target_os = "ios"))) {
             let menu_option = cfg.menu.into();
             if let Some(menu) = &menu_option {
@@ -414,23 +464,61 @@ impl WebviewInstance {
             None
         };
 
+        #[cfg(target_os = "windows")]
+        {
+            use wry::WebViewBuilderExtWindows;
+            if let Some(additional_windows_args) = &cfg.additional_windows_args {
+                webview = webview.with_additional_browser_args(additional_windows_args);
+            }
+        }
+
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        ))]
+        let webview = if cfg.as_child_window {
+            webview.build_as_child(&window)
+        } else {
+            webview.build(&window)
+        };
+
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        )))]
+        let webview = {
+            use tao::platform::unix::WindowExtUnix;
+            use wry::WebViewBuilderExtUnix;
+            let vbox = window.default_vbox().unwrap();
+            webview.build_gtk(vbox)
+        };
+        let webview = webview.unwrap();
+
         let desktop_context = Rc::from(DesktopService::new(
             webview,
             window,
             shared.clone(),
             asset_handlers,
             file_hover,
+            cfg.window_close_behavior,
         ));
 
         // Provide the desktop context to the virtual dom and edit handler
         edits.set_desktop_context(Rc::downgrade(&desktop_context));
         let provider: Rc<dyn Document> = Rc::new(DesktopDocument::new(desktop_context.clone()));
         let history_provider: Rc<dyn History> = Rc::new(MemoryHistory::default());
-        dom.in_runtime(|| {
-            ScopeId::ROOT.provide_context(desktop_context.clone());
-            ScopeId::ROOT.provide_context(provider);
-            ScopeId::ROOT.provide_context(history_provider);
+        dom.in_scope(ScopeId::ROOT, || {
+            provide_context(desktop_context.clone());
+            provide_context(provider);
+            provide_context(history_provider);
         });
+
+        // Request an initial redraw
+        desktop_context.window.request_redraw();
 
         WebviewInstance {
             dom,
@@ -449,6 +537,24 @@ impl WebviewInstance {
         // Wait for work will return Ready when it has edits to be sent to the webview
         // It will return Pending when it needs to be polled again - nothing is ready
         loop {
+            // Check if there is a new edit channel we need to send. On IOS,
+            // the websocket will be killed when the device is put into sleep. If we
+            // find the socket has been closed, we create a new socket and send it to
+            // the webview to continue on
+            // https://github.com/DioxusLabs/dioxus/issues/4374
+            if self
+                .edits
+                .wry_queue
+                .poll_new_edits_location(&mut cx)
+                .is_ready()
+            {
+                _ = self.desktop_context.webview.evaluate_script(&format!(
+                    "window.interpreter.waitForRequest(\"{edits_path}\", \"{expected_key}\");",
+                    edits_path = self.edits.wry_queue.edits_path(),
+                    expected_key = self.edits.wry_queue.required_server_key()
+                ));
+            }
+
             // If we're waiting for a render, wait for it to finish before we continue
             let edits_flushed_poll = self.edits.wry_queue.poll_edits_flushed(&mut cx);
             if edits_flushed_poll.is_pending() {
@@ -486,6 +592,31 @@ impl WebviewInstance {
             .webview
             .evaluate_script("window.interpreter.kickAllStylesheetsOnPage()");
     }
+
+    /// Displays a toast to the developer.
+    pub(crate) fn show_toast(
+        &self,
+        header_text: &str,
+        message: &str,
+        level: &str,
+        duration: Duration,
+        after_reload: bool,
+    ) {
+        let as_ms = duration.as_millis();
+
+        let js_fn_name = match after_reload {
+            true => "scheduleDXToast",
+            false => "showDXToast",
+        };
+
+        _ = self.desktop_context.webview.evaluate_script(&format!(
+            r#"
+                if (typeof {js_fn_name} !== "undefined") {{
+                    window.{js_fn_name}("{header_text}", "{message}", "{level}", {as_ms});
+                }}
+                "#,
+        ));
+    }
 }
 
 /// A synchronous response to a browser event which may prevent the default browser's action
@@ -500,5 +631,33 @@ impl SynchronousEventResponse {
     #[allow(unused)]
     pub fn new(prevent_default: bool) -> Self {
         Self { prevent_default }
+    }
+}
+
+/// A webview that is queued to be created. We can't spawn webviews outside of the main event loop because it may
+/// block on windows so we queue them into the shared context and then create them when the main event loop is ready.
+pub(crate) struct PendingWebview {
+    dom: VirtualDom,
+    cfg: Config,
+    sender: futures_channel::oneshot::Sender<DesktopContext>,
+}
+
+impl PendingWebview {
+    pub(crate) fn new(dom: VirtualDom, cfg: Config) -> (Self, PendingDesktopContext) {
+        let (sender, receiver) = futures_channel::oneshot::channel();
+        let webview = Self { dom, cfg, sender };
+        let pending = PendingDesktopContext { receiver };
+        (webview, pending)
+    }
+
+    pub(crate) fn create_window(self, shared: &Rc<SharedContext>) -> WebviewInstance {
+        let window = WebviewInstance::new(self.cfg, self.dom, shared.clone());
+
+        let cx = window
+            .dom
+            .in_scope(ScopeId::ROOT, consume_context::<Rc<DesktopService>>);
+        _ = self.sender.send(cx);
+
+        window
     }
 }

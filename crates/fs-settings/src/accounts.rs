@@ -47,7 +47,9 @@ impl AccountsConfig {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        let cfg = AccountsConfig { providers: providers.to_vec() };
+        let cfg = AccountsConfig {
+            providers: providers.to_vec(),
+        };
         let content = toml::to_string_pretty(&cfg).map_err(|e| e.to_string())?;
         std::fs::write(&path, content).map_err(|e| e.to_string())
     }
@@ -95,11 +97,9 @@ pub fn AccountSettings() -> Element {
     let mut form = use_signal(AddProviderForm::default);
     let mut status_msg: Signal<Option<String>> = use_signal(|| None);
 
-    let mut save = move || {
-        match AccountsConfig::save(&providers.read()) {
-            Ok(()) => *status_msg.write() = None,
-            Err(e) => *status_msg.write() = Some(format!("Save error: {e}")),
-        }
+    let mut save = move || match AccountsConfig::save(&providers.read()) {
+        Ok(()) => *status_msg.write() = None,
+        Err(e) => *status_msg.write() = Some(format!("Save error: {e}")),
     };
 
     rsx! {

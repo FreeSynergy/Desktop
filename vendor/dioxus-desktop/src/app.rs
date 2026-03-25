@@ -1,26 +1,24 @@
 use crate::{
     config::{Config, WindowCloseBehaviour},
+    edits::EditWebsocket,
     event_handlers::WindowEventHandlers,
-    file_upload::{DesktopFileUploadForm, FileDialogRequest, NativeFileEngine},
     ipc::{IpcMessage, UserWindowEvent},
     query::QueryResult,
     shortcut::ShortcutRegistry,
-    webview::WebviewInstance,
+    webview::{PendingWebview, WebviewInstance},
 };
-use dioxus_core::{ElementId, VirtualDom};
-use dioxus_html::PlatformEventData;
+use dioxus_core::VirtualDom;
 use std::{
-    any::Any,
     cell::{Cell, RefCell},
     collections::HashMap,
     rc::Rc,
-    sync::Arc,
+    time::Duration,
 };
 use tao::{
     dpi::PhysicalSize,
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget},
-    window::{Window, WindowId},
+    window::WindowId,
 };
 
 /// The single top-level object that manages all the running windows, assets, shortcuts, etc
@@ -33,7 +31,8 @@ pub(crate) struct App {
     // Stuff we need mutable access to
     pub(crate) control_flow: ControlFlow,
     pub(crate) is_visible_before_start: bool,
-    pub(crate) window_behavior: WindowCloseBehaviour,
+    pub(crate) exit_on_last_window_close: bool,
+    pub(crate) disable_dma_buf_on_wayland: bool,
     pub(crate) webviews: HashMap<WindowId, WebviewInstance>,
     pub(crate) float_all: bool,
     pub(crate) show_devtools: bool,
@@ -47,10 +46,11 @@ pub(crate) struct App {
 /// A bundle of state shared between all the windows, providing a way for us to communicate with running webview.
 pub(crate) struct SharedContext {
     pub(crate) event_handlers: WindowEventHandlers,
-    pub(crate) pending_webviews: RefCell<Vec<WebviewInstance>>,
+    pub(crate) pending_webviews: RefCell<Vec<PendingWebview>>,
     pub(crate) shortcut_manager: ShortcutRegistry,
     pub(crate) proxy: EventLoopProxy<UserWindowEvent>,
     pub(crate) target: EventLoopWindowTarget<UserWindowEvent>,
+    pub(crate) websocket: EditWebsocket,
 }
 
 impl App {
@@ -61,7 +61,8 @@ impl App {
             .unwrap_or_else(|| EventLoopBuilder::<UserWindowEvent>::with_user_event().build());
 
         let app = Self {
-            window_behavior: cfg.last_window_close_behavior,
+            exit_on_last_window_close: cfg.exit_on_last_window_close,
+            disable_dma_buf_on_wayland: cfg.disable_dma_buf_on_wayland,
             is_visible_before_start: true,
             webviews: HashMap::new(),
             control_flow: ControlFlow::Wait,
@@ -75,6 +76,7 @@ impl App {
                 shortcut_manager: ShortcutRegistry::new(),
                 proxy: event_loop.create_proxy(),
                 target: event_loop.clone(),
+                websocket: EditWebsocket::start(),
             }),
         };
 
@@ -100,6 +102,9 @@ impl App {
         #[cfg(debug_assertions)]
         #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
         app.connect_preserve_window_state_handler();
+
+        // Make sure to disable DMA buffer rendering on Linux Wayland sessions
+        app.disable_dma_buf();
 
         (event_loop, app)
     }
@@ -168,60 +173,52 @@ impl App {
 
     #[cfg(all(feature = "devtools", debug_assertions))]
     pub fn connect_hotreload(&self) {
-        if let Some(endpoint) = dioxus_cli_config::devserver_ws_endpoint() {
-            let proxy = self.shared.proxy.clone();
-            dioxus_devtools::connect(endpoint, move |msg| {
-                _ = proxy.send_event(UserWindowEvent::HotReloadEvent(msg));
-            })
-        }
+        let proxy = self.shared.proxy.clone();
+        dioxus_devtools::connect(move |msg| {
+            _ = proxy.send_event(UserWindowEvent::HotReloadEvent(msg));
+        })
     }
 
     pub fn handle_new_window(&mut self) {
-        for handler in self.shared.pending_webviews.borrow_mut().drain(..) {
-            let id = handler.desktop_context.window.id();
-            self.webviews.insert(id, handler);
+        for pending_webview in self.shared.pending_webviews.borrow_mut().drain(..) {
+            let window = pending_webview.create_window(&self.shared);
+            let id = window.desktop_context.window.id();
+            self.webviews.insert(id, window);
             _ = self.shared.proxy.send_event(UserWindowEvent::Poll(id));
         }
     }
 
     pub fn handle_close_requested(&mut self, id: WindowId) {
-        use WindowCloseBehaviour::*;
+        let Some(window) = self.webviews.get(&id) else {
+            // If the window is not found, we can just return
+            return;
+        };
 
-        match self.window_behavior {
-            LastWindowExitsApp => {
+        match window.desktop_context.close_behaviour.get() {
+            // If the window is just set to hide when closed, we can just hide it
+            WindowCloseBehaviour::WindowHides => {
+                window.desktop_context.window.set_visible(false);
+            }
+
+            // If the window is set to close, we can remove it from the list of webviews
+            // If the app is set to exit when the last window closes, we should also exit the app
+            WindowCloseBehaviour::WindowCloses => {
                 #[cfg(debug_assertions)]
                 self.persist_window_state();
 
                 self.webviews.remove(&id);
-                if self.webviews.is_empty() {
+
+                if self.exit_on_last_window_close && self.webviews.is_empty() {
                     self.control_flow = ControlFlow::Exit
                 }
             }
-
-            LastWindowHides if self.webviews.len() > 1 => {
-                self.webviews.remove(&id);
-            }
-
-            LastWindowHides => {
-                if let Some(webview) = self.webviews.get(&id) {
-                    hide_last_window(&webview.desktop_context.window);
-                }
-            }
-
-            CloseWindow => {
-                self.webviews.remove(&id);
-            }
-        }
+        };
     }
 
     pub fn window_destroyed(&mut self, id: WindowId) {
         self.webviews.remove(&id);
 
-        if matches!(
-            self.window_behavior,
-            WindowCloseBehaviour::LastWindowExitsApp
-        ) && self.webviews.is_empty()
-        {
+        if self.exit_on_last_window_close && self.webviews.is_empty() {
             self.control_flow = ControlFlow::Exit
         }
     }
@@ -248,13 +245,17 @@ impl App {
             .unmounted_dom
             .take()
             .expect("Virtualdom should be set before initialization");
+        #[allow(unused_mut)]
         let mut cfg = self
             .cfg
             .take()
             .expect("Config should be set before initialization");
 
         self.is_visible_before_start = cfg.window.window.visible;
-        cfg.window = cfg.window.with_visible(false);
+        #[cfg(not(target_os = "linux"))]
+        {
+            cfg.window = cfg.window.with_visible(false);
+        }
         let explicit_window_size = cfg.window.window.inner_size;
         let explicit_window_position = cfg.window.window.position;
 
@@ -271,8 +272,8 @@ impl App {
         if let Some(temp) = msg.params().as_object() {
             if temp.contains_key("href") {
                 if let Some(href) = temp.get("href").and_then(|v| v.as_str()) {
-                    if let Err(e) = webbrowser::open(href) {
-                        tracing::error!("Open Browser error: {:?}", e);
+                    if let Err(err) = webbrowser::open(href) {
+                        tracing::error!("Failed to open URL: {}", err);
                     }
                 }
             }
@@ -291,21 +292,14 @@ impl App {
 
         view.edits.wry_queue.send_edits();
 
-        view.desktop_context
-            .window
-            .set_visible(self.is_visible_before_start);
+        #[cfg(not(target_os = "linux"))]
+        {
+            view.desktop_context
+                .window
+                .set_visible(self.is_visible_before_start);
+        }
 
         _ = self.shared.proxy.send_event(UserWindowEvent::Poll(id));
-    }
-
-    /// Todo: maybe we should poll the virtualdom asking if it has any final actions to apply before closing the webview
-    ///
-    /// Technically you can handle this with the use_window_event hook
-    pub fn handle_close_msg(&mut self, id: WindowId) {
-        self.webviews.remove(&id);
-        if self.webviews.is_empty() {
-            self.control_flow = ControlFlow::Exit
-        }
     }
 
     pub fn handle_query_msg(&mut self, msg: IpcMessage, id: WindowId) {
@@ -322,12 +316,25 @@ impl App {
 
     #[cfg(all(feature = "devtools", debug_assertions))]
     pub fn handle_hot_reload_msg(&mut self, msg: dioxus_devtools::DevserverMsg) {
+        use std::time::Duration;
+
         use dioxus_devtools::DevserverMsg;
+
+        // Amount of time that toats should be displayed.
+        const TOAST_TIMEOUT: Duration = Duration::from_secs(2);
+        const TOAST_TIMEOUT_LONG: Duration = Duration::from_secs(3600); // Duration::MAX is too long for JS.
 
         match msg {
             DevserverMsg::HotReload(hr_msg) => {
                 for webview in self.webviews.values_mut() {
-                    dioxus_devtools::apply_changes(&webview.dom, &hr_msg);
+                    {
+                        // This is a place where wry says it's threadsafe but it's actually not.
+                        // If we're patching the app, we want to make sure it's not going to progress in the interim.
+                        let lock = crate::android_sync_lock::android_runtime_lock();
+                        dioxus_devtools::apply_changes(&webview.dom, &hr_msg);
+                        drop(lock);
+                    }
+
                     webview.poll_vdom();
                 }
 
@@ -336,47 +343,67 @@ impl App {
                         webview.kick_stylsheets();
                     }
                 }
+
+                if hr_msg.jump_table.is_some()
+                    && hr_msg.for_build_id == Some(dioxus_cli_config::build_id())
+                {
+                    self.send_toast_to_all(
+                        "Hot-patch success!",
+                        &format!("App successfully patched in {} ms", hr_msg.ms_elapsed),
+                        "success",
+                        TOAST_TIMEOUT,
+                        false,
+                    );
+                }
             }
-            DevserverMsg::FullReloadCommand
-            | DevserverMsg::FullReloadStart
-            | DevserverMsg::FullReloadFailed => {
-                // usually only web gets this message - what are we supposed to do?
-                // Maybe we could just binary patch ourselves in place without losing window state?
+            DevserverMsg::FullReloadCommand => {
+                self.send_toast_to_all(
+                    "Successfully rebuilt.",
+                    "Your app was rebuilt successfully and without error.",
+                    "success",
+                    TOAST_TIMEOUT,
+                    true,
+                );
             }
+            DevserverMsg::FullReloadStart => self.send_toast_to_all(
+                "Your app is being rebuilt.",
+                "A non-hot-reloadable change occurred and we must rebuild.",
+                "info",
+                TOAST_TIMEOUT_LONG,
+                false,
+            ),
+            DevserverMsg::FullReloadFailed => self.send_toast_to_all(
+                "Oops! The build failed.",
+                "We tried to rebuild your app, but something went wrong.",
+                "error",
+                TOAST_TIMEOUT_LONG,
+                false,
+            ),
+            DevserverMsg::HotPatchStart => self.send_toast_to_all(
+                "Hot-patching app...",
+                "Hot-patching modified Rust code.",
+                "info",
+                TOAST_TIMEOUT_LONG,
+                false,
+            ),
             DevserverMsg::Shutdown => {
                 self.control_flow = ControlFlow::Exit;
             }
+            _ => {}
         }
     }
 
-    pub fn handle_file_dialog_msg(&mut self, msg: IpcMessage, window: WindowId) {
-        let Ok(file_dialog) = serde_json::from_value::<FileDialogRequest>(msg.params()) else {
-            return;
-        };
-
-        let id = ElementId(file_dialog.target);
-        let event_name = &file_dialog.event;
-        let event_bubbles = file_dialog.bubbles;
-        let files = file_dialog.get_file_event();
-
-        let as_any = Box::new(DesktopFileUploadForm {
-            files: Arc::new(NativeFileEngine::new(files)),
-        });
-
-        let data = Rc::new(PlatformEventData::new(as_any));
-
-        let Some(view) = self.webviews.get_mut(&window) else {
-            return;
-        };
-
-        let event = dioxus_core::Event::new(data as Rc<dyn Any>, event_bubbles);
-
-        let runtime = view.dom.runtime();
-        if event_name == "change&input" {
-            runtime.handle_event("input", event.clone(), id);
-            runtime.handle_event("change", event, id);
-        } else {
-            runtime.handle_event(event_name, event, id);
+    #[cfg(all(feature = "devtools", debug_assertions))]
+    fn send_toast_to_all(
+        &self,
+        header_text: &str,
+        message: &str,
+        level: &str,
+        duration: Duration,
+        after_reload: bool,
+    ) {
+        for webview in self.webviews.values() {
+            webview.show_toast(header_text, message, level, duration, after_reload);
         }
     }
 
@@ -464,19 +491,25 @@ impl App {
             let Ok(position) = window.outer_position() else {
                 return;
             };
+            let (x, y) = if cfg!(target_os = "macos") {
+                let position = position.to_logical::<i32>(window.scale_factor());
+                (position.x, position.y)
+            } else {
+                (position.x, position.y)
+            };
 
-            let size = window.outer_size();
-
-            let x = position.x;
-            let y = position.y;
-
-            // This is to work around a bug in how tao handles inner_size on macOS
-            // We *want* to use inner_size, but that's currently broken, so we use outer_size instead and then an adjustment
-            //
-            // https://github.com/tauri-apps/tao/issues/889
-            let adjustment = match window.is_decorated() {
-                true if cfg!(target_os = "macos") => 56,
-                _ => 0,
+            let (width, height) = if cfg!(target_os = "macos") {
+                let size = window.outer_size();
+                let size = size.to_logical::<u32>(window.scale_factor());
+                // This is to work around a bug in how tao handles inner_size on macOS
+                // We *want* to use inner_size, but that's currently broken, so we use outer_size instead and then an adjustment
+                //
+                // https://github.com/tauri-apps/tao/issues/889
+                let adjustment = if window.is_decorated() { 28 } else { 0 };
+                (size.width, size.height.saturating_sub(adjustment))
+            } else {
+                let size = window.inner_size();
+                (size.width, size.height)
             };
 
             let Some(monitor_name) = monitor.name() else {
@@ -486,8 +519,8 @@ impl App {
             let state = PreservedWindowState {
                 x,
                 y,
-                width: size.width.max(200),
-                height: size.height.saturating_sub(adjustment).max(200),
+                width: width.max(200),
+                height: height.max(200),
                 monitor: monitor_name.to_string(),
             };
 
@@ -523,14 +556,24 @@ impl App {
 
                 // Only set the outer position if it wasn't explicitly set
                 if explicit_window_position.is_none() {
-                    window.set_outer_position(tao::dpi::PhysicalPosition::new(
-                        position.0, position.1,
-                    ));
+                    if cfg!(target_os = "macos") {
+                        window.set_outer_position(tao::dpi::LogicalPosition::new(
+                            position.0, position.1,
+                        ));
+                    } else {
+                        window.set_outer_position(tao::dpi::PhysicalPosition::new(
+                            position.0, position.1,
+                        ));
+                    }
                 }
 
                 // Only set the inner size if it wasn't explicitly set
                 if explicit_inner_size.is_none() {
-                    window.set_inner_size(tao::dpi::PhysicalSize::new(size.0, size.1));
+                    if cfg!(target_os = "macos") {
+                        window.set_inner_size(tao::dpi::LogicalSize::new(size.0, size.1));
+                    } else {
+                        window.set_inner_size(tao::dpi::PhysicalSize::new(size.0, size.1));
+                    }
                 }
             }
         }
@@ -555,8 +598,30 @@ impl App {
                         }
 
                         // give it a moment for the event to be processed
-                        std::thread::sleep(std::time::Duration::from_secs(1));
+                        std::thread::sleep(std::time::Duration::from_millis(100));
                     }
+                }
+            });
+        }
+    }
+
+    /// Disable DMA buffer rendering on Linux Wayland sessions to avoid bugs with WebKitGTK
+    fn disable_dma_buf(&self) {
+        if cfg!(target_os = "linux") && self.disable_dma_buf_on_wayland {
+            static INIT: std::sync::Once = std::sync::Once::new();
+            INIT.call_once(|| {
+                if std::path::Path::new("/dev/dri").exists()
+                    && std::env::var("XDG_SESSION_TYPE").unwrap_or_default() == "wayland"
+                {
+                    // Gnome Webkit is currently buggy under Wayland and KDE, so we will run it with XWayland mode.
+                    // See: https://github.com/DioxusLabs/dioxus/issues/3667
+                    unsafe {
+                        // Disable explicit sync for NVIDIA drivers on Linux when using Way
+                        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+                    }
+                }
+                unsafe {
+                    std::env::set_var("GDK_BACKEND", "x11");
                 }
             });
         }
@@ -570,41 +635,6 @@ struct PreservedWindowState {
     width: u32,
     height: u32,
     monitor: String,
-}
-
-/// Hide the last window when using LastWindowHides.
-///
-/// On macOS, if we use `set_visibility(false)` on the window, it will hide the window but not show
-/// it again when the user switches back to the app. `NSApplication::hide:` has the correct behaviour,
-/// so we need to special case it.
-#[allow(unused)]
-fn hide_last_window(window: &Window) {
-    #[cfg(target_os = "windows")]
-    {
-        use tao::platform::windows::WindowExtWindows;
-        window.set_visible(false);
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        use tao::platform::unix::WindowExtUnix;
-        window.set_visible(false);
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        // window.set_visible(false); has the wrong behaviour on macOS
-        // It will hide the window but not show it again when the user switches
-        // back to the app. `NSApplication::hide:` has the correct behaviour
-        use objc::runtime::Object;
-        use objc::{msg_send, sel, sel_impl};
-        #[allow(unexpected_cfgs)]
-        objc::rc::autoreleasepool(|| unsafe {
-            let app: *mut Object = msg_send![objc::class!(NSApplication), sharedApplication];
-            let nil = std::ptr::null_mut::<Object>();
-            let _: () = msg_send![app, hide: nil];
-        });
-    }
 }
 
 /// Return the location of a tempfile with our window state in it such that we can restore it later

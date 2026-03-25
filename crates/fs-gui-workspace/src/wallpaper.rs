@@ -51,22 +51,32 @@ impl Wallpaper {
             WallpaperSource::Color { hex } => format!("background-color: {};", hex),
             WallpaperSource::Gradient { css } => format!("background: {};", css),
             WallpaperSource::Url { url } => {
-                format!("background-image: url('{}'); background-size: {};", url, self.fit_css())
+                format!(
+                    "background-image: url('{}'); background-size: {};",
+                    url,
+                    self.fit_css()
+                )
             }
             WallpaperSource::File { path } => {
-                format!("background-image: url('file://{}'); background-size: {};", path, self.fit_css())
+                format!(
+                    "background-image: url('file://{}'); background-size: {};",
+                    path,
+                    self.fit_css()
+                )
             }
-            WallpaperSource::Default => "background: linear-gradient(135deg, #0f172a, #1e293b);".into(),
+            WallpaperSource::Default => {
+                "background: linear-gradient(135deg, #0f172a, #1e293b);".into()
+            }
         }
     }
 
     fn fit_css(&self) -> &'static str {
         match self.fit {
-            WallpaperFit::Cover   => "cover",
+            WallpaperFit::Cover => "cover",
             WallpaperFit::Contain => "contain",
             WallpaperFit::Stretch => "100% 100%",
-            WallpaperFit::Center  => "auto",
-            WallpaperFit::Tile    => "auto",
+            WallpaperFit::Center => "auto",
+            WallpaperFit::Tile => "auto",
         }
     }
 }

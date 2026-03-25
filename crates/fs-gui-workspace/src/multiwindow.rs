@@ -29,7 +29,9 @@ impl MultiwindowHandle {
     #[cfg(feature = "desktop")]
     pub fn open_managers(&self) {
         spawn_window(
-            DesktopConfig::new().with_title("FreeSynergy \u{2014} Managers").with_size(900.0, 640.0),
+            DesktopConfig::new()
+                .with_title("FreeSynergy \u{2014} Managers")
+                .with_size(900.0, 640.0),
             fs_managers::ManagersApp,
         );
     }
@@ -38,7 +40,9 @@ impl MultiwindowHandle {
     #[cfg(feature = "desktop")]
     pub fn open_settings(&self) {
         spawn_window(
-            DesktopConfig::new().with_title("FreeSynergy \u{2014} Settings").with_size(800.0, 640.0),
+            DesktopConfig::new()
+                .with_title("FreeSynergy \u{2014} Settings")
+                .with_size(800.0, 640.0),
             settings_standalone,
         );
     }
@@ -47,7 +51,9 @@ impl MultiwindowHandle {
     #[cfg(feature = "desktop")]
     pub fn open_profile(&self) {
         spawn_window(
-            DesktopConfig::new().with_title("FreeSynergy \u{2014} Profile").with_size(700.0, 600.0),
+            DesktopConfig::new()
+                .with_title("FreeSynergy \u{2014} Profile")
+                .with_size(700.0, 600.0),
             fs_profile::ProfileApp,
         );
     }
@@ -56,7 +62,9 @@ impl MultiwindowHandle {
     #[cfg(feature = "desktop")]
     pub fn open_store(&self) {
         spawn_window(
-            DesktopConfig::new().with_title("FreeSynergy \u{2014} App Store").with_size(1000.0, 700.0),
+            DesktopConfig::new()
+                .with_title("FreeSynergy \u{2014} App Store")
+                .with_size(1000.0, 700.0),
             fs_store_app::StoreApp,
         );
     }
@@ -65,7 +73,9 @@ impl MultiwindowHandle {
     #[cfg(feature = "desktop")]
     pub fn open_builder(&self) {
         spawn_window(
-            DesktopConfig::new().with_title("FreeSynergy \u{2014} Builder").with_size(1000.0, 700.0),
+            DesktopConfig::new()
+                .with_title("FreeSynergy \u{2014} Builder")
+                .with_size(1000.0, 700.0),
             fs_builder::BuilderApp,
         );
     }

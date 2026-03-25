@@ -18,26 +18,97 @@ pub struct ActionDef {
 /// All desktop actions. The source of truth for shortcut defaults.
 pub fn register_actions() -> Vec<ActionDef> {
     vec![
-        ActionDef { id: "app.settings",      label: fs_i18n::t("settings.shortcuts.action_open_settings").into(), category: "App",    default_shortcut: Some("Ctrl+,") },
-        ActionDef { id: "app.launcher",       label: fs_i18n::t("settings.shortcuts.action_launcher").into(),      category: "App",    default_shortcut: Some("Ctrl+Space") },
-        ActionDef { id: "app.quit",           label: fs_i18n::t("settings.shortcuts.action_quit").into(),          category: "App",    default_shortcut: Some("Ctrl+Q") },
-        ActionDef { id: "view.fullscreen",    label: fs_i18n::t("settings.shortcuts.action_fullscreen").into(),    category: "View",   default_shortcut: Some("F11") },
-        ActionDef { id: "view.sidebar.show",  label: fs_i18n::t("settings.shortcuts.action_sidebar").into(),       category: "View",   default_shortcut: None },
-        ActionDef { id: "store.open",         label: fs_i18n::t("settings.shortcuts.action_store").into(),         category: "Tools",  default_shortcut: Some("Ctrl+S") },
-        ActionDef { id: "store.install",      label: fs_i18n::t("settings.shortcuts.action_install").into(),       category: "Tools",  default_shortcut: Some("Ctrl+I") },
-        ActionDef { id: "tasks.open",         label: fs_i18n::t("settings.shortcuts.action_tasks").into(),         category: "Tools",  default_shortcut: Some("Ctrl+T") },
-        ActionDef { id: "container-app.open", label: fs_i18n::t("settings.shortcuts.action_container").into(),    category: "Tools",  default_shortcut: None },
-        ActionDef { id: "studio.open",        label: fs_i18n::t("settings.shortcuts.action_studio").into(),        category: "Tools",  default_shortcut: None },
-        ActionDef { id: "bots.open",          label: fs_i18n::t("settings.shortcuts.action_bots").into(),          category: "Tools",  default_shortcut: None },
-        ActionDef { id: "help.open",          label: fs_i18n::t("settings.shortcuts.action_help").into(),          category: "Help",   default_shortcut: Some("F1") },
-        ActionDef { id: "help.shortcuts",     label: fs_i18n::t("settings.shortcuts.action_shortcuts").into(),     category: "Help",   default_shortcut: None },
-        ActionDef { id: "window.close",       label: fs_i18n::t("settings.shortcuts.action_close").into(),         category: "Window", default_shortcut: Some("Escape") },
+        ActionDef {
+            id: "app.settings",
+            label: fs_i18n::t("settings.shortcuts.action_open_settings").into(),
+            category: "App",
+            default_shortcut: Some("Ctrl+,"),
+        },
+        ActionDef {
+            id: "app.launcher",
+            label: fs_i18n::t("settings.shortcuts.action_launcher").into(),
+            category: "App",
+            default_shortcut: Some("Ctrl+Space"),
+        },
+        ActionDef {
+            id: "app.quit",
+            label: fs_i18n::t("settings.shortcuts.action_quit").into(),
+            category: "App",
+            default_shortcut: Some("Ctrl+Q"),
+        },
+        ActionDef {
+            id: "view.fullscreen",
+            label: fs_i18n::t("settings.shortcuts.action_fullscreen").into(),
+            category: "View",
+            default_shortcut: Some("F11"),
+        },
+        ActionDef {
+            id: "view.sidebar.show",
+            label: fs_i18n::t("settings.shortcuts.action_sidebar").into(),
+            category: "View",
+            default_shortcut: None,
+        },
+        ActionDef {
+            id: "store.open",
+            label: fs_i18n::t("settings.shortcuts.action_store").into(),
+            category: "Tools",
+            default_shortcut: Some("Ctrl+S"),
+        },
+        ActionDef {
+            id: "store.install",
+            label: fs_i18n::t("settings.shortcuts.action_install").into(),
+            category: "Tools",
+            default_shortcut: Some("Ctrl+I"),
+        },
+        ActionDef {
+            id: "tasks.open",
+            label: fs_i18n::t("settings.shortcuts.action_tasks").into(),
+            category: "Tools",
+            default_shortcut: Some("Ctrl+T"),
+        },
+        ActionDef {
+            id: "container-app.open",
+            label: fs_i18n::t("settings.shortcuts.action_container").into(),
+            category: "Tools",
+            default_shortcut: None,
+        },
+        ActionDef {
+            id: "studio.open",
+            label: fs_i18n::t("settings.shortcuts.action_studio").into(),
+            category: "Tools",
+            default_shortcut: None,
+        },
+        ActionDef {
+            id: "bots.open",
+            label: fs_i18n::t("settings.shortcuts.action_bots").into(),
+            category: "Tools",
+            default_shortcut: None,
+        },
+        ActionDef {
+            id: "help.open",
+            label: fs_i18n::t("settings.shortcuts.action_help").into(),
+            category: "Help",
+            default_shortcut: Some("F1"),
+        },
+        ActionDef {
+            id: "help.shortcuts",
+            label: fs_i18n::t("settings.shortcuts.action_shortcuts").into(),
+            category: "Help",
+            default_shortcut: None,
+        },
+        ActionDef {
+            id: "window.close",
+            label: fs_i18n::t("settings.shortcuts.action_close").into(),
+            category: "Window",
+            default_shortcut: Some("Escape"),
+        },
     ]
 }
 
 /// Returns the current shortcut for an action (custom > default).
 pub fn resolve_shortcut<'a>(action: &'a ActionDef, config: &'a ShortcutsConfig) -> Option<&'a str> {
-    config.custom
+    config
+        .custom
         .get(action.id)
         .map(|s| s.as_str())
         .or(action.default_shortcut)
@@ -88,7 +159,11 @@ pub fn ShortcutsSettings() -> Element {
     let q = search.read().to_lowercase();
     let filtered: Vec<&ActionDef> = actions
         .iter()
-        .filter(|a| q.is_empty() || a.label.to_lowercase().contains(&q) || a.category.to_lowercase().contains(&q))
+        .filter(|a| {
+            q.is_empty()
+                || a.label.to_lowercase().contains(&q)
+                || a.category.to_lowercase().contains(&q)
+        })
         .collect();
 
     // Key recording handler — captures the next key combo when in recording mode
@@ -101,28 +176,28 @@ pub fn ShortcutsSettings() -> Element {
         let key = evt.key();
         // Ignore standalone modifier presses
         let key_str = match &key {
-            Key::Character(c)  => c.to_uppercase(),
-            Key::F1            => "F1".to_string(),
-            Key::F2            => "F2".to_string(),
-            Key::F3            => "F3".to_string(),
-            Key::F4            => "F4".to_string(),
-            Key::F5            => "F5".to_string(),
-            Key::F6            => "F6".to_string(),
-            Key::F7            => "F7".to_string(),
-            Key::F8            => "F8".to_string(),
-            Key::F9            => "F9".to_string(),
-            Key::F10           => "F10".to_string(),
-            Key::F11           => "F11".to_string(),
-            Key::F12           => "F12".to_string(),
-            Key::Tab           => "Tab".to_string(),
-            Key::Enter         => "Enter".to_string(),
-            Key::Delete        => "Delete".to_string(),
-            Key::Backspace     => "Backspace".to_string(),
-            Key::ArrowUp       => "Up".to_string(),
-            Key::ArrowDown     => "Down".to_string(),
-            Key::ArrowLeft     => "Left".to_string(),
-            Key::ArrowRight    => "Right".to_string(),
-            Key::Escape        => {
+            Key::Character(c) => c.to_uppercase(),
+            Key::F1 => "F1".to_string(),
+            Key::F2 => "F2".to_string(),
+            Key::F3 => "F3".to_string(),
+            Key::F4 => "F4".to_string(),
+            Key::F5 => "F5".to_string(),
+            Key::F6 => "F6".to_string(),
+            Key::F7 => "F7".to_string(),
+            Key::F8 => "F8".to_string(),
+            Key::F9 => "F9".to_string(),
+            Key::F10 => "F10".to_string(),
+            Key::F11 => "F11".to_string(),
+            Key::F12 => "F12".to_string(),
+            Key::Tab => "Tab".to_string(),
+            Key::Enter => "Enter".to_string(),
+            Key::Delete => "Delete".to_string(),
+            Key::Backspace => "Backspace".to_string(),
+            Key::ArrowUp => "Up".to_string(),
+            Key::ArrowDown => "Down".to_string(),
+            Key::ArrowLeft => "Left".to_string(),
+            Key::ArrowRight => "Right".to_string(),
+            Key::Escape => {
                 // Escape cancels recording
                 recording.set(None);
                 return;
@@ -133,9 +208,15 @@ pub fn ShortcutsSettings() -> Element {
 
         let mods = evt.modifiers();
         let mut parts: Vec<&str> = Vec::new();
-        if mods.ctrl()  { parts.push("Ctrl"); }
-        if mods.alt()   { parts.push("Alt"); }
-        if mods.shift() { parts.push("Shift"); }
+        if mods.ctrl() {
+            parts.push("Ctrl");
+        }
+        if mods.alt() {
+            parts.push("Alt");
+        }
+        if mods.shift() {
+            parts.push("Shift");
+        }
 
         let shortcut = if parts.is_empty() {
             key_str.clone()

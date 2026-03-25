@@ -3,14 +3,14 @@ use dioxus::prelude::*;
 use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
 use fs_i18n;
 
+use crate::accounts::AccountSettings;
 use crate::appearance::AppearanceSettings;
 use crate::browser_settings::BrowserSettings;
-use crate::language::LanguageSettings;
-use crate::service_roles::ServiceRoles;
-use crate::accounts::AccountSettings;
 use crate::desktop_settings::DesktopSettings;
-use crate::shortcuts::ShortcutsSettings;
+use crate::language::LanguageSettings;
 use crate::package_settings::{PackageSettingsEntry, PackageSettingsView};
+use crate::service_roles::ServiceRoles;
+use crate::shortcuts::ShortcutsSettings;
 
 // ── Descriptor ────────────────────────────────────────────────────────────────
 
@@ -18,8 +18,8 @@ use crate::package_settings::{PackageSettingsEntry, PackageSettingsView};
 /// All per-variant constant data lives here — add a field once, not in every match.
 pub struct SectionMeta {
     /// Stable identifier used for routing — never translated.
-    pub id:        &'static str,
-    pub icon:      &'static str,
+    pub id: &'static str,
+    pub icon: &'static str,
     /// i18n key passed to `fs_i18n::t`.
     pub label_key: &'static str,
 }
@@ -58,22 +58,60 @@ impl SettingsSection {
     /// Single source of truth — replaces parallel match blocks.
     pub fn meta(&self) -> SectionMeta {
         match self {
-            Self::Appearance   => SectionMeta { id: "appearance",    icon: "🎨", label_key: "settings.section.appearance" },
-            Self::Language     => SectionMeta { id: "language",      icon: "🌐", label_key: "settings.section.language"   },
-            Self::ServiceRoles => SectionMeta { id: "service_roles", icon: "🔗", label_key: "settings.section.roles"      },
-            Self::Accounts     => SectionMeta { id: "accounts",      icon: "👤", label_key: "settings.section.accounts"   },
-            Self::Desktop      => SectionMeta { id: "desktop",       icon: "🖥",  label_key: "settings.section.desktop"    },
-            Self::Browser      => SectionMeta { id: "browser",       icon: "🌍", label_key: "settings.section.browser"    },
-            Self::Shortcuts    => SectionMeta { id: "shortcuts",     icon: "⌨",  label_key: "settings.section.shortcuts"  },
-            Self::Packages     => SectionMeta { id: "packages",      icon: "📦", label_key: "settings.section.packages"   },
+            Self::Appearance => SectionMeta {
+                id: "appearance",
+                icon: "🎨",
+                label_key: "settings.section.appearance",
+            },
+            Self::Language => SectionMeta {
+                id: "language",
+                icon: "🌐",
+                label_key: "settings.section.language",
+            },
+            Self::ServiceRoles => SectionMeta {
+                id: "service_roles",
+                icon: "🔗",
+                label_key: "settings.section.roles",
+            },
+            Self::Accounts => SectionMeta {
+                id: "accounts",
+                icon: "👤",
+                label_key: "settings.section.accounts",
+            },
+            Self::Desktop => SectionMeta {
+                id: "desktop",
+                icon: "🖥",
+                label_key: "settings.section.desktop",
+            },
+            Self::Browser => SectionMeta {
+                id: "browser",
+                icon: "🌍",
+                label_key: "settings.section.browser",
+            },
+            Self::Shortcuts => SectionMeta {
+                id: "shortcuts",
+                icon: "⌨",
+                label_key: "settings.section.shortcuts",
+            },
+            Self::Packages => SectionMeta {
+                id: "packages",
+                icon: "📦",
+                label_key: "settings.section.packages",
+            },
         }
     }
 
-    pub fn id(&self) -> &str      { self.meta().id }
-    pub fn icon(&self) -> &str    { self.meta().icon }
+    pub fn id(&self) -> &str {
+        self.meta().id
+    }
+    pub fn icon(&self) -> &str {
+        self.meta().icon
+    }
 
     /// Translated display label.
-    pub fn label(&self) -> String { fs_i18n::t(self.meta().label_key).into() }
+    pub fn label(&self) -> String {
+        fs_i18n::t(self.meta().label_key).into()
+    }
 
     /// Sections shown without external package data (hides `Packages`).
     pub fn standard() -> impl Iterator<Item = &'static Self> {
@@ -181,15 +219,15 @@ pub trait SettingsPanel {
 impl SettingsPanel for SettingsSection {
     fn render_panel(&self) -> Element {
         match self {
-            Self::Appearance   => rsx! { AppearanceSettings {} },
-            Self::Language     => rsx! { LanguageSettings {} },
+            Self::Appearance => rsx! { AppearanceSettings {} },
+            Self::Language => rsx! { LanguageSettings {} },
             Self::ServiceRoles => rsx! { ServiceRoles {} },
-            Self::Accounts     => rsx! { AccountSettings {} },
-            Self::Desktop      => rsx! { DesktopSettings {} },
-            Self::Browser      => rsx! { BrowserSettings {} },
-            Self::Shortcuts    => rsx! { ShortcutsSettings {} },
+            Self::Accounts => rsx! { AccountSettings {} },
+            Self::Desktop => rsx! { DesktopSettings {} },
+            Self::Browser => rsx! { BrowserSettings {} },
+            Self::Shortcuts => rsx! { ShortcutsSettings {} },
             // Packages is rendered inline in SettingsApp (needs props data).
-            Self::Packages     => rsx! { div {} },
+            Self::Packages => rsx! { div {} },
         }
     }
 }

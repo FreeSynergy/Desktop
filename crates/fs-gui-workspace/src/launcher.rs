@@ -216,16 +216,28 @@ fn LauncherPagination(
     on_next: EventHandler<()>,
     on_goto: EventHandler<usize>,
 ) -> Element {
-    let at_start   = current == 0;
-    let at_end     = current + 1 >= total;
-    let op_prev    = if at_start { "0.3" } else { "1.0" };
-    let op_next    = if at_end   { "0.3" } else { "1.0" };
+    let at_start = current == 0;
+    let at_end = current + 1 >= total;
+    let op_prev = if at_start { "0.3" } else { "1.0" };
+    let op_next = if at_end { "0.3" } else { "1.0" };
     let n_str = (current + 1).to_string();
     let total_str = total.to_string();
-    let page_label = fs_i18n::t_with("shell.launcher.page", &[("n", n_str.as_str()), ("total", total_str.as_str())]);
+    let page_label = fs_i18n::t_with(
+        "shell.launcher.page",
+        &[("n", n_str.as_str()), ("total", total_str.as_str())],
+    );
     // Pre-compute dot colors — avoids if/else inside rsx! format strings
     let dots: Vec<(usize, &'static str)> = (0..total)
-        .map(|i| (i, if i == current { "var(--fs-primary)" } else { "var(--fs-text-muted)" }))
+        .map(|i| {
+            (
+                i,
+                if i == current {
+                    "var(--fs-primary)"
+                } else {
+                    "var(--fs-text-muted)"
+                },
+            )
+        })
         .collect();
     rsx! {
         div {

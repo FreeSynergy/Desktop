@@ -33,26 +33,39 @@ use std::path::PathBuf;
 
 /// Combined handle for all Desktop-side databases.
 pub struct FsdDb {
-    desktop:   DesktopDb,
-    shared:    SharedDb,
+    desktop: DesktopDb,
+    shared: SharedDb,
     container: ContainerDb,
-    store:     StoreDb,
+    store: StoreDb,
 }
 
 impl FsdDb {
     /// Open (or create) all four databases at their default paths.
     pub async fn open() -> Result<Self, DbError> {
-        let desktop   = DesktopDb::open().await?;
-        let shared    = SharedDb::open().await?;
+        let desktop = DesktopDb::open().await?;
+        let shared = SharedDb::open().await?;
         let container = ContainerDb::open().await?;
-        let store         = StoreDb::open().await?;
-        Ok(Self { desktop, shared, container, store })
+        let store = StoreDb::open().await?;
+        Ok(Self {
+            desktop,
+            shared,
+            container,
+            store,
+        })
     }
 
-    pub fn desktop(&self)   -> &DesktopDb   { &self.desktop   }
-    pub fn shared(&self)    -> &SharedDb    { &self.shared    }
-    pub fn container(&self) -> &ContainerDb { &self.container }
-    pub fn store(&self)     -> &StoreDb     { &self.store     }
+    pub fn desktop(&self) -> &DesktopDb {
+        &self.desktop
+    }
+    pub fn shared(&self) -> &SharedDb {
+        &self.shared
+    }
+    pub fn container(&self) -> &ContainerDb {
+        &self.container
+    }
+    pub fn store(&self) -> &StoreDb {
+        &self.store
+    }
 
     /// Explicitly close all four connection pools.
     ///
