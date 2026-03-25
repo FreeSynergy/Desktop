@@ -20,7 +20,6 @@ allow = [
     "OpenSSL",
     "Zlib",
 ]
-deny = []
 exceptions = [
     { allow = ["ISC", "MIT", "OpenSSL"], name = "ring" },
 ]
