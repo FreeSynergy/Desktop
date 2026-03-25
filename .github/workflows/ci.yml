@@ -19,7 +19,7 @@ jobs:
 
       - name: Checkout external dependencies
         run: |
-          git clone --depth=1 https://github.com/FreeSynergy/fs-libs.git "${{ github.workspace }}/../fs-libs"
+          git clone --depth=1 "https://x-access-token:${{ secrets.FS_LIBS_TOKEN }}@github.com/FreeSynergy/fs-libs.git" "${{ github.workspace }}/../fs-libs"
 
       - name: Install Linux dependencies
         run: |
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Checkout external dependencies
         run: |
-          git clone --depth=1 https://github.com/FreeSynergy/fs-libs.git "${{ github.workspace }}/../fs-libs"
+          git clone --depth=1 "https://x-access-token:${{ secrets.FS_LIBS_TOKEN }}@github.com/FreeSynergy/fs-libs.git" "${{ github.workspace }}/../fs-libs"
       - uses: EmbarkStudios/cargo-deny-action@v2
 
   machete:
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Checkout external dependencies
         run: |
-          git clone --depth=1 https://github.com/FreeSynergy/fs-libs.git "${{ github.workspace }}/../fs-libs"
+          git clone --depth=1 "https://x-access-token:${{ secrets.FS_LIBS_TOKEN }}@github.com/FreeSynergy/fs-libs.git" "${{ github.workspace }}/../fs-libs"
       - uses: bnjbvr/cargo-machete@main
 
   audit:
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Checkout external dependencies
         run: |
-          git clone --depth=1 https://github.com/FreeSynergy/fs-libs.git "${{ github.workspace }}/../fs-libs"
+          git clone --depth=1 "https://x-access-token:${{ secrets.FS_LIBS_TOKEN }}@github.com/FreeSynergy/fs-libs.git" "${{ github.workspace }}/../fs-libs"
       - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
