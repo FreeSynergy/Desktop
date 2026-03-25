@@ -17,8 +17,6 @@ web      = ["dioxus/web",     "fs-gui-workspace/web"]
 [dependencies]
 fs-gui-workspace   = { workspace = true, default-features = false }
 dioxus             = { workspace = true }
-tokio              = { workspace = true }
-anyhow             = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 mimalloc           = { workspace = true }

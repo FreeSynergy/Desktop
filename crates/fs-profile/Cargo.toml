@@ -21,7 +21,6 @@ web      = ["dioxus/web"]
 [dependencies]
 fs-auth   = { workspace = true }
 fs-config = { workspace = true }
-fs-error  = { workspace = true }
 fs-i18n   = { workspace = true }
 dioxus     = { workspace = true }
 serde      = { workspace = true }
