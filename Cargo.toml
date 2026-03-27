@@ -38,23 +38,25 @@ fs-ai            = { path = "../fs-apps/crates/fs-ai" }
 fs-container-app = { path = "../fs-apps/crates/fs-container-app" }
 fs-managers      = { path = "../fs-apps/crates/fs-managers" }
 
-# fs-libs — shared libraries monorepo
-fs-types          = { path = "../fs-libs/fs-types" }
-fs-error          = { path = "../fs-libs/fs-error" }
-fs-config         = { path = "../fs-libs/fs-config" }
-fs-i18n           = { path = "../fs-libs/fs-i18n", features = ["dioxus"] }
-fs-theme          = { path = "../fs-libs/fs-theme" }
-fs-help           = { path = "../fs-libs/fs-help" }
-fs-health         = { path = "../fs-libs/fs-health" }
-fs-store          = { path = "../fs-libs/fs-store" }
-fs-container      = { path = "../fs-libs/fs-container" }
-fs-plugin-sdk     = { path = "../fs-libs/fs-plugin-sdk" }
-fs-auth           = { path = "../fs-libs/fs-auth" }
-fs-core           = { path = "../fs-libs/fs-core" }
-fs-components     = { path = "../fs-libs/fs-components" }
-fs-render         = { path = "../fs-libs/fs-render" }
-fs-db             = { path = "../fs-libs/fs-db" }
-fs-pkg            = { path = "../fs-libs/fs-pkg" }
+# fs-libs — universal primitives (only these 5 remain in fs-libs)
+fs-types   = { path = "../fs-libs/fs-types" }
+fs-error   = { path = "../fs-libs/fs-error" }
+fs-core    = { path = "../fs-libs/fs-core" }
+fs-health  = { path = "../fs-libs/fs-health" }
+
+# Standalone library repos (migrated from fs-libs in Phase D)
+fs-config     = { path = "../fs-config" }
+fs-i18n       = { path = "../fs-i18n", features = ["dioxus"] }
+fs-theme      = { path = "../fs-theme" }
+fs-help       = { path = "../fs-help" }
+fs-container  = { path = "../fs-container" }
+fs-plugin-sdk = { path = "../fs-packages/fs-plugin-sdk" }
+fs-auth       = { path = "../fs-auth" }
+fs-components = { path = "../fs-components" }
+fs-render     = { path = "../fs-render" }
+fs-db         = { path = "../fs-db" }
+fs-pkg        = { path = "../fs-packages/fs-pkg" }
+fs-store      = { path = "../fs-store/crates/fs-store" }
 
 # fs-managers — manager backends
 fs-manager-language  = { path = "../fs-managers/language" }
