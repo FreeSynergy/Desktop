@@ -24,240 +24,311 @@ fn run() {
 
     tracing::info!("Starting fs-showcase");
 
-    #[cfg(feature = "desktop")]
-    fs_components::launch_desktop(
-        fs_components::DesktopConfig::new()
-            .with_title("FreeSynergy \u{2013} Component Showcase")
-            .with_size(1400.0, 900.0),
-        showcase_app,
-    );
+    #[cfg(feature = "iced")]
+    {
+        use fs_gui_engine_iced::IcedEngine;
+        let _ = IcedEngine::run::<ShowcaseApp, ShowcaseMessage, _, _>(
+            "FreeSynergy \u{2013} Component Showcase",
+            ShowcaseApp::update,
+            ShowcaseApp::view,
+        );
+    }
+    #[cfg(not(feature = "iced"))]
+    {
+        eprintln!("fs-showcase: no iced feature enabled");
+    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// All showcase code is debug-only.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ShowcaseMessage ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub enum ShowcaseMessage {
+    SectionSelected(String),
+    ButtonClicked(String),
+    Noop,
+}
+
+// ── ShowcaseApp ───────────────────────────────────────────────────────────────
 
 #[cfg(debug_assertions)]
-mod showcase {
-    use dioxus::prelude::*;
-    use fs_components::{
-        use_toast, Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, Card, Checkbox, Divider,
-        FormField, Input, Select, SelectOption, Spinner, Textarea, ToastMessage, ToastProvider,
-        Tooltip,
-    };
+pub struct ShowcaseApp {
+    active_section: String,
+    last_action: Option<String>,
+}
 
-    // ── Root ──────────────────────────────────────────────────────────────────
+#[cfg(debug_assertions)]
+impl Default for ShowcaseApp {
+    fn default() -> Self {
+        Self {
+            active_section: "buttons".to_string(),
+            last_action: None,
+        }
+    }
+}
 
-    #[allow(non_snake_case)]
-    pub fn showcase_app() -> Element {
-        let mut btn_loading = use_signal(|| false);
-        let mut input_val = use_signal(String::new);
-        let mut checked = use_signal(|| false);
-        let mut select_val = use_signal(|| "md".to_string());
+#[cfg(debug_assertions)]
+#[cfg(feature = "iced")]
+impl ShowcaseApp {
+    pub fn update(
+        &mut self,
+        msg: ShowcaseMessage,
+    ) -> fs_gui_engine_iced::iced::Task<ShowcaseMessage> {
+        match msg {
+            ShowcaseMessage::SectionSelected(s) => self.active_section = s,
+            ShowcaseMessage::ButtonClicked(label) => self.last_action = Some(label),
+            ShowcaseMessage::Noop => {}
+        }
+        fs_gui_engine_iced::iced::Task::none()
+    }
 
-        rsx! {
-            style {
-                "*, *::before, *::after {{ box-sizing: border-box; }}
-                 body {{ margin: 0; background: #0d1117; color: #e6edf3;
-                         font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 14px; }}
-                 @keyframes fs-spin {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}"
-            }
+    #[must_use]
+    pub fn view(&self) -> fs_gui_engine_iced::iced::Element<'_, ShowcaseMessage> {
+        use fs_gui_engine_iced::iced::{
+            widget::{button, column, container, row, scrollable, text, Space},
+            Alignment, Element, Length,
+        };
 
-            ToastProvider {
-                div { style: "display: flex; min-height: 100vh;",
+        let sections = ["buttons", "text", "containers", "layout"];
 
-                    nav {
-                        style: "width: 200px; flex-shrink: 0; padding: 24px 16px;
-                                background: #161b22; border-right: 1px solid #30363d;",
-                        h2 { style: "margin: 0 0 24px; font-size: 11px; color: #00BCD4;
-                                     text-transform: uppercase; letter-spacing: 0.08em;",
-                            "FreeSynergy" }
-                        p { style: "margin: 0; font-size: 10px; color: #8b949e;",
-                            "Component Showcase" }
-                    }
-
-                    main { style: "flex: 1; padding: 32px; overflow: auto;",
-
-                        h1 { style: "margin: 0 0 8px; color: #00BCD4; font-size: 20px;",
-                            "FreeSynergy — Component Showcase" }
-                        p { style: "margin: 0 0 40px; color: #8b949e; font-size: 13px;",
-                            "All components from fs-components, rendered with desktop feature." }
-
-                        // Buttons
-                        ShowcaseSection { title: "Buttons",
-                            div { style: "display: flex; flex-wrap: wrap; gap: 12px; align-items: center;",
-                                Button { variant: ButtonVariant::Primary,   "Primary" }
-                                Button { variant: ButtonVariant::Secondary, "Secondary" }
-                                Button { variant: ButtonVariant::Ghost,     "Ghost" }
-                                Button { variant: ButtonVariant::Danger,    "Danger" }
-                                Button { variant: ButtonVariant::Primary, size: ButtonSize::Sm, "Small" }
-                                Button { variant: ButtonVariant::Primary, size: ButtonSize::Lg, "Large" }
-                                Button {
-                                    variant: ButtonVariant::Primary,
-                                    loading: *btn_loading.read(),
-                                    onclick: move |_| { let v = *btn_loading.read(); *btn_loading.write() = !v; },
-                                    "Toggle Loading"
-                                }
-                                Button { variant: ButtonVariant::Primary, disabled: true, "Disabled" }
-                            }
-                        }
-
-                        // Badges
-                        ShowcaseSection { title: "Badges",
-                            div { style: "display: flex; flex-wrap: wrap; gap: 8px; align-items: center;",
-                                Badge { "Default" }
-                                Badge { variant: BadgeVariant::Success, "Success" }
-                                Badge { variant: BadgeVariant::Warning, "Warning" }
-                                Badge { variant: BadgeVariant::Error,   "Error" }
-                                Badge { variant: BadgeVariant::Info,    "Info" }
-                            }
-                        }
-
-                        // Cards
-                        ShowcaseSection { title: "Cards",
-                            div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 16px;",
-                                Card {
-                                    p { style: "margin: 0; color: #e6edf3;", "Standard card" }
-                                    p { style: "margin: 8px 0 0; font-size: 12px; color: #8b949e;",
-                                        "Background: bg-surface with border." }
-                                }
-                                Card { glass: true,
-                                    p { style: "margin: 0; color: #e6edf3;", "Glass card" }
-                                    p { style: "margin: 8px 0 0; font-size: 12px; color: #8b949e;",
-                                        "Glassmorphism with backdrop-filter." }
-                                }
-                            }
-                        }
-
-                        // Spinner + Divider
-                        ShowcaseSection { title: "Spinner + Divider",
-                            div { style: "display: flex; gap: 24px; align-items: center;",
-                                Spinner { size: 20 }
-                                Spinner { size: 32 }
-                                Spinner { size: 48 }
-                            }
-                            Divider { margin: "16px 0".to_string() }
-                            Divider { label: "OR".to_string(), margin: "16px 0".to_string() }
-                        }
-
-                        // Tooltip
-                        ShowcaseSection { title: "Tooltip",
-                            div { style: "display: flex; gap: 16px; padding: 24px 0;",
-                                Tooltip { text: "Hover me!".to_string(),
-                                    Button { variant: ButtonVariant::Ghost, "Hover for tooltip" }
-                                }
-                            }
-                        }
-
-                        // Form controls
-                        ShowcaseSection { title: "Form Controls",
-                            div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 600px;",
-                                FormField {
-                                    label: "Text Input".to_string(), field_id: "showcase-input".to_string(),
-                                    hint: Some("Type something…".to_string()),
-                                    Input {
-                                        id: "showcase-input".to_string(),
-                                        value: input_val.read().clone(),
-                                        placeholder: Some("Placeholder…".to_string()),
-                                        oninput: move |e: FormEvent| { *input_val.write() = e.value(); },
-                                    }
-                                }
-                                FormField {
-                                    label: "Select".to_string(), field_id: "showcase-select".to_string(),
-                                    Select {
-                                        id: "showcase-select".to_string(),
-                                        value: select_val.read().clone(),
-                                        options: vec![
-                                            SelectOption::new("sm", "Small"),
-                                            SelectOption::new("md", "Medium"),
-                                            SelectOption::new("lg", "Large"),
-                                        ],
-                                        onchange: move |e: FormEvent| { *select_val.write() = e.value(); },
-                                    }
-                                }
-                                FormField {
-                                    label: "Email (required)".to_string(), field_id: "showcase-email".to_string(),
-                                    required: true, error: "Please enter a valid email.".to_string(),
-                                    Input { id: "showcase-email".to_string(), r#type: "email".to_string(), value: "bad-input".to_string() }
-                                }
-                                FormField {
-                                    label: "Textarea".to_string(), field_id: "showcase-textarea".to_string(),
-                                    Textarea {
-                                        id: "showcase-textarea".to_string(),
-                                        placeholder: Some("Enter description…".to_string()),
-                                        rows: 3,
-                                    }
-                                }
-                                div {
-                                    Checkbox {
-                                        id: "showcase-check".to_string(),
-                                        checked: *checked.read(),
-                                        label: "I agree to the terms".to_string(),
-                                        onchange: move |e: FormEvent| { *checked.write() = e.value() == "true"; },
-                                    }
-                                }
-                            }
-                        }
-
-                        // Toast
-                        ShowcaseSection { title: "Toast Notifications",
-                            div { style: "display: flex; flex-wrap: wrap; gap: 8px;",
-                                ToastTrigger { level: "info",    label: "Info Toast" }
-                                ToastTrigger { level: "success", label: "Success Toast" }
-                                ToastTrigger { level: "warning", label: "Warning Toast" }
-                                ToastTrigger { level: "error",   label: "Error Toast" }
-                            }
-                        }
-                    }
+        let nav_buttons: Vec<Element<'_, ShowcaseMessage>> = sections
+            .iter()
+            .map(|s| {
+                let is_active = *s == self.active_section;
+                let label = capitalize(s);
+                let btn = button(text(label).size(13))
+                    .on_press(ShowcaseMessage::SectionSelected(s.to_string()))
+                    .width(Length::Fill)
+                    .padding([8, 16]);
+                if is_active {
+                    container(btn)
+                        .style(
+                            |_theme| fs_gui_engine_iced::iced::widget::container::Style {
+                                background: Some(fs_gui_engine_iced::iced::Background::Color(
+                                    fs_gui_engine_iced::iced::Color::from_rgba(
+                                        0.02, 0.74, 0.84, 0.15,
+                                    ),
+                                )),
+                                ..Default::default()
+                            },
+                        )
+                        .into()
+                } else {
+                    btn.into()
                 }
-            }
-        }
+            })
+            .collect();
+
+        let nav = container(
+            column![
+                text("FreeSynergy")
+                    .size(12)
+                    .color(fs_gui_engine_iced::iced::Color::from_rgb(0.02, 0.74, 0.84)),
+                text("Showcase")
+                    .size(10)
+                    .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6)),
+                Space::with_height(16),
+            ]
+            .extend(nav_buttons)
+            .spacing(2)
+            .padding([16, 12]),
+        )
+        .width(180)
+        .height(Length::Fill)
+        .style(
+            |_theme| fs_gui_engine_iced::iced::widget::container::Style {
+                background: Some(fs_gui_engine_iced::iced::Background::Color(
+                    fs_gui_engine_iced::iced::Color::from_rgb(0.09, 0.11, 0.13),
+                )),
+                ..Default::default()
+            },
+        );
+
+        let content = scrollable(self.view_section())
+            .height(Length::Fill)
+            .width(Length::Fill);
+
+        let main_row = row![nav, content].spacing(0);
+
+        let status: Element<'_, ShowcaseMessage> = if let Some(action) = &self.last_action {
+            text(format!("Last action: {action}"))
+                .size(11)
+                .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6))
+                .into()
+        } else {
+            Space::with_height(0).into()
+        };
+
+        let root = column![
+            container(
+                row![
+                    text("FreeSynergy — Component Showcase")
+                        .size(16)
+                        .color(fs_gui_engine_iced::iced::Color::from_rgb(0.02, 0.74, 0.84)),
+                    Space::with_width(Length::Fill),
+                    status,
+                ]
+                .align_y(Alignment::Center)
+                .padding([0, 16]),
+            )
+            .height(48)
+            .width(Length::Fill)
+            .style(
+                |_theme| fs_gui_engine_iced::iced::widget::container::Style {
+                    background: Some(fs_gui_engine_iced::iced::Background::Color(
+                        fs_gui_engine_iced::iced::Color::from_rgb(0.04, 0.06, 0.10),
+                    )),
+                    ..Default::default()
+                }
+            ),
+            main_row.height(Length::Fill),
+        ]
+        .spacing(0);
+
+        container(root)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
-    // ── ShowcaseSection ───────────────────────────────────────────────────────
+    fn view_section(&self) -> fs_gui_engine_iced::iced::Element<'_, ShowcaseMessage> {
+        #[allow(unused_imports)]
+        use fs_gui_engine_iced::iced::Length;
+        use fs_gui_engine_iced::iced::{
+            widget::{button, column, container, row, text, Space},
+            Alignment, Element,
+        };
 
-    #[component]
-    fn ShowcaseSection(title: String, children: Element) -> Element {
-        rsx! {
-            section { style: "margin-bottom: 40px;",
-                h2 { style: "margin: 0 0 16px; font-size: 13px; font-weight: 600; \
-                              color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; \
-                              border-bottom: 1px solid #30363d; padding-bottom: 8px;",
-                    "{title}" }
-                {children}
+        let section_title = text(capitalize(&self.active_section))
+            .size(20)
+            .color(fs_gui_engine_iced::iced::Color::from_rgb(0.02, 0.74, 0.84));
+
+        let body: Element<'_, ShowcaseMessage> = match self.active_section.as_str() {
+            "buttons" => {
+                let variants = [
+                    ("Primary", "primary"),
+                    ("Secondary", "secondary"),
+                    ("Danger", "danger"),
+                    ("Small", "small"),
+                    ("Large", "large"),
+                ];
+                let btns: Vec<Element<'_, ShowcaseMessage>> = variants
+                    .iter()
+                    .map(|(label, id)| {
+                        button(text(*label).size(14))
+                            .on_press(ShowcaseMessage::ButtonClicked(id.to_string()))
+                            .padding([8, 20])
+                            .into()
+                    })
+                    .collect();
+                row(btns)
+                    .spacing(12)
+                    .align_y(Alignment::Center)
+                    .wrap()
+                    .into()
             }
-        }
-    }
-
-    // ── ToastTrigger ──────────────────────────────────────────────────────────
-
-    #[component]
-    fn ToastTrigger(level: String, label: String) -> Element {
-        let mut toast = use_toast();
-        let lv = level.clone();
-        let lbl = label.clone();
-
-        rsx! {
-            Button {
-                variant: match level.as_str() {
-                    "success" => ButtonVariant::Primary,
-                    "danger" | "error" => ButtonVariant::Danger,
-                    _ => ButtonVariant::Ghost,
-                },
-                onclick: move |_| {
-                    let msg = match lv.as_str() {
-                        "info"    => ToastMessage::info(lbl.clone()),
-                        "success" => ToastMessage::success(lbl.clone()),
-                        "warning" => ToastMessage::warning(lbl.clone()),
-                        _         => ToastMessage::error(lbl.clone(), "Something went wrong."),
-                    };
-                    toast.push(msg);
-                },
-                "{label}"
+            "text" => column![
+                text("Heading 1").size(28),
+                text("Heading 2").size(22),
+                text("Heading 3").size(18),
+                text("Body text — 14px").size(14),
+                text("Caption text — 11px")
+                    .size(11)
+                    .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6)),
+                text("Cyan accent text")
+                    .size(14)
+                    .color(fs_gui_engine_iced::iced::Color::from_rgb(0.02, 0.74, 0.84)),
+            ]
+            .spacing(12)
+            .into(),
+            "containers" => {
+                let card_style = |_theme: &_| fs_gui_engine_iced::iced::widget::container::Style {
+                    background: Some(fs_gui_engine_iced::iced::Background::Color(
+                        fs_gui_engine_iced::iced::Color::from_rgb(0.09, 0.11, 0.13),
+                    )),
+                    border: fs_gui_engine_iced::iced::Border {
+                        color: fs_gui_engine_iced::iced::Color::from_rgba(0.58, 0.67, 0.78, 0.18),
+                        width: 1.0,
+                        radius: 6.0.into(),
+                    },
+                    ..Default::default()
+                };
+                row![
+                    container(
+                        column![
+                            text("Standard Card").size(14),
+                            Space::with_height(4),
+                            text("Background: bg-surface with border.")
+                                .size(12)
+                                .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6)),
+                        ]
+                        .spacing(0)
+                        .padding([16, 20]),
+                    )
+                    .style(card_style)
+                    .width(260),
+                    Space::with_width(16),
+                    container(
+                        column![
+                            text("Info Card").size(14),
+                            Space::with_height(4),
+                            text("Highlighted with accent border.")
+                                .size(12)
+                                .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6)),
+                        ]
+                        .spacing(0)
+                        .padding([16, 20]),
+                    )
+                    .style(|_theme| {
+                        fs_gui_engine_iced::iced::widget::container::Style {
+                            background: Some(fs_gui_engine_iced::iced::Background::Color(
+                                fs_gui_engine_iced::iced::Color::from_rgba(0.02, 0.74, 0.84, 0.08),
+                            )),
+                            border: fs_gui_engine_iced::iced::Border {
+                                color: fs_gui_engine_iced::iced::Color::from_rgb(0.02, 0.74, 0.84),
+                                width: 1.0,
+                                radius: 6.0.into(),
+                            },
+                            ..Default::default()
+                        }
+                    })
+                    .width(260),
+                ]
+                .spacing(0)
+                .into()
             }
-        }
+            _ => column![
+                text(format!("Section: {}", self.active_section)).size(14),
+                Space::with_height(8),
+                text("Content coming soon…")
+                    .size(13)
+                    .color(fs_gui_engine_iced::iced::Color::from_rgb(0.5, 0.5, 0.6)),
+            ]
+            .spacing(0)
+            .into(),
+        };
+
+        column![section_title, Space::with_height(16), body]
+            .spacing(0)
+            .padding([32, 32])
+            .into()
     }
 }
 
-#[cfg(debug_assertions)]
-use showcase::showcase_app;
+fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
+// ── Non-debug stubs ───────────────────────────────────────────────────────────
+
+#[cfg(not(debug_assertions))]
+pub struct ShowcaseApp;
+#[cfg(not(debug_assertions))]
+impl Default for ShowcaseApp {
+    fn default() -> Self {
+        Self
+    }
+}

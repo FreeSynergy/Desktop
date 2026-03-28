@@ -14,16 +14,14 @@ name = "fs-profile"
 path = "src/main.rs"
 
 [features]
-default  = ["desktop"]
-desktop  = ["dioxus/desktop"]
-web      = ["dioxus/web"]
+default = ["iced"]
+iced    = ["dep:fs-gui-engine-iced"]
 
 [dependencies]
-fs-auth   = { workspace = true }
-fs-config = { workspace = true }
-fs-i18n   = { workspace = true }
-dioxus     = { workspace = true }
-serde      = { workspace = true }
-toml       = { workspace = true }
-anyhow     = { workspace = true }
-tracing    = { workspace = true }
+fs-i18n            = { workspace = true }
+fs-gui-engine-iced = { workspace = true, optional = true }
+serde              = { workspace = true }
+toml               = { workspace = true }
+anyhow             = { workspace = true }
+tracing            = { workspace = true }
+chrono             = { workspace = true }

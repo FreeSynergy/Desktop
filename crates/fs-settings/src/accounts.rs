@@ -1,11 +1,16 @@
-/// Account settings — connected OIDC providers for single sign-on.
-///
-/// Providers are stored in `~/.config/fsn/accounts.toml`. Each entry holds the
-/// provider name, discovery URL, and client ID; tokens themselves are never
-/// stored here — they are negotiated at runtime via fs-auth.
-use dioxus::prelude::*;
+// fs-settings/src/accounts.rs — Account settings section (iced).
+//
+// Manages OIDC provider connections. Providers are stored in
+// ~/.config/fsn/accounts.toml. No tokens are stored here.
+
+use fs_gui_engine_iced::iced::{
+    widget::{button, checkbox, column, row, scrollable, text, text_input},
+    Alignment, Element, Length,
+};
 use fs_i18n;
 use serde::{Deserialize, Serialize};
+
+use crate::app::{Message, SettingsApp};
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -55,24 +60,27 @@ impl AccountsConfig {
     }
 }
 
-// ── Add-provider form ─────────────────────────────────────────────────────────
+// ── AddProviderForm ────────────────────────────────────────────────────────────
 
-#[derive(Clone, Default)]
-struct AddProviderForm {
-    name: String,
-    discovery_url: String,
-    client_id: String,
-    scopes: String,
+/// Form state for adding a new OIDC provider.
+#[derive(Clone, Default, Debug)]
+pub struct AddProviderForm {
+    pub name: String,
+    pub discovery_url: String,
+    pub client_id: String,
+    pub scopes: String,
 }
 
 impl AddProviderForm {
-    fn is_valid(&self) -> bool {
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
         !self.name.trim().is_empty()
             && !self.discovery_url.trim().is_empty()
             && !self.client_id.trim().is_empty()
     }
 
-    fn build(&self) -> OidcProvider {
+    #[must_use]
+    pub fn build(&self) -> OidcProvider {
         OidcProvider {
             name: self.name.trim().to_string(),
             discovery_url: self.discovery_url.trim().to_string(),
@@ -87,194 +95,169 @@ impl AddProviderForm {
     }
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── AccountsState ─────────────────────────────────────────────────────────────
 
-/// Account settings — manage connected OIDC providers.
-#[component]
-pub fn AccountSettings() -> Element {
-    let mut providers = use_signal(AccountsConfig::load);
-    let mut show_add = use_signal(|| false);
-    let mut form = use_signal(AddProviderForm::default);
-    let mut status_msg: Signal<Option<String>> = use_signal(|| None);
+/// Runtime state for the Accounts settings section.
+#[derive(Debug, Clone)]
+pub struct AccountsState {
+    pub providers: Vec<OidcProvider>,
+    pub show_add: bool,
+    pub form: AddProviderForm,
+    pub error: Option<String>,
+}
 
-    let mut save = move || match AccountsConfig::save(&providers.read()) {
-        Ok(()) => *status_msg.write() = None,
-        Err(e) => *status_msg.write() = Some(format!("Save error: {e}")),
-    };
-
-    rsx! {
-        div {
-            class: "fs-accounts",
-            style: "padding: 24px; max-width: 640px;",
-
-            // Header
-            div {
-                style: "display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;",
-                div {
-                    h3 { style: "margin: 0 0 4px;", {fs_i18n::t("settings.accounts.title")} }
-                    p { style: "margin: 0; font-size: 13px; color: var(--fs-color-text-muted);",
-                        {fs_i18n::t("settings.accounts.description")}
-                    }
-                }
-                button {
-                    style: "padding: 7px 14px; background: var(--fs-color-primary); color: white; \
-                            border: none; border-radius: var(--fs-radius-md); cursor: pointer; font-size: 13px; white-space: nowrap;",
-                    onclick: move |_| {
-                        let cur = *show_add.read();
-                        *show_add.write() = !cur;
-                        *form.write() = AddProviderForm::default();
-                    },
-                    { if *show_add.read() { fs_i18n::t("actions.cancel") } else { fs_i18n::t("settings.accounts.btn_connect") } }
-                }
-            }
-
-            // Add-provider form
-            if *show_add.read() {
-                div {
-                    style: "padding: 16px; background: var(--fs-color-bg-surface); \
-                            border-radius: var(--fs-radius-md); border: 1px solid var(--fs-color-border-default); \
-                            margin-bottom: 20px;",
-
-                    h4 { style: "margin: 0 0 12px;", {fs_i18n::t("settings.accounts.form_title")} }
-
-                    div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;",
-                        div {
-                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fs_i18n::t("labels.name")} }
-                            input {
-                                r#type: "text", placeholder: "e.g. Kanidm",
-                                value: "{form.read().name}",
-                                style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fs-color-border-default); border-radius: var(--fs-radius-md); font-size: 13px;",
-                                oninput: move |e| form.write().name = e.value(),
-                            }
-                        }
-                        div {
-                            label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fs_i18n::t("settings.accounts.label_client_id")} }
-                            input {
-                                r#type: "text", placeholder: "e.g. fs-desktop",
-                                value: "{form.read().client_id}",
-                                style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fs-color-border-default); border-radius: var(--fs-radius-md); font-size: 13px;",
-                                oninput: move |e| form.write().client_id = e.value(),
-                            }
-                        }
-                    }
-
-                    div { style: "margin-bottom: 12px;",
-                        label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fs_i18n::t("settings.accounts.label_discovery_url")} }
-                        input {
-                            r#type: "url", placeholder: "https://auth.example.com",
-                            value: "{form.read().discovery_url}",
-                            style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fs-color-border-default); border-radius: var(--fs-radius-md); font-size: 13px;",
-                            oninput: move |e| form.write().discovery_url = e.value(),
-                        }
-                    }
-
-                    div { style: "margin-bottom: 16px;",
-                        label { style: "display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;", {fs_i18n::t("settings.accounts.label_scopes")} }
-                        input {
-                            r#type: "text", placeholder: "openid email profile",
-                            value: "{form.read().scopes}",
-                            style: "width: 100%; padding: 6px 10px; border: 1px solid var(--fs-color-border-default); border-radius: var(--fs-radius-md); font-size: 13px;",
-                            oninput: move |e| form.write().scopes = e.value(),
-                        }
-                        p { style: "margin: 4px 0 0; font-size: 11px; color: var(--fs-color-text-muted);",
-                            {fs_i18n::t("settings.accounts.scopes_hint")}
-                        }
-                    }
-
-                    button {
-                        disabled: !form.read().is_valid(),
-                        style: "padding: 7px 20px; background: var(--fs-color-primary); color: white; \
-                                border: none; border-radius: var(--fs-radius-md); cursor: pointer; font-size: 13px;",
-                        onclick: move |_| {
-                            let provider = form.read().build();
-                            providers.write().push(provider);
-                            save();
-                            *show_add.write() = false;
-                            *form.write() = AddProviderForm::default();
-                        },
-                        {fs_i18n::t("settings.accounts.btn_save")}
-                    }
-                }
-            }
-
-            // Provider list
-            if providers.read().is_empty() {
-                div {
-                    style: "text-align: center; padding: 40px; background: var(--fs-color-bg-surface); \
-                            border-radius: var(--fs-radius-md); border: 1px dashed var(--fs-color-border-default); \
-                            margin-bottom: 16px;",
-                    p { style: "color: var(--fs-color-text-muted); margin: 0;", {fs_i18n::t("settings.accounts.empty")} }
-                    p { style: "font-size: 12px; color: var(--fs-color-text-muted); margin: 8px 0 0;",
-                        {fs_i18n::t("settings.accounts.empty_hint")}
-                    }
-                }
-            }
-
-            for (idx, provider) in providers.read().iter().enumerate() {
-                {
-                    let provider = provider.clone();
-                    let enabled = provider.enabled;
-                    let opacity = if enabled { "1" } else { "0.55" };
-                    rsx! {
-                        div {
-                            key: "{idx}",
-                            style: "display: flex; align-items: center; gap: 12px; padding: 12px 14px; \
-                                    background: var(--fs-color-bg-surface); border-radius: var(--fs-radius-md); \
-                                    margin-bottom: 8px; border: 1px solid var(--fs-color-border-default); \
-                                    opacity: {opacity};",
-
-                            // Enable toggle
-                            input {
-                                r#type: "checkbox",
-                                checked: enabled,
-                                style: "cursor: pointer; width: 16px; height: 16px; flex-shrink: 0;",
-                                onchange: move |_| {
-                                    let cur = providers.read()[idx].enabled;
-                                    providers.write()[idx].enabled = !cur;
-                                    save();
-                                },
-                            }
-
-                            // Icon
-                            div {
-                                style: "width: 36px; height: 36px; border-radius: var(--fs-radius-md); \
-                                        background: var(--fs-color-bg-overlay); display: flex; align-items: center; \
-                                        justify-content: center; font-size: 18px; flex-shrink: 0;",
-                                "🔐"
-                            }
-
-                            // Info
-                            div { style: "flex: 1; min-width: 0;",
-                                div { style: "font-weight: 500; font-size: 14px;", "{provider.name}" }
-                                div {
-                                    style: "font-size: 12px; color: var(--fs-color-text-muted); \
-                                            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
-                                    "{provider.discovery_url}"
-                                }
-                                div { style: "font-size: 11px; color: var(--fs-color-text-muted); margin-top: 2px;",
-                                    "client_id: {provider.client_id}  ·  scopes: {provider.scopes}"
-                                }
-                            }
-
-                            // Disconnect
-                            button {
-                                style: "color: var(--fs-color-error); background: none; border: none; \
-                                        cursor: pointer; font-size: 18px; flex-shrink: 0;",
-                                title: fs_i18n::t("settings.accounts.btn_disconnect").to_string(),
-                                onclick: move |_| {
-                                    providers.write().remove(idx);
-                                    save();
-                                },
-                                "✕"
-                            }
-                        }
-                    }
-                }
-            }
-
-            if let Some(msg) = status_msg.read().as_deref() {
-                p { style: "font-size: 12px; color: var(--fs-color-error); margin-top: 8px;", "{msg}" }
-            }
+impl AccountsState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            providers: AccountsConfig::load(),
+            show_add: false,
+            form: AddProviderForm::default(),
+            error: None,
         }
     }
+
+    pub fn save(&mut self) {
+        match AccountsConfig::save(&self.providers) {
+            Ok(()) => self.error = None,
+            Err(e) => self.error = Some(format!("Save error: {e}")),
+        }
+    }
+}
+
+impl Default for AccountsState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── view_accounts ─────────────────────────────────────────────────────────────
+
+/// Render the Accounts settings section.
+pub fn view_accounts(app: &SettingsApp) -> Element<'_, Message> {
+    let state = &app.accounts;
+
+    // Header row
+    let toggle_label = if state.show_add {
+        fs_i18n::t("actions.cancel").to_string()
+    } else {
+        fs_i18n::t("settings-accounts-btn-connect").to_string()
+    };
+    let header_row = row![
+        text(fs_i18n::t("settings-accounts-title").to_string())
+            .size(16)
+            .width(Length::Fill),
+        button(text(toggle_label).size(13))
+            .padding([6, 14])
+            .on_press(Message::AccountsToggleAddForm),
+    ]
+    .align_y(Alignment::Center)
+    .spacing(8);
+
+    // Add-provider form
+    let add_form: Element<Message> = if state.show_add {
+        let name_input = text_input("e.g. Kanidm", &state.form.name)
+            .on_input(Message::AccountsFormNameChanged)
+            .padding([6, 10]);
+        let url_input = text_input("https://auth.example.com", &state.form.discovery_url)
+            .on_input(Message::AccountsFormDiscoveryUrlChanged)
+            .padding([6, 10]);
+        let client_input = text_input("e.g. fs-desktop", &state.form.client_id)
+            .on_input(Message::AccountsFormClientIdChanged)
+            .padding([6, 10]);
+        let scopes_input = text_input("openid email profile", &state.form.scopes)
+            .on_input(Message::AccountsFormScopesChanged)
+            .padding([6, 10]);
+
+        let add_btn = {
+            let b = button(text(fs_i18n::t("settings-accounts-btn-save").to_string()).size(13))
+                .padding([7, 20]);
+            if state.form.is_valid() {
+                b.on_press(Message::AccountsAddProvider)
+            } else {
+                b
+            }
+        };
+
+        column![
+            text(fs_i18n::t("settings-accounts-form-title").to_string()).size(14),
+            row![
+                column![
+                    text(fs_i18n::t("labels.name").to_string()).size(12),
+                    name_input,
+                ]
+                .spacing(4)
+                .width(Length::Fill),
+                column![
+                    text(fs_i18n::t("settings-accounts-label-client-id").to_string()).size(12),
+                    client_input,
+                ]
+                .spacing(4)
+                .width(Length::Fill),
+            ]
+            .spacing(12),
+            text(fs_i18n::t("settings-accounts-label-discovery-url").to_string()).size(12),
+            url_input,
+            text(fs_i18n::t("settings-accounts-label-scopes").to_string()).size(12),
+            scopes_input,
+            add_btn,
+        ]
+        .spacing(8)
+        .padding([12, 0])
+        .into()
+    } else {
+        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+    };
+
+    // Provider list
+    let provider_rows: Vec<Element<Message>> = if state.providers.is_empty() {
+        vec![text(fs_i18n::t("settings-accounts-empty").to_string())
+            .size(13)
+            .into()]
+    } else {
+        state
+            .providers
+            .iter()
+            .enumerate()
+            .map(|(idx, p)| {
+                row![
+                    checkbox("", p.enabled)
+                        .on_toggle(move |_| Message::AccountsToggleProvider(idx)),
+                    column![
+                        text(p.name.as_str()).size(13),
+                        text(p.discovery_url.as_str()).size(11),
+                        text(format!("client_id: {}  scopes: {}", p.client_id, p.scopes)).size(10),
+                    ]
+                    .spacing(2)
+                    .width(Length::Fill),
+                    button(text("x").size(12))
+                        .padding([4, 8])
+                        .on_press(Message::AccountsRemoveProvider(idx)),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(8)
+                .padding([6, 0])
+                .into()
+            })
+            .collect()
+    };
+
+    // Error message
+    let error_row: Element<Message> = if let Some(err) = &state.error {
+        text(err.as_str()).size(12).into()
+    } else {
+        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+    };
+
+    let content = column![
+        header_row,
+        text(fs_i18n::t("settings-accounts-description").to_string()).size(12),
+        add_form,
+        column(provider_rows).spacing(4),
+        error_row,
+    ]
+    .spacing(12)
+    .width(Length::Fill);
+
+    scrollable(content).into()
 }

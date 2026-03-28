@@ -6,8 +6,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use dioxus::prelude::*;
-use fs_i18n;
 use serde::{Deserialize, Serialize};
 
 // ── Data types ────────────────────────────────────────────────────────────────
@@ -261,119 +259,112 @@ fn walkdir_toml(dir: &std::path::Path) -> Vec<PathBuf> {
     result
 }
 
-// ── Service Roles component ───────────────────────────────────────────────────
+// ── ServiceRoles (public re-export type) ──────────────────────────────────────
 
-/// Service Roles settings component.
-#[component]
-pub fn ServiceRoles() -> Element {
-    let config = use_signal(load_role_assignments);
-    let registry = use_signal(ServiceRoleRegistry::build);
-    let mut save_msg = use_signal(|| Option::<String>::None);
+/// Public type alias kept for backwards compatibility with `lib.rs` re-exports.
+pub struct ServiceRoles;
 
-    rsx! {
-        div {
-            class: "fs-service-roles",
-            style: "padding: 24px;",
+// ── ServiceRolesState ─────────────────────────────────────────────────────────
 
-            h3 { style: "margin-top: 0;", {fs_i18n::t("settings.roles.title")} }
-            p { style: "color: var(--fs-color-text-muted); margin-bottom: 24px;",
-                {fs_i18n::t("settings.roles.description")}
-            }
+/// Runtime state for the Service Roles settings section.
+#[derive(Debug, Clone)]
+pub struct ServiceRolesState {
+    pub config: ServiceRoleConfig,
+    pub registry: ServiceRoleRegistry,
+}
 
-            div {
-                style: "display: flex; flex-direction: column; gap: 12px;",
-
-                for (id, name, description, required) in KNOWN_ROLES {
-                    {
-                        let providers = registry.read().providers_for(id).to_vec();
-                        rsx! {
-                            RoleRow {
-                                key: "{id}",
-                                role_id: id.to_string(),
-                                name: name.to_string(),
-                                description: description.to_string(),
-                                required: *required,
-                                assigned: config.read().get(id).unwrap_or("").to_string(),
-                                providers,
-                                config,
-                            }
-                        }
-                    }
-                }
-            }
-
-            div { style: "margin-top: 24px; display: flex; align-items: center; gap: 12px;",
-                button {
-                    style: "padding: 8px 24px; background: var(--fs-color-primary); color: white; border: none; border-radius: var(--fs-radius-md); cursor: pointer;",
-                    onclick: move |_| {
-                        match save_role_assignments(&config.read()) {
-                            Ok(()) => *save_msg.write() = Some(fs_i18n::t("notifications.saved").into()),
-                            Err(e) => *save_msg.write() = Some(format!("Error: {e}")),
-                        }
-                    },
-                    {fs_i18n::t("actions.save")}
-                }
-                if let Some(msg) = save_msg.read().as_deref() {
-                    span { style: "font-size: 13px; color: var(--fs-color-text-muted);", "{msg}" }
-                }
-            }
+impl ServiceRolesState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            config: load_role_assignments(),
+            registry: ServiceRoleRegistry::build(),
         }
     }
 }
 
-/// A single role assignment row.
-#[component]
-fn RoleRow(
-    role_id: String,
-    name: String,
-    description: String,
-    required: bool,
-    assigned: String,
-    providers: Vec<String>,
-    mut config: Signal<ServiceRoleConfig>,
-) -> Element {
-    rsx! {
-        div {
-            style: "display: flex; align-items: center; gap: 16px; padding: 12px 16px; \
-                    background: var(--fs-color-bg-surface); border-radius: var(--fs-radius-md); \
-                    border: 1px solid var(--fs-color-border-default);",
-
-            div { style: "flex: 1;",
-                div { style: "display: flex; align-items: center; gap: 8px;",
-                    strong { "{name}" }
-                    if required {
-                        span {
-                            style: "font-size: 11px; background: var(--fs-color-error); color: white; \
-                                    padding: 1px 6px; border-radius: 4px;",
-                            "required"
-                        }
-                    }
-                }
-                div { style: "font-size: 12px; color: var(--fs-color-text-muted); margin-top: 2px;",
-                    "{description}"
-                }
-            }
-
-            select {
-                style: "padding: 6px 10px; border: 1px solid var(--fs-color-border-default); \
-                        border-radius: var(--fs-radius-md); font-size: 13px; min-width: 180px;",
-                value: "{assigned}",
-                onchange: {
-                    let role_id = role_id.clone();
-                    move |e: Event<FormData>| {
-                        let val = e.value();
-                        if val.is_empty() {
-                            config.write().clear(&role_id);
-                        } else {
-                            config.write().set(role_id.clone(), val);
-                        }
-                    }
-                },
-                option { value: "", {fs_i18n::t("settings.roles.not_assigned")} }
-                for provider in &providers {
-                    option { value: "{provider}", selected: *provider == assigned, "{provider}" }
-                }
-            }
-        }
+impl Default for ServiceRolesState {
+    fn default() -> Self {
+        Self::new()
     }
+}
+
+// ── view_service_roles ────────────────────────────────────────────────────────
+
+use fs_gui_engine_iced::iced::{
+    widget::{button, column, row, scrollable, text},
+    Alignment, Element, Length,
+};
+use fs_i18n;
+
+use crate::app::{Message, SettingsApp};
+
+/// Render the Service Roles settings section.
+#[must_use]
+pub fn view_service_roles(app: &SettingsApp) -> Element<'_, Message> {
+    let state = &app.service_roles;
+
+    let rows: Vec<Element<Message>> = KNOWN_ROLES
+        .iter()
+        .map(|(id, name, _desc, required)| {
+            let current = state.config.get(id).unwrap_or("(none)");
+            let providers = state.registry.providers_for(id);
+
+            let req_label = if *required { " *" } else { "" };
+            let role_id = (*id).to_string();
+
+            let provider_btns: Vec<Element<Message>> = providers
+                .iter()
+                .map(|p| {
+                    let is_active = current == p.as_str();
+                    let rid = role_id.clone();
+                    let pname = p.clone();
+                    button(text(p.as_str()).size(11))
+                        .padding([4, 8])
+                        .style(if is_active {
+                            fs_gui_engine_iced::iced::widget::button::primary
+                        } else {
+                            fs_gui_engine_iced::iced::widget::button::secondary
+                        })
+                        .on_press(Message::ServiceRoleChanged(rid, pname))
+                        .into()
+                })
+                .collect();
+
+            let providers_row: Element<Message> = if provider_btns.is_empty() {
+                text("(no providers installed)").size(11).into()
+            } else {
+                row(provider_btns).spacing(4).into()
+            };
+
+            column![
+                row![
+                    text(format!("{name}{req_label}"))
+                        .size(13)
+                        .width(Length::Fill),
+                    text(format!("= {current}")).size(12),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(8),
+                providers_row,
+            ]
+            .spacing(4)
+            .padding([8, 0])
+            .into()
+        })
+        .collect();
+
+    let save_btn = button(text(fs_i18n::t("actions.save").to_string()).size(13))
+        .padding([8, 20])
+        .on_press(Message::SaveServiceRoles);
+
+    let content = column![
+        text(fs_i18n::t("settings-section-roles").to_string()).size(16),
+        column(rows).spacing(4),
+        save_btn,
+    ]
+    .spacing(16)
+    .width(Length::Fill);
+
+    scrollable(content).into()
 }

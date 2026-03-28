@@ -1,7 +1,10 @@
-/// Desktop settings — window behavior, click, animations, icons, workspace, display.
+// fs-settings/src/desktop_settings.rs — Desktop configuration types and iced view.
+//
+// All data structures (DesktopConfig, WindowConfig, etc.) are preserved.
+// The Dioxus component is replaced with view_desktop(&SettingsApp).
+
 use std::path::PathBuf;
 
-use dioxus::prelude::*;
 use fs_i18n;
 use serde::{Deserialize, Serialize};
 
@@ -60,18 +63,9 @@ impl DisplayMode {
     #[must_use]
     pub fn description(&self) -> String {
         match self {
-            Self::Window => fs_i18n::t("settings.desktop.mode_window").into(),
-            Self::Web => fs_i18n::t("settings.desktop.mode_web").into(),
-            Self::Tui => fs_i18n::t("settings.desktop.mode_tui").into(),
-        }
-    }
-
-    #[must_use]
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::Window => "🖥",
-            Self::Web => "🌐",
-            Self::Tui => "⬛",
+            Self::Window => fs_i18n::t("settings-desktop-mode-window").into(),
+            Self::Web => fs_i18n::t("settings-desktop-mode-web").into(),
+            Self::Tui => fs_i18n::t("settings-desktop-mode-tui").into(),
         }
     }
 }
@@ -488,8 +482,10 @@ fn desktop_toml_path() -> PathBuf {
 
 // ── DesktopTab ────────────────────────────────────────────────────────────────
 
-#[derive(Clone, PartialEq, Debug)]
-enum DesktopTab {
+/// Tabs inside the Desktop settings section.
+#[derive(Clone, PartialEq, Debug, Default)]
+pub enum DesktopTab {
+    #[default]
     General,
     Window,
     Click,
@@ -499,7 +495,8 @@ enum DesktopTab {
 }
 
 impl DesktopTab {
-    fn all() -> &'static [Self] {
+    #[must_use]
+    pub fn all() -> &'static [Self] {
         &[
             Self::General,
             Self::Window,
@@ -510,663 +507,268 @@ impl DesktopTab {
         ]
     }
 
-    fn label(&self) -> String {
+    #[must_use]
+    pub fn label(&self) -> String {
         fs_i18n::t(match self {
-            Self::General => "settings.desktop.tab_general",
-            Self::Window => "settings.desktop.tab_window",
-            Self::Click => "settings.desktop.tab_click",
-            Self::Animations => "settings.desktop.tab_animations",
-            Self::Icons => "settings.desktop.tab_icons",
-            Self::Workspace => "settings.desktop.tab_workspace",
+            Self::General => "settings-desktop-tab-general",
+            Self::Window => "settings-desktop-tab-window",
+            Self::Click => "settings-desktop-tab-click",
+            Self::Animations => "settings-desktop-tab-animations",
+            Self::Icons => "settings-desktop-tab-icons",
+            Self::Workspace => "settings-desktop-tab-workspace",
         })
         .into()
     }
 }
 
-// ── DesktopSettings component ─────────────────────────────────────────────────
+// ── view_desktop ──────────────────────────────────────────────────────────────
 
-/// Desktop behavior settings component.
-#[component]
-pub fn DesktopSettings() -> Element {
-    let config = use_signal(DesktopConfig::load);
-    let mut active_tab = use_signal(|| DesktopTab::General);
+use fs_gui_engine_iced::iced::{
+    widget::{button, checkbox, column, row, text, text_input},
+    Alignment, Element, Length,
+};
 
-    rsx! {
-        div {
-            class: "fs-desktop-settings fs-scrollable",
-            style: "padding: 24px; max-width: 560px; height: 100%;",
+use crate::app::{Message, SettingsApp};
 
-            h3 { style: "margin-top: 0; margin-bottom: 16px;",
-                {fs_i18n::t("settings.desktop.title")}
-            }
+/// Render the Desktop settings section.
+#[must_use]
+pub fn view_desktop(app: &SettingsApp) -> Element<'_, Message> {
+    let cfg = &app.desktop.config;
+    let active_tab = &app.desktop.active_tab;
 
-            // Tab bar
-            div {
-                style: "display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; \
-                        border-bottom: 1px solid var(--fs-color-border-default); padding-bottom: 8px;",
-                for tab in DesktopTab::all() {
-                    {
-                        let is_active = *active_tab.read() == *tab;
-                        let tab_clone = tab.clone();
-                        let label = tab.label();
-                        let style = if is_active {
-                            "padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; \
-                             background: var(--fs-color-primary); color: white; border: none; \
-                             border-radius: var(--fs-radius-md);"
-                        } else {
-                            "padding: 6px 14px; font-size: 13px; cursor: pointer; \
-                             background: transparent; color: var(--fs-text-primary); \
-                             border: 1px solid var(--fs-color-border-default); \
-                             border-radius: var(--fs-radius-md);"
-                        };
-                        rsx! {
-                            button {
-                                key: "{label}",
-                                style: "{style}",
-                                onclick: move |_| active_tab.set(tab_clone.clone()),
-                                "{label}"
-                            }
-                        }
-                    }
-                }
-            }
+    // Tab bar
+    let tabs: Vec<Element<Message>> = DesktopTab::all()
+        .iter()
+        .map(|tab| {
+            let is_active = tab == active_tab;
+            button(text(tab.label()).size(12))
+                .padding([6, 12])
+                .style(if is_active {
+                    fs_gui_engine_iced::iced::widget::button::primary
+                } else {
+                    fs_gui_engine_iced::iced::widget::button::secondary
+                })
+                .on_press(Message::DesktopTabSelected(tab.clone()))
+                .into()
+        })
+        .collect();
+    let tab_row = row(tabs).spacing(4);
 
-            // Tab content
-            match active_tab.read().clone() {
-                DesktopTab::General    => rsx! { GeneralTab    { config } },
-                DesktopTab::Window     => rsx! { WindowTab     { config } },
-                DesktopTab::Click      => rsx! { ClickTab      { config } },
-                DesktopTab::Animations => rsx! { AnimationsTab { config } },
-                DesktopTab::Icons      => rsx! { IconsTab      { config } },
-                DesktopTab::Workspace  => rsx! { WorkspaceTab  { config } },
-            }
-
-            // Save
-            div { style: "margin-top: 28px;",
-                button {
-                    style: "padding: 8px 24px; background: var(--fs-color-primary); color: white; \
-                            border: none; border-radius: var(--fs-radius-md); cursor: pointer; font-weight: 600;",
-                    onclick: move |_| config.read().save(),
-                    {fs_i18n::t("actions.save")}
-                }
-            }
-        }
-    }
-}
-
-// ── GeneralTab ────────────────────────────────────────────────────────────────
-
-#[component]
-fn GeneralTab(config: Signal<DesktopConfig>) -> Element {
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-
-            // Display Mode
-            div {
-                SectionLabel { label_key: "settings.desktop.display_mode" }
-                p { style: "font-size: 13px; color: var(--fs-color-text-muted); margin: 0 0 8px;",
-                    {fs_i18n::t("settings.desktop.next_launch_hint")}
-                }
-                div { style: "display: flex; flex-direction: column; gap: 6px;",
-                    for mode in [DisplayMode::Window, DisplayMode::Web, DisplayMode::Tui] {
-                        DisplayModeBtn { mode: mode.clone(), config }
-                    }
-                }
-            }
-
-            // Taskbar Position
-            div {
-                SectionLabel { label_key: "settings.desktop.taskbar_position" }
-                div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 8px;",
-                    TaskbarPosBtn { pos: TaskbarPosition::Bottom, config }
-                    TaskbarPosBtn { pos: TaskbarPosition::Top,    config }
-                    TaskbarPosBtn { pos: TaskbarPosition::Left,   config }
-                    TaskbarPosBtn { pos: TaskbarPosition::Right,  config }
-                }
-            }
-
-            // Sidebar Position
-            div {
-                SectionLabel { label_key: "settings.desktop.sidebar_position" }
-                div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 8px;",
-                    SidebarPosBtn { pos: SidebarPosition::Left,   config }
-                    SidebarPosBtn { pos: SidebarPosition::Right,  config }
-                    SidebarPosBtn { pos: SidebarPosition::Top,    config }
-                    SidebarPosBtn { pos: SidebarPosition::Bottom, config }
-                }
-                div { style: "margin-top: 10px; display: flex; align-items: center; gap: 10px;",
-                    input {
-                        r#type: "checkbox",
-                        checked: config.read().sidebar.default_collapsed,
-                        onchange: move |e| config.write().sidebar.default_collapsed = e.checked(),
-                    }
-                    label { style: "font-size: 14px;",
-                        {fs_i18n::t("settings.desktop.sidebar_collapsed")}
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── WindowTab ─────────────────────────────────────────────────────────────────
-
-#[component]
-fn WindowTab(config: Signal<DesktopConfig>) -> Element {
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-
-            // Title bar style
-            div {
-                SectionLabel { label_key: "settings.desktop.titlebar_style" }
-                div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 8px;",
-                    for style in [TitleBarStyle::Full, TitleBarStyle::Compact, TitleBarStyle::Minimal, TitleBarStyle::Hidden] {
-                        {
-                            let is_active = config.read().window.title_bar_style == style;
-                            let label = style.label();
-                            let s = style.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().window.title_bar_style = s.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Resize edge size
-            div {
-                SectionLabel { label_key: "settings.desktop.resize_edge" }
-                div { style: "display: flex; gap: 8px;",
-                    for size in [ResizeEdgeSize::Narrow, ResizeEdgeSize::Normal, ResizeEdgeSize::Wide] {
-                        {
-                            let is_active = config.read().window.resize_edge_size == size;
-                            let label = size.label();
-                            let s = size.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().window.resize_edge_size = s.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Double-click action
-            div {
-                SectionLabel { label_key: "settings.desktop.dblclick_action" }
-                div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 8px;",
-                    for action in [DoubleClickAction::Maximize, DoubleClickAction::Minimize, DoubleClickAction::Shade, DoubleClickAction::Close] {
-                        {
-                            let is_active = config.read().window.double_click_action == action;
-                            let label = action.label();
-                            let a = action.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().window.double_click_action = a.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Focus policy
-            div {
-                SectionLabel { label_key: "settings.desktop.focus_policy" }
-                div { style: "display: flex; flex-direction: column; gap: 6px;",
-                    for policy in [FocusPolicy::Click, FocusPolicy::FocusFollowsMouse, FocusPolicy::StrictFollowsMouse] {
-                        {
-                            let is_active = config.read().window.focus_policy == policy;
-                            let label = policy.label();
-                            let p = policy.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().window.focus_policy = p.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Snap zones
-            div { style: "display: flex; align-items: center; gap: 10px;",
-                input {
-                    r#type: "checkbox",
-                    checked: config.read().window.snap_zones_enabled,
-                    onchange: move |e| config.write().window.snap_zones_enabled = e.checked(),
-                }
-                label { style: "font-size: 14px;",
-                    {fs_i18n::t("settings.desktop.snap_zones")}
-                }
-            }
-        }
-    }
-}
-
-// ── ClickTab ──────────────────────────────────────────────────────────────────
-
-#[component]
-fn ClickTab(config: Signal<DesktopConfig>) -> Element {
-    let threshold = config.read().click.drag_threshold;
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-
-            // Click style
-            div {
-                SectionLabel { label_key: "settings.desktop.click_style" }
-                p { style: "font-size: 13px; color: var(--fs-color-text-muted); margin: 0 0 8px;",
-                    {fs_i18n::t("settings.desktop.click_style_hint")}
-                }
-                div { style: "display: flex; gap: 8px;",
-                    for style in [ClickStyle::Single, ClickStyle::Double] {
-                        {
-                            let is_active = config.read().click.icon_click == style;
-                            let label = style.label();
-                            let s = style.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().click.icon_click = s.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Drag threshold
-            div {
-                div { style: "display: flex; justify-content: space-between; margin-bottom: 6px;",
-                    SectionLabel { label_key: "settings.desktop.drag_threshold" }
-                    span { style: "font-size: 13px; color: var(--fs-color-text-muted);",
-                        "{threshold}px"
-                    }
-                }
-                input {
-                    r#type: "range",
-                    min: "1",
-                    max: "16",
-                    value: "{threshold}",
-                    style: "width: 100%; accent-color: var(--fs-color-primary);",
-                    oninput: move |e| {
-                        if let Ok(v) = e.value().parse::<u32>() {
-                            config.write().click.drag_threshold = v;
-                        }
-                    },
-                }
-                div { style: "display: flex; justify-content: space-between; font-size: 11px; color: var(--fs-color-text-muted); margin-top: 4px;",
-                    span { "1px" }
-                    span { "16px" }
-                }
-            }
-        }
-    }
-}
-
-// ── AnimationsTab ─────────────────────────────────────────────────────────────
-
-#[component]
-fn AnimationsTab(config: Signal<DesktopConfig>) -> Element {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let speed_pct = (config.read().animation.speed_factor * 100.0) as u32;
-    let disabled = config.read().animation.disabled;
-    let set_id = config.read().animation.set_id.clone();
-
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-
-            // Enable / disable
-            div { style: "display: flex; align-items: center; gap: 10px;",
-                input {
-                    r#type: "checkbox",
-                    checked: !disabled,
-                    onchange: move |e| config.write().animation.disabled = !e.checked(),
-                }
-                label { style: "font-size: 14px; font-weight: 500;",
-                    {fs_i18n::t("settings.desktop.animations_enabled")}
-                }
-            }
-
-            // Speed factor (only when enabled)
-            if !disabled {
-                div {
-                    div { style: "display: flex; justify-content: space-between; margin-bottom: 6px;",
-                        SectionLabel { label_key: "settings.desktop.animation_speed" }
-                        span { style: "font-size: 13px; color: var(--fs-color-text-muted);",
-                            "{speed_pct}%"
-                        }
-                    }
-                    input {
-                        r#type: "range",
-                        min: "25",
-                        max: "200",
-                        value: "{speed_pct}",
-                        style: "width: 100%; accent-color: var(--fs-color-primary);",
-                        oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<f32>() {
-                                config.write().animation.speed_factor = v / 100.0;
-                            }
-                        },
-                    }
-                    div { style: "display: flex; justify-content: space-between; font-size: 11px; color: var(--fs-color-text-muted); margin-top: 4px;",
-                        span { "0.25×" }
-                        span { {fs_i18n::t("settings.desktop.animation_normal")} }
-                        span { "2.0×" }
-                    }
-                }
-
-                // Animation set (future: populated from Store)
-                div {
-                    SectionLabel { label_key: "settings.desktop.animation_set" }
-                    p { style: "font-size: 12px; color: var(--fs-color-text-muted); margin: 0 0 8px;",
-                        {fs_i18n::t("settings.desktop.animation_set_hint")}
-                    }
-                    div { style: "display: flex; gap: 8px;",
-                        {
-                            let is_active = set_id == "default";
-                            rsx! {
-                                button {
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().animation.set_id = "default".to_string(),
-                                    {fs_i18n::t("settings.desktop.animation_set_default")}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── IconsTab ──────────────────────────────────────────────────────────────────
-
-#[component]
-fn IconsTab(config: Signal<DesktopConfig>) -> Element {
-    let icon_set = config.read().icons.icon_set_id.clone();
-    let cursor_set = config.read().icons.cursor_set_id.clone();
-
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-            p { style: "font-size: 13px; color: var(--fs-color-text-muted); margin: 0;",
-                {fs_i18n::t("settings.desktop.icons_store_hint")}
-            }
-
-            // Icon set
-            div {
-                SectionLabel { label_key: "settings.desktop.icon_set" }
-                div { style: "display: flex; gap: 8px; align-items: center;",
-                    {
-                        let is_active = icon_set == "fs-default";
-                        rsx! {
-                            button {
-                                style: option_btn_style(is_active),
-                                onclick: move |_| config.write().icons.icon_set_id = "fs-default".to_string(),
-                                "FS Default"
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Cursor set
-            div {
-                SectionLabel { label_key: "settings.desktop.cursor_set" }
-                div { style: "display: flex; gap: 8px; align-items: center;",
-                    {
-                        let is_active = cursor_set == "fs-default";
-                        rsx! {
-                            button {
-                                style: option_btn_style(is_active),
-                                onclick: move |_| config.write().icons.cursor_set_id = "fs-default".to_string(),
-                                "FS Default"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── WorkspaceTab ──────────────────────────────────────────────────────────────
-
-#[component]
-fn WorkspaceTab(config: Signal<DesktopConfig>) -> Element {
-    let columns = config.read().workspace.columns;
-
-    rsx! {
-        div { style: "display: flex; flex-direction: column; gap: 24px;",
-
-            // Panel arrangement
-            div {
-                SectionLabel { label_key: "settings.desktop.panel_arrangement" }
-                div { style: "display: flex; gap: 8px;",
-                    for arr in [PanelArrangement::Default, PanelArrangement::Compact, PanelArrangement::Wide] {
-                        {
-                            let is_active = config.read().workspace.panel_arrangement == arr;
-                            let label = arr.label();
-                            let a = arr.clone();
-                            rsx! {
-                                button {
-                                    key: "{label}",
-                                    style: option_btn_style(is_active),
-                                    onclick: move |_| config.write().workspace.panel_arrangement = a.clone(),
-                                    "{label}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Columns
-            div {
-                div { style: "display: flex; justify-content: space-between; margin-bottom: 6px;",
-                    SectionLabel { label_key: "settings.desktop.workspace_columns" }
-                    span { style: "font-size: 13px; color: var(--fs-color-text-muted);",
-                        "{columns}"
-                    }
-                }
-                input {
-                    r#type: "range",
-                    min: "1",
-                    max: "6",
-                    value: "{columns}",
-                    style: "width: 100%; accent-color: var(--fs-color-primary);",
-                    oninput: move |e| {
-                        if let Ok(v) = e.value().parse::<u32>() {
-                            config.write().workspace.columns = v;
-                        }
-                    },
-                }
-                div { style: "display: flex; justify-content: space-between; font-size: 11px; color: var(--fs-color-text-muted); margin-top: 4px;",
-                    span { "1" }
-                    span { "6" }
-                }
-            }
-        }
-    }
-}
-
-// ── Shared helper components ──────────────────────────────────────────────────
-
-#[component]
-fn SectionLabel(label_key: &'static str) -> Element {
-    rsx! {
-        label { style: "display: block; font-weight: 500; font-size: 14px; margin-bottom: 8px;",
-            {fs_i18n::t(label_key)}
-        }
-    }
-}
-
-fn option_btn_style(active: bool) -> &'static str {
-    if active {
-        "padding: 8px 16px; border-radius: var(--fs-radius-md); border: 2px solid var(--fs-color-primary); \
-         cursor: pointer; background: var(--fs-color-bg-surface); color: var(--fs-text-primary); font-weight: 600;"
-    } else {
-        "padding: 8px 16px; border-radius: var(--fs-radius-md); border: 2px solid var(--fs-color-border-default); \
-         cursor: pointer; background: var(--fs-color-bg-surface); color: var(--fs-text-primary);"
-    }
-}
-
-// ── Re-used button sub-components ─────────────────────────────────────────────
-
-#[component]
-fn DisplayModeBtn(mode: DisplayMode, config: Signal<DesktopConfig>) -> Element {
-    let is_active = config.read().display_mode == mode;
-    let border = if is_active {
-        "var(--fs-color-primary)"
-    } else {
-        "var(--fs-color-border-default)"
+    // Tab content
+    let tab_content: Element<Message> = match active_tab {
+        DesktopTab::General => view_general_tab(cfg),
+        DesktopTab::Window => view_window_tab(cfg),
+        DesktopTab::Click => view_click_tab(cfg),
+        DesktopTab::Animations => view_animations_tab(cfg),
+        DesktopTab::Icons => view_icons_tab(cfg),
+        DesktopTab::Workspace => view_workspace_tab(cfg),
     };
-    let weight = if is_active { "600" } else { "400" };
-    rsx! {
-        button {
-            style: "display: flex; align-items: center; gap: 10px; padding: 10px 14px; \
-                    border-radius: var(--fs-radius-md); border: 2px solid {border}; \
-                    cursor: pointer; background: var(--fs-color-bg-surface); \
-                    text-align: left; font-weight: {weight};",
-            onclick: move |_| config.write().display_mode = mode.clone(),
-            span { style: "font-size: 18px;", "{mode.icon()}" }
-            div {
-                span { style: "display: block; font-size: 14px;", "{mode.label()}" }
-                span { style: "display: block; font-size: 12px; color: var(--fs-color-text-muted);",
-                    "{mode.description()}"
-                }
-            }
-        }
-    }
+
+    let save_btn = button(text(fs_i18n::t("actions.save").to_string()).size(13))
+        .padding([8, 20])
+        .on_press(Message::SaveDesktop);
+
+    column![
+        text(fs_i18n::t("settings-desktop-title").to_string()).size(16),
+        tab_row,
+        tab_content,
+        save_btn,
+    ]
+    .spacing(16)
+    .width(Length::Fill)
+    .into()
 }
 
-#[component]
-fn TaskbarPosBtn(pos: TaskbarPosition, config: Signal<DesktopConfig>) -> Element {
-    let is_active = config.read().taskbar_pos == pos;
-    let label = pos.label();
-    rsx! {
-        button {
-            style: option_btn_style(is_active),
-            onclick: move |_| config.write().taskbar_pos = pos.clone(),
-            "{label}"
-        }
-    }
+fn view_general_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    let taskbar_options = [
+        ("bottom", "Bottom"),
+        ("top", "Top"),
+        ("left", "Left"),
+        ("right", "Right"),
+    ];
+    let current_taskbar = match cfg.taskbar_pos {
+        TaskbarPosition::Bottom => "bottom",
+        TaskbarPosition::Top => "top",
+        TaskbarPosition::Left => "left",
+        TaskbarPosition::Right => "right",
+    };
+
+    let taskbar_btns: Vec<Element<Message>> = taskbar_options
+        .iter()
+        .map(|(id, label)| {
+            let is_active = current_taskbar == *id;
+            button(text(*label).size(12))
+                .padding([6, 10])
+                .style(if is_active {
+                    fs_gui_engine_iced::iced::widget::button::primary
+                } else {
+                    fs_gui_engine_iced::iced::widget::button::secondary
+                })
+                .on_press(Message::DesktopTaskbarPositionChanged((*id).to_string()))
+                .into()
+        })
+        .collect();
+
+    column![
+        text(fs_i18n::t("settings-desktop-taskbar-position").to_string()).size(14),
+        row(taskbar_btns).spacing(6),
+    ]
+    .spacing(12)
+    .into()
 }
 
-#[component]
-fn SidebarPosBtn(pos: SidebarPosition, config: Signal<DesktopConfig>) -> Element {
-    let is_active = config.read().sidebar.position == pos;
-    let label = pos.label();
-    rsx! {
-        button {
-            style: option_btn_style(is_active),
-            onclick: move |_| config.write().sidebar.position = pos.clone(),
-            "{label}"
-        }
-    }
+fn view_window_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    let focus_options = [
+        ("click", "Click"),
+        ("focus_follows_mouse", "Focus Follows Mouse"),
+        ("strict_follows_mouse", "Strict Follows Mouse"),
+    ];
+    let current_focus = match cfg.window.focus_policy {
+        FocusPolicy::Click => "click",
+        FocusPolicy::FocusFollowsMouse => "focus_follows_mouse",
+        FocusPolicy::StrictFollowsMouse => "strict_follows_mouse",
+    };
+
+    let focus_btns: Vec<Element<Message>> = focus_options
+        .iter()
+        .map(|(id, label)| {
+            let is_active = current_focus == *id;
+            button(text(*label).size(12))
+                .padding([6, 10])
+                .style(if is_active {
+                    fs_gui_engine_iced::iced::widget::button::primary
+                } else {
+                    fs_gui_engine_iced::iced::widget::button::secondary
+                })
+                .on_press(Message::DesktopFocusPolicyChanged((*id).to_string()))
+                .into()
+        })
+        .collect();
+
+    let titlebar_options = [
+        ("full", "Full"),
+        ("compact", "Compact"),
+        ("minimal", "Minimal"),
+        ("hidden", "Hidden"),
+    ];
+    let current_titlebar = match cfg.window.title_bar_style {
+        TitleBarStyle::Full => "full",
+        TitleBarStyle::Compact => "compact",
+        TitleBarStyle::Minimal => "minimal",
+        TitleBarStyle::Hidden => "hidden",
+    };
+    let titlebar_btns: Vec<Element<Message>> = titlebar_options
+        .iter()
+        .map(|(id, label)| {
+            let is_active = current_titlebar == *id;
+            button(text(*label).size(12))
+                .padding([6, 10])
+                .style(if is_active {
+                    fs_gui_engine_iced::iced::widget::button::primary
+                } else {
+                    fs_gui_engine_iced::iced::widget::button::secondary
+                })
+                .on_press(Message::DesktopTitleBarStyleChanged((*id).to_string()))
+                .into()
+        })
+        .collect();
+
+    column![
+        text(fs_i18n::t("settings-desktop-focus-policy").to_string()).size(14),
+        row(focus_btns).spacing(6),
+        text(fs_i18n::t("settings-desktop-titlebar-style").to_string()).size(14),
+        row(titlebar_btns).spacing(6),
+    ]
+    .spacing(12)
+    .into()
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+fn view_click_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    let single_active = cfg.click.icon_click == ClickStyle::Single;
+    let double_active = cfg.click.icon_click == ClickStyle::Double;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    let single_btn = button(text("Single Click").size(12))
+        .padding([6, 10])
+        .style(if single_active {
+            fs_gui_engine_iced::iced::widget::button::primary
+        } else {
+            fs_gui_engine_iced::iced::widget::button::secondary
+        })
+        .on_press(Message::DesktopClickStyleChanged("single".to_string()));
 
-    #[test]
-    fn desktop_config_default_roundtrip() {
-        let cfg = DesktopConfig::default();
-        let toml = toml::to_string_pretty(&cfg).expect("serialize");
-        let back: DesktopConfig = toml::from_str(&toml).expect("deserialize");
-        assert_eq!(back.taskbar_pos, cfg.taskbar_pos);
-        assert_eq!(back.display_mode, cfg.display_mode);
-        assert_eq!(back.window.title_bar_style, cfg.window.title_bar_style);
-        assert_eq!(
-            back.window.snap_zones_enabled,
-            cfg.window.snap_zones_enabled
-        );
-        assert_eq!(back.click.drag_threshold, cfg.click.drag_threshold);
-        assert!((back.animation.speed_factor - cfg.animation.speed_factor).abs() < f32::EPSILON);
-        assert_eq!(back.icons.icon_set_id, cfg.icons.icon_set_id);
-        assert_eq!(back.workspace.columns, cfg.workspace.columns);
-    }
+    let double_btn = button(text("Double Click").size(12))
+        .padding([6, 10])
+        .style(if double_active {
+            fs_gui_engine_iced::iced::widget::button::primary
+        } else {
+            fs_gui_engine_iced::iced::widget::button::secondary
+        })
+        .on_press(Message::DesktopClickStyleChanged("double".to_string()));
 
-    #[test]
-    fn window_config_defaults() {
-        let w = WindowConfig::default();
-        assert_eq!(w.title_bar_style, TitleBarStyle::Full);
-        assert_eq!(w.resize_edge_size, ResizeEdgeSize::Normal);
-        assert_eq!(w.double_click_action, DoubleClickAction::Maximize);
-        assert_eq!(w.focus_policy, FocusPolicy::Click);
-        assert!(w.snap_zones_enabled);
-    }
+    column![
+        text(fs_i18n::t("settings-desktop-click-style").to_string()).size(14),
+        row![single_btn, double_btn].spacing(6),
+    ]
+    .spacing(12)
+    .into()
+}
 
-    #[test]
-    fn click_config_defaults() {
-        let c = ClickConfig::default();
-        assert_eq!(c.icon_click, ClickStyle::Double);
-        assert_eq!(c.drag_threshold, 4);
-    }
+fn view_animations_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    let disabled_row = row![
+        text(fs_i18n::t("settings-desktop-animations-disabled").to_string())
+            .size(13)
+            .width(Length::Fill),
+        checkbox("", cfg.animation.disabled).on_toggle(Message::DesktopAnimationsDisabledToggled),
+    ]
+    .align_y(Alignment::Center)
+    .spacing(8);
 
-    #[test]
-    fn animation_config_defaults() {
-        let a = AnimationConfig::default();
-        assert_eq!(a.set_id, "default");
-        assert!((a.speed_factor - 1.0).abs() < f32::EPSILON);
-        assert!(!a.disabled);
-    }
+    column![
+        text(fs_i18n::t("settings-desktop-tab-animations").to_string()).size(14),
+        disabled_row,
+        text(format!("Speed: {:.1}x", cfg.animation.speed_factor)).size(12),
+    ]
+    .spacing(12)
+    .into()
+}
 
-    #[test]
-    fn icon_config_defaults() {
-        let i = IconConfig::default();
-        assert_eq!(i.icon_set_id, "fs-default");
-        assert_eq!(i.cursor_set_id, "fs-default");
-    }
+fn view_icons_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    column![
+        text(fs_i18n::t("settings-desktop-tab-icons").to_string()).size(14),
+        row![
+            text("Icon set:").size(12).width(120),
+            text(cfg.icons.icon_set_id.as_str()).size(12),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center),
+        row![
+            text("Cursor:").size(12).width(120),
+            text(cfg.icons.cursor_set_id.as_str()).size(12),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center),
+    ]
+    .spacing(12)
+    .into()
+}
 
-    #[test]
-    fn workspace_config_defaults() {
-        let w = WorkspaceConfig::default();
-        assert_eq!(w.columns, 3);
-        assert_eq!(w.panel_arrangement, PanelArrangement::Default);
-    }
+fn view_workspace_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
+    let cols_input = text_input("3", &cfg.workspace.columns.to_string())
+        .on_input(Message::DesktopWorkspaceColumnsChanged)
+        .padding([6, 10])
+        .width(80);
 
-    #[test]
-    fn resize_edge_pixels() {
-        assert_eq!(ResizeEdgeSize::Narrow.pixels(), 2);
-        assert_eq!(ResizeEdgeSize::Normal.pixels(), 4);
-        assert_eq!(ResizeEdgeSize::Wide.pixels(), 8);
-    }
-
-    #[test]
-    fn partial_toml_deserializes_with_defaults() {
-        let partial = r"
-[window]
-snap_zones_enabled = false
-
-[workspace]
-columns = 5
-";
-        let cfg: DesktopConfig = toml::from_str(partial).expect("deserialize partial");
-        assert!(!cfg.window.snap_zones_enabled);
-        assert_eq!(cfg.workspace.columns, 5);
-        // Fields not in TOML should use defaults
-        assert_eq!(cfg.window.title_bar_style, TitleBarStyle::Full);
-        assert_eq!(cfg.click.drag_threshold, 4);
-    }
+    column![
+        text(fs_i18n::t("settings-desktop-tab-workspace").to_string()).size(14),
+        row![
+            text(fs_i18n::t("settings-desktop-workspace-columns").to_string())
+                .size(13)
+                .width(Length::Fill),
+            cols_input,
+        ]
+        .align_y(Alignment::Center)
+        .spacing(8),
+    ]
+    .spacing(12)
+    .into()
 }

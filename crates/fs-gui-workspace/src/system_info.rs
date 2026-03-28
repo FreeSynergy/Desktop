@@ -1,12 +1,11 @@
-/// `SystemContext` — OOP source of truth for the running environment.
-///
-/// Knows what platform, architecture, and operating mode the current instance
-/// is running in. Initialized once (via `SystemInfo::detect()`) and exposed
-/// as a `GlobalSignal` so any component can read it.
-///
-/// When Init or Node starts, they call `SYSTEM_INFO.write().set_mode(...)` to
-/// inform all other components about the full system context.
-use dioxus::prelude::*;
+//! `SystemContext` — OOP source of truth for the running environment.
+//!
+//! Knows what platform, architecture, and operating mode the current instance
+//! is running in. Initialized once (via `SystemInfo::detect()`) and stored in
+//! `DesktopShell` state.
+//!
+//! When Init or Node starts, they call `system_info.set_mode(...)` to
+//! inform the shell about the full system context.
 
 // ── Platform ─────────────────────────────────────────────────────────────────
 
@@ -99,7 +98,7 @@ impl Architecture {
 /// How the current instance is operating.
 ///
 /// Set by Init/Node after startup. Defaults to `DesktopOnly` until the
-/// running Node reports its presence via `SYSTEM_INFO.write().set_mode(...)`.
+/// running Node reports its presence via `system_info.set_mode(...)`.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum RunMode {
     /// Desktop with a connected local Node (server + desktop).
@@ -115,14 +114,13 @@ pub enum RunMode {
 
 /// Complete description of the running system.
 ///
-/// Available globally via [`SYSTEM_INFO`]. Any component or service that needs
-/// to know "are we on a server?", "do we have a Node?", or "what OS is this?"
+/// Stored in `DesktopShell`. Any component or service that needs to know
+/// "are we on a server?", "do we have a Node?", or "what OS is this?"
 /// reads from this struct instead of running OS detection themselves.
 ///
 /// # Typical usage
 /// ```rust,ignore
-/// let sys = SYSTEM_INFO.read();
-/// if sys.can_install_server_packages() {
+/// if shell.system_info.can_install_server_packages() {
 ///     // show container-app install button
 /// }
 /// ```
@@ -194,10 +192,3 @@ fn detect_hostname() -> String {
         .or_else(|_| std::env::var("COMPUTERNAME"))
         .unwrap_or_else(|_| "unknown".to_string())
 }
-
-// ── Global signal ─────────────────────────────────────────────────────────────
-
-/// Global system context — readable from any component.
-///
-/// Writable by Init/Node to set the run mode after startup.
-pub static SYSTEM_INFO: GlobalSignal<SystemInfo> = Signal::global(SystemInfo::detect);

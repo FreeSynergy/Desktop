@@ -1,6 +1,16 @@
-/// Loading spinner re-exports from fs-components.
-///
-/// `LoadingSpinner`, `LoadingOverlay` and `SpinnerSize` live in `fs-components`
-/// so that every fs-* crate can use them without depending on fs-shell.
-/// fs-shell re-exports them here for convenience.
-pub use fs_components::{LoadingOverlay, LoadingSpinner, SpinnerSize};
+//! Loading spinner stub.
+//!
+//! Spinner rendering is done via iced built-in widgets in `shell.rs`.
+
+//! Size hint for a loading spinner.
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub enum SpinnerSize {
+    Sm,
+    #[default]
+    Md,
+    Lg,
+}
+
+/// Stub types kept for backward-compatible imports.
+pub struct LoadingSpinner;
+pub struct LoadingOverlay;

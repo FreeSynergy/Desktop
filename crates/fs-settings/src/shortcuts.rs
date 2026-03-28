@@ -1,10 +1,20 @@
-/// Keyboard shortcuts — action registry, persistence, and settings UI.
-use dioxus::prelude::*;
-use fs_i18n;
-use serde::{Deserialize, Serialize};
+// fs-settings/src/shortcuts.rs — Keyboard shortcuts editor (iced).
+//
+// Action registry, persistence, and settings UI.
+
 use std::collections::HashMap;
 
+use fs_gui_engine_iced::iced::{
+    widget::{button, column, row, scrollable, text, text_input},
+    Alignment, Element, Length,
+};
+use fs_i18n;
+use serde::{Deserialize, Serialize};
+
+use crate::app::{Message, SettingsApp};
 use crate::config_path;
+
+// ── ActionDef ─────────────────────────────────────────────────────────────────
 
 /// A registered desktop action with an optional keyboard shortcut.
 #[derive(Clone, PartialEq, Debug)]
@@ -21,85 +31,85 @@ pub fn register_actions() -> Vec<ActionDef> {
     vec![
         ActionDef {
             id: "app.settings",
-            label: fs_i18n::t("settings.shortcuts.action_open_settings").into(),
+            label: fs_i18n::t("settings-shortcuts-action-open-settings").into(),
             category: "App",
             default_shortcut: Some("Ctrl+,"),
         },
         ActionDef {
             id: "app.launcher",
-            label: fs_i18n::t("settings.shortcuts.action_launcher").into(),
+            label: fs_i18n::t("settings-shortcuts-action-launcher").into(),
             category: "App",
             default_shortcut: Some("Ctrl+Space"),
         },
         ActionDef {
             id: "app.quit",
-            label: fs_i18n::t("settings.shortcuts.action_quit").into(),
+            label: fs_i18n::t("settings-shortcuts-action-quit").into(),
             category: "App",
             default_shortcut: Some("Ctrl+Q"),
         },
         ActionDef {
             id: "view.fullscreen",
-            label: fs_i18n::t("settings.shortcuts.action_fullscreen").into(),
+            label: fs_i18n::t("settings-shortcuts-action-fullscreen").into(),
             category: "View",
             default_shortcut: Some("F11"),
         },
         ActionDef {
             id: "view.sidebar.show",
-            label: fs_i18n::t("settings.shortcuts.action_sidebar").into(),
+            label: fs_i18n::t("settings-shortcuts-action-sidebar").into(),
             category: "View",
             default_shortcut: None,
         },
         ActionDef {
             id: "store.open",
-            label: fs_i18n::t("settings.shortcuts.action_store").into(),
+            label: fs_i18n::t("settings-shortcuts-action-store").into(),
             category: "Tools",
             default_shortcut: Some("Ctrl+S"),
         },
         ActionDef {
             id: "store.install",
-            label: fs_i18n::t("settings.shortcuts.action_install").into(),
+            label: fs_i18n::t("settings-shortcuts-action-install").into(),
             category: "Tools",
             default_shortcut: Some("Ctrl+I"),
         },
         ActionDef {
             id: "tasks.open",
-            label: fs_i18n::t("settings.shortcuts.action_tasks").into(),
+            label: fs_i18n::t("settings-shortcuts-action-tasks").into(),
             category: "Tools",
             default_shortcut: Some("Ctrl+T"),
         },
         ActionDef {
             id: "container-app.open",
-            label: fs_i18n::t("settings.shortcuts.action_container").into(),
+            label: fs_i18n::t("settings-shortcuts-action-container").into(),
             category: "Tools",
             default_shortcut: None,
         },
         ActionDef {
             id: "studio.open",
-            label: fs_i18n::t("settings.shortcuts.action_studio").into(),
+            label: fs_i18n::t("settings-shortcuts-action-studio").into(),
             category: "Tools",
             default_shortcut: None,
         },
         ActionDef {
             id: "bots.open",
-            label: fs_i18n::t("settings.shortcuts.action_bots").into(),
+            label: fs_i18n::t("settings-shortcuts-action-bots").into(),
             category: "Tools",
             default_shortcut: None,
         },
         ActionDef {
             id: "help.open",
-            label: fs_i18n::t("settings.shortcuts.action_help").into(),
+            label: fs_i18n::t("settings-shortcuts-action-help").into(),
             category: "Help",
             default_shortcut: Some("F1"),
         },
         ActionDef {
             id: "help.shortcuts",
-            label: fs_i18n::t("settings.shortcuts.action_shortcuts").into(),
+            label: fs_i18n::t("settings-shortcuts-action-shortcuts").into(),
             category: "Help",
             default_shortcut: None,
         },
         ActionDef {
             id: "window.close",
-            label: fs_i18n::t("settings.shortcuts.action_close").into(),
+            label: fs_i18n::t("settings-shortcuts-action-close").into(),
             category: "Window",
             default_shortcut: Some("Escape"),
         },
@@ -115,6 +125,8 @@ pub fn resolve_shortcut<'a>(action: &'a ActionDef, config: &'a ShortcutsConfig) 
         .map(std::string::String::as_str)
         .or(action.default_shortcut)
 }
+
+// ── ShortcutsConfig ───────────────────────────────────────────────────────────
 
 /// Persisted custom shortcut overrides.
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -139,27 +151,48 @@ impl ShortcutsConfig {
     }
 }
 
-// ── ShortcutsSettings ─────────────────────────────────────────────────────────
+// ── ShortcutsState ────────────────────────────────────────────────────────────
 
-/// Keyboard shortcuts editor in Settings.
-///
-/// Groups all registered actions by category. Each row shows the action name
-/// and a clickable shortcut field. Clicking enters "recording" mode — the next
-/// key combo pressed becomes the new shortcut. Escape cancels recording.
-#[component]
-pub fn ShortcutsSettings() -> Element {
-    let mut config = use_signal(ShortcutsConfig::load);
-    let mut recording: Signal<Option<String>> = use_signal(|| None);
-    let mut search = use_signal(String::new);
+/// Runtime state for the Shortcuts settings section.
+#[derive(Debug, Clone)]
+pub struct ShortcutsState {
+    pub config: ShortcutsConfig,
+    pub search: String,
+    /// Action ID currently being recorded (waiting for key input).
+    pub recording: Option<String>,
+}
 
+impl ShortcutsState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            config: ShortcutsConfig::load(),
+            search: String::new(),
+            recording: None,
+        }
+    }
+}
+
+impl Default for ShortcutsState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── view_shortcuts ────────────────────────────────────────────────────────────
+
+/// Render the Shortcuts settings section.
+pub fn view_shortcuts(app: &SettingsApp) -> Element<'_, Message> {
+    let state = &app.shortcuts;
     let actions = register_actions();
 
-    // Build sorted, deduplicated category list
-    let mut categories: Vec<&str> = actions.iter().map(|a| a.category).collect();
-    categories.sort_unstable();
-    categories.dedup();
+    let placeholder = fs_i18n::t("settings-shortcuts-search-placeholder").to_string();
+    let search_input = text_input(placeholder.as_str(), &state.search)
+        .on_input(Message::ShortcutsSearchChanged)
+        .padding([6, 10])
+        .width(Length::Fill);
 
-    let q = search.read().to_lowercase();
+    let q = state.search.to_lowercase();
     let filtered: Vec<&ActionDef> = actions
         .iter()
         .filter(|a| {
@@ -169,183 +202,89 @@ pub fn ShortcutsSettings() -> Element {
         })
         .collect();
 
-    // Key recording handler — captures the next key combo when in recording mode
-    let on_key = move |evt: KeyboardEvent| {
-        if recording.read().is_none() {
-            return;
-        }
-        evt.stop_propagation();
+    // Build sorted, deduplicated category list
+    let mut categories: Vec<&str> = filtered.iter().map(|a| a.category).collect();
+    categories.sort_unstable();
+    categories.dedup();
 
-        let key = evt.key();
-        // Ignore standalone modifier presses
-        let key_str = match &key {
-            Key::Character(c) => c.to_uppercase(),
-            Key::F1 => "F1".to_string(),
-            Key::F2 => "F2".to_string(),
-            Key::F3 => "F3".to_string(),
-            Key::F4 => "F4".to_string(),
-            Key::F5 => "F5".to_string(),
-            Key::F6 => "F6".to_string(),
-            Key::F7 => "F7".to_string(),
-            Key::F8 => "F8".to_string(),
-            Key::F9 => "F9".to_string(),
-            Key::F10 => "F10".to_string(),
-            Key::F11 => "F11".to_string(),
-            Key::F12 => "F12".to_string(),
-            Key::Tab => "Tab".to_string(),
-            Key::Enter => "Enter".to_string(),
-            Key::Delete => "Delete".to_string(),
-            Key::Backspace => "Backspace".to_string(),
-            Key::ArrowUp => "Up".to_string(),
-            Key::ArrowDown => "Down".to_string(),
-            Key::ArrowLeft => "Left".to_string(),
-            Key::ArrowRight => "Right".to_string(),
-            Key::Escape => {
-                // Escape cancels recording
-                recording.set(None);
-                return;
-            }
-            Key::Control | Key::Alt | Key::Shift | Key::Super | Key::Meta | _ => return,
-        };
+    let mut rows: Vec<Element<Message>> = vec![
+        text(fs_i18n::t("settings-shortcuts-title").to_string())
+            .size(16)
+            .into(),
+        search_input.into(),
+    ];
 
-        let mods = evt.modifiers();
-        let mut parts: Vec<&str> = Vec::new();
-        if mods.ctrl() {
-            parts.push("Ctrl");
-        }
-        if mods.alt() {
-            parts.push("Alt");
-        }
-        if mods.shift() {
-            parts.push("Shift");
+    for cat in categories {
+        let cat_actions: Vec<&&ActionDef> = filtered.iter().filter(|a| a.category == cat).collect();
+        if cat_actions.is_empty() {
+            continue;
         }
 
-        let shortcut = if parts.is_empty() {
-            key_str.clone()
-        } else {
-            format!("{}+{}", parts.join("+"), key_str)
-        };
+        rows.push(text(cat).size(11).into());
 
-        if let Some(action_id) = recording.read().clone() {
-            config.write().custom.insert(action_id, shortcut);
-            config.read().save();
-        }
-        recording.set(None);
-    };
+        for action in cat_actions {
+            let current = resolve_shortcut(action, &state.config)
+                .map_or_else(|| "—".to_string(), ToString::to_string);
+            let is_recording = state.recording.as_deref() == Some(action.id);
+            let is_default = !state.config.custom.contains_key(action.id);
+            let action_id = action.id.to_string();
+            let action_id2 = action.id.to_string();
 
-    rsx! {
-        div {
-            class: "fs-shortcuts",
-            style: "padding: 24px; max-width: 640px; outline: none;",
-            tabindex: "0",
-            onkeydown: on_key,
+            let shortcut_label = if is_recording {
+                fs_i18n::t("settings-shortcuts-press-keys").to_string()
+            } else {
+                current
+            };
 
-            h3 { style: "margin-top: 0;", {fs_i18n::t("settings.shortcuts.title")} }
+            let record_btn = button(text(shortcut_label).size(12))
+                .padding([3, 10])
+                .style(if is_recording {
+                    fs_gui_engine_iced::iced::widget::button::primary
+                } else {
+                    fs_gui_engine_iced::iced::widget::button::secondary
+                })
+                .on_press(if is_recording {
+                    Message::ShortcutsStopRecording
+                } else {
+                    Message::ShortcutsStartRecording(action_id)
+                });
 
-            // Search
-            div { style: "margin-bottom: 20px;",
-                input {
-                    r#type: "search",
-                    placeholder: fs_i18n::t("settings.shortcuts.search_placeholder").to_string(),
-                    style: "width: 100%; padding: 8px 12px; border: 1px solid var(--fs-border); \
-                            border-radius: var(--fs-radius-md); font-size: 13px; \
-                            background: var(--fs-bg-input); color: var(--fs-text-primary);",
-                    oninput: move |e| *search.write() = e.value(),
-                }
+            let mut row_items: Vec<Element<Message>> = vec![
+                text(action.label.clone())
+                    .size(13)
+                    .width(Length::Fill)
+                    .into(),
+                record_btn.into(),
+            ];
+
+            if !is_default {
+                row_items.push(
+                    button(text(fs_i18n::t("actions.reset").to_string()).size(11))
+                        .padding([3, 8])
+                        .on_press(Message::ShortcutsResetAction(action_id2))
+                        .into(),
+                );
             }
 
-            // Action groups
-            for cat in &categories {
-                {
-                    let cat_actions: Vec<&&ActionDef> = filtered.iter().filter(|a| a.category == *cat).collect();
-                    if cat_actions.is_empty() {
-                        rsx! {}
-                    } else {
-                        let cfg = config.read().clone();
-                        let recording_id = recording.read().clone();
-                        rsx! {
-                            div { style: "margin-bottom: 20px;",
-                                div {
-                                    style: "font-size: 11px; font-weight: 600; text-transform: uppercase; \
-                                            letter-spacing: 0.08em; color: var(--fs-text-muted); \
-                                            margin-bottom: 6px; padding-bottom: 4px; \
-                                            border-bottom: 1px solid var(--fs-border);",
-                                    "{cat}"
-                                }
-                                for action in cat_actions {
-                                    {
-                                        let action = *action;
-                                        let current = resolve_shortcut(action, &cfg).map_or_else(|| "—".to_string(), std::string::ToString::to_string);
-                                        let is_default = !cfg.custom.contains_key(action.id);
-                                        let is_recording = recording_id.as_deref() == Some(action.id);
-                                        let action_id = action.id.to_string();
-                                        let action_id2 = action.id.to_string();
-                                        rsx! {
-                                            div {
-                                                key: "{action.id}",
-                                                style: "display: flex; align-items: center; \
-                                                        justify-content: space-between; \
-                                                        padding: 6px 0; gap: 12px;",
-                                                span {
-                                                    style: "font-size: 13px; color: var(--fs-text-primary); flex: 1;",
-                                                    "{action.label}"
-                                                }
-                                                div { style: "display: flex; align-items: center; gap: 6px;",
-                                                    // Shortcut badge (clickable to start recording)
-                                                    button {
-                                                        style: if is_recording {
-                                                            "min-width: 120px; padding: 3px 10px; font-size: 12px; \
-                                                             border-radius: var(--fs-radius-sm); cursor: pointer; \
-                                                             background: var(--fs-primary); color: var(--fs-primary-text); \
-                                                             border: 1px solid var(--fs-primary); font-family: var(--fs-font-mono);"
-                                                        } else {
-                                                            "min-width: 120px; padding: 3px 10px; font-size: 12px; \
-                                                             border-radius: var(--fs-radius-sm); cursor: pointer; \
-                                                             background: var(--fs-bg-elevated); color: var(--fs-text-secondary); \
-                                                             border: 1px solid var(--fs-border); font-family: var(--fs-font-mono);"
-                                                        },
-                                                        onclick: move |_| {
-                                                            if recording.read().as_deref() == Some(action_id.as_str()) {
-                                                                recording.set(None);
-                                                            } else {
-                                                                recording.set(Some(action_id.clone()));
-                                                            }
-                                                        },
-                                                        { if is_recording { fs_i18n::t("settings.shortcuts.press_keys").into() } else { current.clone() } }
-                                                    }
-                                                    // Reset button (only when customized)
-                                                    if !is_default {
-                                                        button {
-                                                            style: "padding: 3px 8px; font-size: 11px; border-radius: var(--fs-radius-sm); \
-                                                                    cursor: pointer; background: none; color: var(--fs-text-muted); \
-                                                                    border: 1px solid var(--fs-border);",
-                                                            onclick: move |_| {
-                                                                config.write().custom.remove(&action_id2);
-                                                                config.read().save();
-                                                            },
-                                                            {fs_i18n::t("actions.reset")}
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (*recording.read()).is_some() {
-                div {
-                    style: "position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); \
-                            background: var(--fs-bg-elevated); border: 1px solid var(--fs-primary); \
-                            border-radius: var(--fs-radius-md); padding: 8px 20px; font-size: 13px; \
-                            color: var(--fs-text-secondary); z-index: 9999;",
-                    {fs_i18n::t("settings.shortcuts.recording_hint")}
-                }
-            }
+            rows.push(
+                row(row_items)
+                    .align_y(Alignment::Center)
+                    .spacing(6)
+                    .padding([4, 0])
+                    .into(),
+            );
         }
     }
+
+    let recording_hint: Element<Message> = if state.recording.is_some() {
+        text(fs_i18n::t("settings-shortcuts-recording-hint").to_string())
+            .size(12)
+            .into()
+    } else {
+        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+    };
+
+    rows.push(recording_hint);
+
+    scrollable(column(rows).spacing(6).width(Length::Fill)).into()
 }

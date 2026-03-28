@@ -10,32 +10,14 @@ pub mod service_roles;
 pub mod shortcuts;
 pub mod translation_editor;
 
-const I18N_SNIPPETS: &[(&str, &str)] = &[
-    ("en", include_str!("../assets/i18n/en.toml")),
-    ("de", include_str!("../assets/i18n/de.toml")),
-];
-
-/// i18n plugin for fs-settings (`settings.*` keys). Pass to [`fs_i18n::init_with_plugins`].
-pub struct I18nPlugin;
-
-impl fs_i18n::SnippetPlugin for I18nPlugin {
-    fn name(&self) -> &'static str {
-        "fs-settings"
-    }
-    fn snippets(&self) -> &[(&str, &str)] {
-        I18N_SNIPPETS
-    }
-}
-
-pub use app::{SettingsApp, SettingsAppProps};
+pub use app::SettingsApp;
 pub use browser_settings::BrowserSettings;
 pub use desktop_settings::{
     AnimationConfig, ClickConfig, ClickStyle, DesktopConfig, DisplayMode, DoubleClickAction,
     FocusPolicy, IconConfig, PanelArrangement, ResizeEdgeSize, SidebarConfig, SidebarPosition,
     TaskbarPosition, TitleBarStyle, WindowConfig, WorkspaceConfig,
 };
-#[allow(deprecated)]
-pub use language::{load_active_language, LangContext, LanguageSettings};
+pub use language::{load_active_language, LanguageSettings};
 pub use package_settings::{PackageSettingsEntry, PackageSettingsView};
 pub use service_roles::{ServiceRole, ServiceRoles, KNOWN_ROLES};
 pub use shortcuts::{register_actions, resolve_shortcut, ActionDef, ShortcutsConfig};

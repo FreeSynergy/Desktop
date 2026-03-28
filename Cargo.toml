@@ -47,14 +47,17 @@ fs-health  = { path = "../fs-libs/fs-health" }
 # Standalone library repos (migrated from fs-libs in Phase D)
 fs-session    = { path = "../fs-session" }
 fs-config     = { path = "../fs-config" }
-fs-i18n       = { path = "../fs-i18n", features = ["dioxus"] }
+fs-i18n       = { path = "../fs-i18n" }
 fs-theme      = { path = "../fs-theme" }
 fs-help       = { path = "../fs-help" }
 fs-container  = { path = "../fs-container" }
 fs-plugin-sdk = { path = "../fs-packages/fs-plugin-sdk" }
 fs-auth       = { path = "../fs-auth" }
-fs-components = { path = "../fs-components" }
-fs-render     = { path = "../fs-render" }
+# fs-components removed — depends on dioxus, migrating to fs-render (G2.8)
+fs-render          = { path = "../fs-render" }
+fs-gui-engine-iced = { path = "../fs-gui-engine-iced" }
+fs-gui-engine-bevy = { path = "../fs-gui-engine-bevy" }
+fs-web-engine      = { path = "../fs-web-engine" }
 fs-db         = { path = "../fs-db" }
 fs-pkg        = { path = "../fs-packages/fs-pkg" }
 fs-store      = { path = "../fs-store/crates/fs-store" }
@@ -69,9 +72,6 @@ fs-manager-ai        = { path = "../fs-managers/ai" }
 
 # Database (SeaORM)
 sea-orm = { version = "=2.0.0-rc.37", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
-
-# UI — Dioxus (Desktop + Web + TUI via single codebase)
-dioxus = { version = "0.7.3", default-features = false, features = ["macro", "html", "signals", "hooks", "launch", "mounted", "document"] }
 
 # Serialization
 serde      = { version = "1",   features = ["derive"] }
@@ -99,8 +99,3 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Allocator — replaces glibc allocator to avoid WebKitGTK heap-corruption on window close
 mimalloc = { version = "0.1", default-features = false }
 
-# ── Local patches ─────────────────────────────────────────────────────────────
-# Remove once dioxus-desktop exposes with_navigation_handler in a published release.
-# Tracking: https://github.com/DioxusLabs/dioxus/pull/5390
-[patch.crates-io]
-dioxus-desktop = { path = "vendor/dioxus-desktop" }

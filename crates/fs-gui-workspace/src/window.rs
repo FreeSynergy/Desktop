@@ -27,8 +27,6 @@
 /// "main sidebar left or right?"). The layout is stored per-user, not per-window.
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
-use dioxus::prelude::Element;
-
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Monotonically increasing z-index counter.
@@ -404,15 +402,77 @@ impl Window {
     }
 }
 
+// ── AppId ─────────────────────────────────────────────────────────────────────
+
+/// Identifies which app provides the content for an open window.
+///
+/// Replaces the old `WindowRenderFn` (a raw Dioxus function pointer).
+/// The `DesktopShell` dispatches `AppId` variants to their sub-app states.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AppId {
+    Browser,
+    Settings,
+    Profile,
+    Store,
+    Lenses,
+    Builder,
+    Tasks,
+    Bots,
+    Ai,
+    Container,
+    Managers,
+    Help,
+}
+
+impl AppId {
+    /// Human-readable name for the app (used as window title fallback).
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Browser => "Browser",
+            Self::Settings => "Settings",
+            Self::Profile => "Profile",
+            Self::Store => "Store",
+            Self::Lenses => "Lenses",
+            Self::Builder => "Builder",
+            Self::Tasks => "Tasks",
+            Self::Bots => "Bots",
+            Self::Ai => "AI",
+            Self::Container => "Container",
+            Self::Managers => "Managers",
+            Self::Help => "Help",
+        }
+    }
+
+    /// Default icon emoji for the app.
+    #[must_use]
+    pub fn icon(self) -> &'static str {
+        match self {
+            Self::Browser => "🌐",
+            Self::Settings => "⚙",
+            Self::Profile => "👤",
+            Self::Store => "🏪",
+            Self::Lenses => "🔍",
+            Self::Builder => "🔧",
+            Self::Tasks => "✅",
+            Self::Bots => "🤖",
+            Self::Ai => "✨",
+            Self::Container => "📦",
+            Self::Managers => "🗂",
+            Self::Help => "❓",
+        }
+    }
+}
+
+/// A type alias kept for backward compatibility with older call sites.
+///
+/// New code should use `AppId` directly; this alias will be removed once all
+/// callers have been updated.
+pub type WindowRenderFn = AppId;
+
 // ── OpenWindow ────────────────────────────────────────────────────────────────
 
-/// A zero-arg Dioxus component function used as the window's content renderer.
-///
-/// Must be a plain `fn() -> Element` (not a closure) — function pointers are
-/// `Copy + PartialEq + 'static`, which lets Dioxus memoize `WindowContent`.
-pub type WindowRenderFn = fn() -> Element;
-
-/// A live, renderable window: runtime metadata + type-erased render function.
+/// A live, renderable window: runtime metadata + app identifier.
 ///
 /// `Deref<Target = Window>` lets all existing callers access metadata fields
 /// directly without wrapping every access in `.meta.xxx`.
@@ -420,30 +480,25 @@ pub type WindowRenderFn = fn() -> Element;
 /// # Design
 /// The Desktop stores `Vec<OpenWindow>` in its `WindowManager`.
 /// When running standalone, a single-window host does the same with one entry.
-/// Both share the same `WindowFrame` rendering path — from one mould.
-#[derive(Clone)]
+/// Both share the same rendering path — from one mould.
+#[derive(Clone, PartialEq)]
 pub struct OpenWindow {
     pub meta: Window,
-    pub render: WindowRenderFn,
-}
-
-impl PartialEq for OpenWindow {
-    fn eq(&self, other: &Self) -> bool {
-        self.meta == other.meta
-            && core::ptr::fn_addr_eq(self.render as fn() -> _, other.render as fn() -> _)
-    }
+    /// Which app provides the content for this window.
+    pub app: AppId,
 }
 
 impl OpenWindow {
-    pub fn new(meta: Window, render: WindowRenderFn) -> Self {
-        Self { meta, render }
+    #[must_use]
+    pub fn new(meta: Window, app: AppId) -> Self {
+        Self { meta, app }
     }
 
-    /// Build from a `FsWindow` description + render function.
-    pub fn from_fs<W: FsWindow>(desc: W, render: WindowRenderFn) -> Self {
+    /// Build from a `FsWindow` description + app identifier.
+    pub fn from_fs<W: FsWindow>(desc: W, app: AppId) -> Self {
         Self {
             meta: desc.into_window(),
-            render,
+            app,
         }
     }
 }

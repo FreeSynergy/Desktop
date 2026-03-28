@@ -14,22 +14,19 @@ name = "fs-settings"
 path = "src/main.rs"
 
 [features]
-default  = ["desktop"]
-desktop  = ["dioxus/desktop", "fs-components/desktop"]
-web      = ["dioxus/web",     "fs-components/web"]
+default = ["iced"]
+iced    = ["dep:fs-gui-engine-iced"]
 
 [dependencies]
-fs-db-desktop       = { workspace = true }
-fs-components       = { workspace = true }
-fs-browser          = { workspace = true }
-fs-store            = { workspace = true }
-fs-theme            = { workspace = true }
-fs-i18n             = { workspace = true }
-fs-pkg              = { workspace = true }
-fs-manager-language = { workspace = true }
-dioxus               = { workspace = true }
+fs-db-desktop        = { workspace = true }
+fs-browser           = { workspace = true }
+fs-store             = { workspace = true }
+fs-theme             = { workspace = true }
+fs-i18n              = { workspace = true }
+fs-pkg               = { workspace = true }
+fs-manager-language  = { workspace = true }
+fs-gui-engine-iced   = { workspace = true, optional = true }
 serde                = { workspace = true }
 serde_json           = { workspace = true }
 toml                 = { workspace = true }
 tracing              = { workspace = true }
-reqwest              = { workspace = true }

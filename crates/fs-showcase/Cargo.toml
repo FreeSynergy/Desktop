@@ -10,15 +10,10 @@ name = "fs-showcase"
 path = "src/main.rs"
 
 [features]
-default = ["desktop"]
-desktop = ["dioxus/desktop", "fs-gui-workspace/desktop", "fs-components/desktop"]
+default = ["iced"]
+iced    = ["dep:fs-gui-engine-iced"]
 
 [dependencies]
-fs-gui-workspace   = { workspace = true, default-features = false }
-fs-components      = { workspace = true }
-dioxus             = { workspace = true }
+fs-gui-engine-iced = { workspace = true, optional = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-
-[package.metadata.cargo-machete]
-ignored = ["fs-gui-workspace"]  # referenced only in feature activation, not in Rust code

@@ -1,6 +1,6 @@
 [package]
 name        = "fs-gui-workspace"
-description = "FreeSynergy Desktop – GUI workspace: taskbar, window manager, sidebar, layouts"
+description = "FreeSynergy Desktop shell — header, sidebar, taskbar, window manager"
 version.workspace   = true
 edition.workspace   = true
 license.workspace   = true
@@ -9,40 +9,20 @@ license.workspace   = true
 name = "fs_gui_workspace"
 path = "src/lib.rs"
 
-[[bin]]
-name = "fs-gui-workspace"
-path = "src/main.rs"
-
 [features]
-default  = ["desktop"]
-desktop  = ["dioxus/desktop", "fs-components/desktop"]
-web      = ["dioxus/web",     "fs-components/web"]
+default = ["iced"]
+iced    = ["dep:fs-gui-engine-iced"]
+bevy    = ["dep:fs-gui-engine-bevy"]
 
 [dependencies]
-fs-ai            = { workspace = true }
-fs-db-desktop    = { workspace = true }
-fs-session       = { workspace = true }
-fs-store-app     = { workspace = true }
-fs-builder       = { workspace = true }
-fs-container-app = { workspace = true }
-fs-settings      = { workspace = true }
-fs-profile       = { workspace = true }
-fs-tasks         = { workspace = true }
-fs-browser       = { workspace = true }
-fs-lenses        = { workspace = true }
-fs-managers      = { workspace = true }
-fs-bots          = { workspace = true }
-fs-theme-app     = { workspace = true }
-fs-theme         = { workspace = true }
-fs-components    = { workspace = true }
-fs-i18n          = { workspace = true }
-dioxus           = { workspace = true }
-serde            = { workspace = true }
-serde_json       = { workspace = true }
-chrono           = { workspace = true }
-tokio            = { workspace = true }
-tracing          = { workspace = true }
-reqwest          = { workspace = true }
-
-[dev-dependencies]
-insta = { version = "1", features = ["toml"] }
+fs-gui-engine-iced = { workspace = true, optional = true }
+fs-gui-engine-bevy = { workspace = true, optional = true }
+fs-settings        = { workspace = true }
+fs-i18n            = { workspace = true }
+fs-theme           = { workspace = true }
+fs-session         = { workspace = true }
+fs-db-desktop      = { workspace = true }
+serde              = { workspace = true }
+tokio              = { workspace = true }
+tracing            = { workspace = true }
+chrono             = { workspace = true }

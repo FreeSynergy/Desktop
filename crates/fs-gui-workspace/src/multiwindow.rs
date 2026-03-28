@@ -1,99 +1,25 @@
-/// Multiwindow support — open any fs-* app in its own native OS window.
-///
-/// Uses `spawn_window` from `fs_components::launch` to spawn independent windows.
-/// Each window has its own Dioxus tree but shares no state with the main shell.
-/// All `dioxus::desktop` API calls are isolated in `fs_components::launch`.
-///
-/// # Usage
-/// ```rust,ignore
-/// let handle = use_multiwindow();
-/// handle.open_settings();
-/// ```
-#[cfg(feature = "desktop")]
-use fs_components::{spawn_window, DesktopConfig};
+//! Multiwindow support — stub for iced migration.
+//!
+//! In the iced architecture, multiple windows are managed via `iced::window`
+//! APIs inside `DesktopShell`. This module keeps the `MultiwindowHandle` type
+//! for backward compatibility.
 
-/// Zero-arg wrapper so `SettingsApp` (which requires `SettingsAppProps`) can be passed
-/// to `spawn_window`, which expects `fn() -> Element`.
-#[cfg(feature = "desktop")]
-fn settings_standalone() -> dioxus::prelude::Element {
-    use dioxus::prelude::*;
-    rsx! { fs_settings::SettingsApp {} }
-}
-
-/// Handle returned by `use_multiwindow()`. Call methods to open app windows.
+//! Handle for opening app windows.
+//!
+//! In the iced shell, window opening is triggered via `DesktopMessage::OpenApp(AppId)`.
+//! This stub keeps the type name available for existing imports.
 #[derive(Clone)]
 pub struct MultiwindowHandle;
 
 impl MultiwindowHandle {
-    /// Open fs-managers in its own window.
-    #[cfg(feature = "desktop")]
-    pub fn open_managers(&self) {
-        spawn_window(
-            DesktopConfig::new()
-                .with_title("FreeSynergy \u{2014} Managers")
-                .with_size(900.0, 640.0),
-            fs_managers::ManagersApp,
-        );
-    }
-
-    /// Open fs-settings in its own window.
-    #[cfg(feature = "desktop")]
-    pub fn open_settings(&self) {
-        spawn_window(
-            DesktopConfig::new()
-                .with_title("FreeSynergy \u{2014} Settings")
-                .with_size(800.0, 640.0),
-            settings_standalone,
-        );
-    }
-
-    /// Open fs-profile in its own window.
-    #[cfg(feature = "desktop")]
-    pub fn open_profile(&self) {
-        spawn_window(
-            DesktopConfig::new()
-                .with_title("FreeSynergy \u{2014} Profile")
-                .with_size(700.0, 600.0),
-            fs_profile::ProfileApp,
-        );
-    }
-
-    /// Open fs-store in its own window.
-    #[cfg(feature = "desktop")]
-    pub fn open_store(&self) {
-        spawn_window(
-            DesktopConfig::new()
-                .with_title("FreeSynergy \u{2014} App Store")
-                .with_size(1000.0, 700.0),
-            fs_store_app::StoreApp,
-        );
-    }
-
-    /// Open fs-builder in its own window.
-    #[cfg(feature = "desktop")]
-    pub fn open_builder(&self) {
-        spawn_window(
-            DesktopConfig::new()
-                .with_title("FreeSynergy \u{2014} Builder")
-                .with_size(1000.0, 700.0),
-            fs_builder::BuilderApp,
-        );
-    }
-
-    // Non-desktop stubs: no-ops so code compiles for web target too.
-    #[cfg(not(feature = "desktop"))]
     pub fn open_managers(&self) {}
-    #[cfg(not(feature = "desktop"))]
     pub fn open_settings(&self) {}
-    #[cfg(not(feature = "desktop"))]
     pub fn open_profile(&self) {}
-    #[cfg(not(feature = "desktop"))]
     pub fn open_store(&self) {}
-    #[cfg(not(feature = "desktop"))]
     pub fn open_builder(&self) {}
 }
 
-/// Hook that returns a `MultiwindowHandle`.
+/// Returns a `MultiwindowHandle`.
 #[must_use]
 pub fn use_multiwindow() -> MultiwindowHandle {
     MultiwindowHandle

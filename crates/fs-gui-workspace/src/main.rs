@@ -1,12 +1,18 @@
 #![deny(clippy::all, clippy::pedantic, warnings)]
+// Standalone launcher binary for fs-gui-workspace (iced).
+// The primary launcher is fs-app — this binary exists for development convenience.
+
 fn main() {
-    // Initialize i18n before Dioxus starts — guarantees all translation keys
-    // are resolved before any component renders for the first time.
     fs_gui_workspace::init_i18n();
 
-    #[cfg(feature = "desktop")]
-    fs_gui_workspace::launch_desktop(
-        fs_gui_workspace::DesktopConfig::new().with_all_navigation(),
-        fs_gui_workspace::Desktop,
-    );
+    #[cfg(feature = "iced")]
+    {
+        use fs_gui_engine_iced::IcedEngine;
+        use fs_gui_workspace::shell::{DesktopMessage, DesktopShell};
+        let _ = IcedEngine::run::<DesktopShell, DesktopMessage, _, _>(
+            "FreeSynergy Desktop",
+            DesktopShell::update,
+            DesktopShell::view,
+        );
+    }
 }

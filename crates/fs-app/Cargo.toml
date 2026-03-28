@@ -10,13 +10,14 @@ name = "fs-desktop"
 path = "src/main.rs"
 
 [features]
-default  = ["desktop"]
-desktop  = ["dioxus/desktop", "fs-gui-workspace/desktop"]
-web      = ["dioxus/web",     "fs-gui-workspace/web"]
+default = ["iced"]
+iced    = ["fs-gui-workspace/iced", "dep:fs-gui-engine-iced"]
+bevy    = ["fs-gui-workspace/bevy", "dep:fs-gui-engine-bevy"]
 
 [dependencies]
 fs-gui-workspace   = { workspace = true, default-features = false }
-dioxus             = { workspace = true }
+fs-gui-engine-iced = { workspace = true, optional = true }
+fs-gui-engine-bevy = { workspace = true, optional = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 mimalloc           = { workspace = true }

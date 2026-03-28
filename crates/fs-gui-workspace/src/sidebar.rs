@@ -1,20 +1,89 @@
 /// sidebar.rs — Shell sidebar domain helpers.
 ///
-/// This module owns the OOP layer that bridges the package registry with the
-/// sidebar component.  There is no `ShellSidebar` wrapper component here —
-/// the `Desktop` component calls `fs_components::Sidebar` directly and passes
-/// the items produced by the helpers below.
-///
 /// Public API:
-///   `SidebarEntry`           — trait: any type that can be shown as a sidebar item.
-///   `ManagerBundle`          — groups manager packages into a single folder item.
+///   `SidebarItem`             — a single nav entry (leaf or folder).
+///   `SidebarSection`          — a named group of items (may be untitled).
+///   `SidebarEntry`            — trait: any type that can be shown as a sidebar item.
+///   `ManagerBundle`           — groups manager packages into a single folder item.
 ///   `default_sidebar_sections()` — main (scrollable) sections for the shell.
 ///   `default_pinned_items()`     — pinned (bottom) items for the shell.
-use fs_components::{SidebarItem, SidebarSection};
 use fs_db_desktop::package_registry::{InstalledPackage, PackageKind, PackageRegistry};
 use fs_i18n;
 
 use crate::icons::{ICON_MANAGERS, ICON_SETTINGS};
+
+// ── SidebarItem ───────────────────────────────────────────────────────────────
+
+/// A single navigation entry in the sidebar.
+///
+/// Can be a leaf (navigates to an app) or a folder (shows child items).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SidebarItem {
+    pub id: String,
+    pub icon: String,
+    pub label: String,
+    /// Child items if this is a folder. Empty = leaf.
+    pub children: Vec<SidebarItem>,
+}
+
+impl SidebarItem {
+    /// Create a leaf navigation item.
+    pub fn new(id: impl Into<String>, icon: impl Into<String>, label: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            icon: icon.into(),
+            label: label.into(),
+            children: vec![],
+        }
+    }
+
+    /// Create a folder item containing child items.
+    pub fn folder(
+        id: impl Into<String>,
+        icon: impl Into<String>,
+        label: impl Into<String>,
+        children: Vec<SidebarItem>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            icon: icon.into(),
+            label: label.into(),
+            children,
+        }
+    }
+
+    /// Returns `true` if this item is a folder (has children).
+    #[must_use]
+    pub fn is_folder(&self) -> bool {
+        !self.children.is_empty()
+    }
+}
+
+// ── SidebarSection ────────────────────────────────────────────────────────────
+
+/// A named (or untitled) group of sidebar items.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SidebarSection {
+    /// Optional heading shown above the group. `None` = no heading rendered.
+    pub title: Option<String>,
+    pub items: Vec<SidebarItem>,
+}
+
+impl SidebarSection {
+    /// Create a section with a visible title.
+    pub fn titled(title: impl Into<String>, items: Vec<SidebarItem>) -> Self {
+        Self {
+            title: Some(title.into()),
+            items,
+        }
+    }
+
+    /// Create a section without a title heading.
+    #[must_use]
+    pub fn untitled(items: Vec<SidebarItem>) -> Self {
+        Self { title: None, items }
+    }
+}
 
 // ── SidebarEntry ─────────────────────────────────────────────────────────────
 
@@ -52,7 +121,7 @@ impl SidebarEntry for InstalledPackage {
 /// Groups manager packages into a single folder item.
 ///
 /// When exactly one manager is installed, the single-item folder rule in
-/// `Sidebar` renders the manager directly instead of the folder.
+/// the sidebar renders the manager directly instead of the folder.
 pub struct ManagerBundle(pub Vec<InstalledPackage>);
 
 impl SidebarEntry for ManagerBundle {

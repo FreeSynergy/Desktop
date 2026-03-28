@@ -1,33 +1,33 @@
-/// Settings — root component: all settings sections in one place.
-use dioxus::prelude::*;
-use fs_components::{Sidebar, SidebarItem, FS_SIDEBAR_CSS};
+// fs-settings/src/app.rs — root iced application for FreeSynergy Settings.
+//
+// Architecture:
+//   SettingsApp  — owns all section state
+//   Message      — flat enum for all actions
+//   update()     — state transitions
+//   view()       — sidebar + section content
+
+use fs_gui_engine_iced::iced::{
+    self,
+    widget::{button, column, container, row, scrollable, text},
+    Alignment, Element, Length, Task,
+};
 use fs_i18n;
 
-use crate::accounts::AccountSettings;
-use crate::appearance::AppearanceSettings;
-use crate::browser_settings::BrowserSettings;
-use crate::desktop_settings::DesktopSettings;
-use crate::language::LanguageSettings;
-use crate::package_settings::{PackageSettingsEntry, PackageSettingsView};
-use crate::service_roles::ServiceRoles;
-use crate::shortcuts::ShortcutsSettings;
-
-// ── Descriptor ────────────────────────────────────────────────────────────────
-
-/// Static metadata for a settings section.
-/// All per-variant constant data lives here — add a field once, not in every match.
-pub struct SectionMeta {
-    /// Stable identifier used for routing — never translated.
-    pub id: &'static str,
-    pub icon: &'static str,
-    /// i18n key passed to `fs_i18n::t`.
-    pub label_key: &'static str,
-}
+use crate::accounts::AccountsState;
+use crate::appearance::AppearanceState;
+use crate::browser_settings::BrowserSettingsState;
+use crate::desktop_settings::{DesktopConfig, DesktopTab};
+use crate::language::LanguageState;
+use crate::package_settings::PackageSettingsState;
+use crate::service_roles::ServiceRolesState;
+use crate::shortcuts::ShortcutsState;
 
 // ── SettingsSection ───────────────────────────────────────────────────────────
 
-#[derive(Clone, PartialEq, Debug)]
+/// All settings sections in display order.
+#[derive(Clone, PartialEq, Debug, Default)]
 pub enum SettingsSection {
+    #[default]
     Appearance,
     Language,
     ServiceRoles,
@@ -39,7 +39,6 @@ pub enum SettingsSection {
 }
 
 impl SettingsSection {
-    /// All sections in display order (including `Packages`).
     #[must_use]
     pub fn all() -> &'static [Self] {
         const ALL: &[SettingsSection] = &[
@@ -55,190 +54,390 @@ impl SettingsSection {
         ALL
     }
 
-    /// Static metadata for this section (id, icon, i18n key).
-    /// Single source of truth — replaces parallel match blocks.
     #[must_use]
-    pub fn meta(&self) -> SectionMeta {
+    pub fn id(&self) -> &str {
         match self {
-            Self::Appearance => SectionMeta {
-                id: "appearance",
-                icon: "🎨",
-                label_key: "settings.section.appearance",
-            },
-            Self::Language => SectionMeta {
-                id: "language",
-                icon: "🌐",
-                label_key: "settings.section.language",
-            },
-            Self::ServiceRoles => SectionMeta {
-                id: "service_roles",
-                icon: "🔗",
-                label_key: "settings.section.roles",
-            },
-            Self::Accounts => SectionMeta {
-                id: "accounts",
-                icon: "👤",
-                label_key: "settings.section.accounts",
-            },
-            Self::Desktop => SectionMeta {
-                id: "desktop",
-                icon: "🖥",
-                label_key: "settings.section.desktop",
-            },
-            Self::Browser => SectionMeta {
-                id: "browser",
-                icon: "🌍",
-                label_key: "settings.section.browser",
-            },
-            Self::Shortcuts => SectionMeta {
-                id: "shortcuts",
-                icon: "⌨",
-                label_key: "settings.section.shortcuts",
-            },
-            Self::Packages => SectionMeta {
-                id: "packages",
-                icon: "📦",
-                label_key: "settings.section.packages",
-            },
+            Self::Appearance => "appearance",
+            Self::Language => "language",
+            Self::ServiceRoles => "service_roles",
+            Self::Accounts => "accounts",
+            Self::Desktop => "desktop",
+            Self::Browser => "browser",
+            Self::Shortcuts => "shortcuts",
+            Self::Packages => "packages",
         }
     }
 
     #[must_use]
-    pub fn id(&self) -> &str {
-        self.meta().id
-    }
-    #[must_use]
     pub fn icon(&self) -> &str {
-        self.meta().icon
+        match self {
+            Self::Appearance => "Appearance",
+            Self::Language => "Language",
+            Self::ServiceRoles => "Roles",
+            Self::Accounts => "Accounts",
+            Self::Desktop => "Desktop",
+            Self::Browser => "Browser",
+            Self::Shortcuts => "Shortcuts",
+            Self::Packages => "Packages",
+        }
     }
 
-    /// Translated display label.
     #[must_use]
     pub fn label(&self) -> String {
-        fs_i18n::t(self.meta().label_key).into()
+        let key = match self {
+            Self::Appearance => "settings-section-appearance",
+            Self::Language => "settings-section-language",
+            Self::ServiceRoles => "settings-section-roles",
+            Self::Accounts => "settings-section-accounts",
+            Self::Desktop => "settings-section-desktop",
+            Self::Browser => "settings-section-browser",
+            Self::Shortcuts => "settings-section-shortcuts",
+            Self::Packages => "settings-section-packages",
+        };
+        fs_i18n::t(key).into()
     }
+}
 
-    /// Sections shown without external package data (hides `Packages`).
-    pub fn standard() -> impl Iterator<Item = &'static Self> {
-        Self::all().iter().filter(|s| !matches!(s, Self::Packages))
+// ── Message ───────────────────────────────────────────────────────────────────
+
+/// All settings application messages — flat enum.
+#[derive(Debug, Clone)]
+pub enum Message {
+    // Navigation
+    SectionSelected(SettingsSection),
+
+    // Appearance
+    ThemeSelected(String),
+    AnimationsToggled(bool),
+    SaveAppearance,
+
+    // Desktop
+    DesktopTabSelected(DesktopTab),
+    DesktopTaskbarPositionChanged(String),
+    DesktopFocusPolicyChanged(String),
+    DesktopTitleBarStyleChanged(String),
+    DesktopClickStyleChanged(String),
+    DesktopAnimationsDisabledToggled(bool),
+    DesktopWorkspaceColumnsChanged(String),
+    SaveDesktop,
+
+    // Browser
+    BrowserSearchEngineSelected(String),
+    SaveBrowser,
+
+    // Language
+    LanguageSelected(String),
+    SaveLanguage,
+
+    // Service Roles
+    ServiceRoleChanged(String, String),
+    SaveServiceRoles,
+
+    // Accounts
+    AccountsToggleAddForm,
+    AccountsFormNameChanged(String),
+    AccountsFormDiscoveryUrlChanged(String),
+    AccountsFormClientIdChanged(String),
+    AccountsFormScopesChanged(String),
+    AccountsAddProvider,
+    AccountsRemoveProvider(usize),
+    AccountsToggleProvider(usize),
+    SaveAccounts,
+
+    // Shortcuts
+    ShortcutsSearchChanged(String),
+    ShortcutsStartRecording(String),
+    ShortcutsStopRecording,
+    ShortcutsResetAction(String),
+
+    // Packages
+    PackageSelected(String),
+    PackageSearchChanged(String),
+    PackageFieldChanged(String, String, String),
+
+    // Status
+    StatusClear,
+}
+
+// ── SettingsApp ───────────────────────────────────────────────────────────────
+
+/// Root settings application state.
+pub struct SettingsApp {
+    pub active_section: SettingsSection,
+    pub status_msg: Option<String>,
+    pub appearance: AppearanceState,
+    pub desktop: DesktopState,
+    pub browser: BrowserSettingsState,
+    pub language: LanguageState,
+    pub service_roles: ServiceRolesState,
+    pub accounts: AccountsState,
+    pub shortcuts: ShortcutsState,
+    pub packages: PackageSettingsState,
+}
+
+/// Desktop section sub-state (active tab + loaded config).
+#[derive(Debug, Clone)]
+pub struct DesktopState {
+    pub active_tab: DesktopTab,
+    pub config: DesktopConfig,
+}
+
+impl Default for DesktopState {
+    fn default() -> Self {
+        Self {
+            active_tab: DesktopTab::General,
+            config: DesktopConfig::load(),
+        }
     }
+}
 
-    /// Look up a section by its stable ID — delegates to `all()`, no duplicate match.
+impl Default for SettingsApp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SettingsApp {
+    /// Create a new settings application, loading all configs from disk.
     #[must_use]
-    pub fn from_id(id: &str) -> Option<Self> {
-        Self::all().iter().find(|s| s.id() == id).cloned()
-    }
-}
-
-/// Props for the root Settings component.
-///
-/// All fields are optional — `SettingsApp` works standalone without any props.
-/// When the Desktop provides `packages`, a "Packages" section appears in the sidebar.
-#[derive(Props, Clone, PartialEq, Default)]
-pub struct SettingsAppProps {
-    /// Installed packages whose settings should be surfaced in the Packages section.
-    /// When empty (default), the Packages section is hidden.
-    #[props(default)]
-    pub packages: Vec<PackageSettingsEntry>,
-
-    /// Callback fired when the user saves a package setting.
-    /// Receives `(package_id, field_key, new_value)`.
-    #[props(default)]
-    pub on_package_save: Option<EventHandler<(String, String, String)>>,
-}
-
-/// Root Settings component.
-///
-/// Pass `packages` + `on_package_save` props to enable the Packages section.
-#[component]
-pub fn SettingsApp(props: SettingsAppProps) -> Element {
-    let has_packages = !props.packages.is_empty();
-    let mut active = use_signal(|| SettingsSection::Appearance);
-
-    let mut sidebar_items: Vec<SidebarItem> = SettingsSection::standard()
-        .map(|s| SidebarItem::new(s.id(), s.icon(), s.label()))
-        .collect();
-
-    if has_packages {
-        let s = SettingsSection::Packages;
-        sidebar_items.push(SidebarItem::new(s.id(), s.icon(), s.label()));
+    pub fn new() -> Self {
+        Self {
+            active_section: SettingsSection::Appearance,
+            status_msg: None,
+            appearance: AppearanceState::new(),
+            desktop: DesktopState::default(),
+            browser: BrowserSettingsState::new(),
+            language: LanguageState::new(),
+            service_roles: ServiceRolesState::new(),
+            accounts: AccountsState::new(),
+            shortcuts: ShortcutsState::new(),
+            packages: PackageSettingsState::new(vec![]),
+        }
     }
 
-    rsx! {
-        style { "{FS_SIDEBAR_CSS}" }
-        div {
-            class: "fs-settings",
-            style: "display: flex; flex-direction: column; height: 100%; background: var(--fs-color-bg-base);",
+    // ── Update ────────────────────────────────────────────────────────────────
 
-            // App title bar
-            div {
-                style: "padding: 10px 16px; border-bottom: 1px solid var(--fs-border); \
-                        flex-shrink: 0; background: var(--fs-bg-surface);",
-                h2 {
-                    style: "margin: 0; font-size: 16px; font-weight: 600; color: var(--fs-text-primary);",
-                    {fs_i18n::t("settings.title")}
+    /// Handle a message and return the next task.
+    pub fn update(&mut self, msg: Message) -> Task<Message> {
+        match msg {
+            Message::SectionSelected(s) => {
+                self.active_section = s;
+                self.status_msg = None;
+            }
+
+            // Appearance
+            Message::ThemeSelected(t) => self.appearance.selected_theme = t,
+            Message::AnimationsToggled(v) => self.appearance.animations_enabled = v,
+            Message::SaveAppearance => {
+                self.appearance.save();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
+            // Desktop
+            Message::DesktopTabSelected(t) => self.desktop.active_tab = t,
+            Message::DesktopTaskbarPositionChanged(v) => {
+                self.desktop.config.taskbar_pos = match v.as_str() {
+                    "top" => crate::desktop_settings::TaskbarPosition::Top,
+                    "left" => crate::desktop_settings::TaskbarPosition::Left,
+                    "right" => crate::desktop_settings::TaskbarPosition::Right,
+                    _ => crate::desktop_settings::TaskbarPosition::Bottom,
+                };
+            }
+            Message::DesktopFocusPolicyChanged(v) => {
+                self.desktop.config.window.focus_policy = match v.as_str() {
+                    "focus_follows_mouse" => {
+                        crate::desktop_settings::FocusPolicy::FocusFollowsMouse
+                    }
+                    "strict_follows_mouse" => {
+                        crate::desktop_settings::FocusPolicy::StrictFollowsMouse
+                    }
+                    _ => crate::desktop_settings::FocusPolicy::Click,
+                };
+            }
+            Message::DesktopTitleBarStyleChanged(v) => {
+                self.desktop.config.window.title_bar_style = match v.as_str() {
+                    "compact" => crate::desktop_settings::TitleBarStyle::Compact,
+                    "minimal" => crate::desktop_settings::TitleBarStyle::Minimal,
+                    "hidden" => crate::desktop_settings::TitleBarStyle::Hidden,
+                    _ => crate::desktop_settings::TitleBarStyle::Full,
+                };
+            }
+            Message::DesktopClickStyleChanged(v) => {
+                self.desktop.config.click.icon_click = match v.as_str() {
+                    "single" => crate::desktop_settings::ClickStyle::Single,
+                    _ => crate::desktop_settings::ClickStyle::Double,
+                };
+            }
+            Message::DesktopAnimationsDisabledToggled(v) => {
+                self.desktop.config.animation.disabled = v;
+            }
+            Message::DesktopWorkspaceColumnsChanged(v) => {
+                if let Ok(n) = v.parse::<u32>() {
+                    self.desktop.config.workspace.columns = n.clamp(1, 6);
+                }
+            }
+            Message::SaveDesktop => {
+                self.desktop.config.save();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
+            // Browser
+            Message::BrowserSearchEngineSelected(id) => {
+                self.browser.config.search_engine = id;
+            }
+            Message::SaveBrowser => {
+                self.browser.config.save();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
+            // Language
+            Message::LanguageSelected(code) => {
+                self.language.selected = code;
+            }
+            Message::SaveLanguage => {
+                self.language.save();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
+            // Service Roles
+            Message::ServiceRoleChanged(role, provider) => {
+                self.service_roles.config.set(role, provider);
+            }
+            Message::SaveServiceRoles => {
+                match crate::service_roles::save_role_assignments(&self.service_roles.config) {
+                    Ok(()) => {
+                        self.status_msg = Some(fs_i18n::t("settings-saved").into());
+                    }
+                    Err(e) => {
+                        self.status_msg = Some(format!("Save error: {e}"));
+                    }
                 }
             }
 
-            // Sidebar + Content row
-            div {
-                style: "display: flex; flex: 1; overflow: hidden;",
-
-                // Collapsible sidebar navigation
-                Sidebar {
-                    items:     sidebar_items,
-                    active_id: active.read().id().to_string(),
-                    on_select: move |id: String| {
-                        if let Some(section) = SettingsSection::from_id(&id) {
-                            active.set(section);
-                        }
-                    },
+            // Accounts
+            Message::AccountsToggleAddForm => {
+                self.accounts.show_add = !self.accounts.show_add;
+                self.accounts.form = crate::accounts::AddProviderForm::default();
+            }
+            Message::AccountsFormNameChanged(v) => self.accounts.form.name = v,
+            Message::AccountsFormDiscoveryUrlChanged(v) => self.accounts.form.discovery_url = v,
+            Message::AccountsFormClientIdChanged(v) => self.accounts.form.client_id = v,
+            Message::AccountsFormScopesChanged(v) => self.accounts.form.scopes = v,
+            Message::AccountsAddProvider => {
+                if self.accounts.form.is_valid() {
+                    let provider = self.accounts.form.build();
+                    self.accounts.providers.push(provider);
+                    self.accounts.save();
+                    self.accounts.show_add = false;
+                    self.accounts.form = crate::accounts::AddProviderForm::default();
+                    self.status_msg = Some(fs_i18n::t("settings-saved").into());
                 }
-
-                // Content
-                div {
-                    style: "flex: 1; overflow: auto;",
-                    if *active.read() == SettingsSection::Packages {
-                        if has_packages {
-                            PackageSettingsView {
-                                packages: props.packages.clone(),
-                                on_save: props.on_package_save
-                                    .unwrap_or_else(|| EventHandler::new(|_| {})),
-                            }
-                        }
-                    } else {
-                        { active.read().render_panel() }
-                    }
+            }
+            Message::AccountsRemoveProvider(idx) => {
+                if idx < self.accounts.providers.len() {
+                    self.accounts.providers.remove(idx);
+                    self.accounts.save();
                 }
-            } // end sidebar + content row
+            }
+            Message::AccountsToggleProvider(idx) => {
+                if let Some(p) = self.accounts.providers.get_mut(idx) {
+                    p.enabled = !p.enabled;
+                    self.accounts.save();
+                }
+            }
+            Message::SaveAccounts => {
+                self.accounts.save();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
+            // Shortcuts
+            Message::ShortcutsSearchChanged(q) => self.shortcuts.search = q,
+            Message::ShortcutsStartRecording(id) => {
+                self.shortcuts.recording = Some(id);
+            }
+            Message::ShortcutsStopRecording => self.shortcuts.recording = None,
+            Message::ShortcutsResetAction(id) => {
+                self.shortcuts.config.custom.remove(&id);
+                self.shortcuts.config.save();
+            }
+
+            // Packages
+            Message::PackageSelected(id) => self.packages.selected_id = id,
+            Message::PackageSearchChanged(q) => self.packages.search = q,
+            Message::PackageFieldChanged(pkg_id, field_key, value) => {
+                self.packages.on_field_changed(&pkg_id, &field_key, &value);
+            }
+
+            Message::StatusClear => self.status_msg = None,
         }
+        Task::none()
     }
-}
 
-/// Trait that gives a settings section the ability to render itself.
-///
-/// Extend settings without touching `SettingsApp` — implement this trait.
-pub trait SettingsPanel {
-    /// Render the panel for this section.
-    ///
-    /// # Errors
-    ///
-    /// Returns `None` if the element cannot be rendered.
-    fn render_panel(&self) -> Element;
-}
+    // ── View ──────────────────────────────────────────────────────────────────
 
-impl SettingsPanel for SettingsSection {
-    fn render_panel(&self) -> Element {
-        match self {
-            Self::Appearance => rsx! { AppearanceSettings {} },
-            Self::Language => rsx! { LanguageSettings {} },
-            Self::ServiceRoles => rsx! { ServiceRoles {} },
-            Self::Accounts => rsx! { AccountSettings {} },
-            Self::Desktop => rsx! { DesktopSettings {} },
-            Self::Browser => rsx! { BrowserSettings {} },
-            Self::Shortcuts => rsx! { ShortcutsSettings {} },
-            // Packages is rendered inline in SettingsApp (needs props data).
-            Self::Packages => rsx! { div {} },
-        }
+    /// Render the full settings UI.
+    #[must_use]
+    pub fn view(&self) -> Element<'_, Message> {
+        let sidebar = self.view_sidebar();
+        let content = self.view_section();
+
+        let status_bar: Element<Message> = if let Some(msg) = &self.status_msg {
+            container(text(msg.as_str()).size(12))
+                .width(Length::Fill)
+                .padding([4, 16])
+                .into()
+        } else {
+            iced::widget::Space::with_height(0).into()
+        };
+
+        column![row![sidebar, content].height(Length::Fill), status_bar,].into()
+    }
+
+    fn view_sidebar(&self) -> Element<'_, Message> {
+        let items: Vec<Element<Message>> = SettingsSection::all()
+            .iter()
+            .map(|s| {
+                let is_active = *s == self.active_section;
+                let label = s.label();
+                let btn = button(
+                    row![text(s.icon()).size(12).width(60), text(label).size(13),]
+                        .align_y(Alignment::Center)
+                        .spacing(4),
+                )
+                .width(Length::Fill)
+                .padding([8, 12])
+                .style(if is_active {
+                    iced::widget::button::primary
+                } else {
+                    iced::widget::button::text
+                })
+                .on_press(Message::SectionSelected(s.clone()));
+                btn.into()
+            })
+            .collect();
+
+        let col = column(items).spacing(2).padding(8);
+        container(scrollable(col))
+            .width(200)
+            .height(Length::Fill)
+            .into()
+    }
+
+    fn view_section(&self) -> Element<'_, Message> {
+        let content: Element<Message> = match self.active_section {
+            SettingsSection::Appearance => crate::appearance::view_appearance(self),
+            SettingsSection::Desktop => crate::desktop_settings::view_desktop(self),
+            SettingsSection::Browser => crate::browser_settings::view_browser(self),
+            SettingsSection::Language => crate::language::view_language(self),
+            SettingsSection::ServiceRoles => crate::service_roles::view_service_roles(self),
+            SettingsSection::Accounts => crate::accounts::view_accounts(self),
+            SettingsSection::Shortcuts => crate::shortcuts::view_shortcuts(self),
+            SettingsSection::Packages => crate::package_settings::view_packages(self),
+        };
+        container(scrollable(content))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(24)
+            .into()
     }
 }
