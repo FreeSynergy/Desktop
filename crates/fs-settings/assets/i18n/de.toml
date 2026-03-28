@@ -135,6 +135,37 @@ mode_window       = "Natives OS-Fenster (Standard)"
 mode_web          = "Browser / Webserver"
 mode_tui          = "Terminal-Oberfläche"
 
+tab_general    = "Allgemein"
+tab_window     = "Fenster"
+tab_click      = "Klicken"
+tab_animations = "Animationen"
+tab_icons      = "Icons"
+tab_workspace  = "Arbeitsfläche"
+
+titlebar_style   = "Titelleisten-Stil"
+resize_edge      = "Größenänderungs-Rand"
+dblclick_action  = "Doppelklick-Aktion"
+focus_policy     = "Fokus-Richtlinie"
+snap_zones       = "Snap-Zonen aktivieren"
+
+click_style      = "Klickverhalten für Icons"
+click_style_hint = "Ob Icons per Einfach- oder Doppelklick geöffnet werden."
+drag_threshold   = "Drag-Schwellenwert"
+
+animations_enabled    = "Animationen aktivieren"
+animation_speed       = "Animationsgeschwindigkeit"
+animation_normal      = "Normal"
+animation_set         = "Animations-Set"
+animation_set_hint    = "Weitere Animations-Sets aus dem Store installieren."
+animation_set_default = "Standard"
+
+icon_set         = "Icon-Set"
+cursor_set       = "Cursor-Set"
+icons_store_hint = "Weitere Icon- und Cursor-Sets aus dem Store installieren."
+
+panel_arrangement  = "Panel-Anordnung"
+workspace_columns  = "Arbeitsflächen-Spalten"
+
 [settings.shortcuts]
 title          = "Tastenkürzel"
 search_placeholder = "Aktionen suchen…"

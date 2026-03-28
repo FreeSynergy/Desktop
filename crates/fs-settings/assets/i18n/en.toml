@@ -135,6 +135,37 @@ mode_window       = "Native OS window (default)"
 mode_web          = "Browser / web server"
 mode_tui          = "Terminal UI"
 
+tab_general    = "General"
+tab_window     = "Window"
+tab_click      = "Click"
+tab_animations = "Animations"
+tab_icons      = "Icons"
+tab_workspace  = "Workspace"
+
+titlebar_style   = "Title Bar Style"
+resize_edge      = "Resize Edge Size"
+dblclick_action  = "Double-Click Action"
+focus_policy     = "Focus Policy"
+snap_zones       = "Enable Snap Zones"
+
+click_style      = "Icon Click Style"
+click_style_hint = "Whether icons are opened on single or double click."
+drag_threshold   = "Drag Threshold"
+
+animations_enabled    = "Enable Animations"
+animation_speed       = "Animation Speed"
+animation_normal      = "Normal"
+animation_set         = "Animation Set"
+animation_set_hint    = "Install additional animation sets from the Store."
+animation_set_default = "Default"
+
+icon_set         = "Icon Set"
+cursor_set       = "Cursor Set"
+icons_store_hint = "Install additional icon and cursor sets from the Store."
+
+panel_arrangement  = "Panel Arrangement"
+workspace_columns  = "Workspace Columns"
+
 [settings.shortcuts]
 title          = "Keyboard Shortcuts"
 search_placeholder = "Search actions…"

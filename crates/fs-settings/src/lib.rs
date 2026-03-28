@@ -30,7 +30,9 @@ impl fs_i18n::SnippetPlugin for I18nPlugin {
 pub use app::{SettingsApp, SettingsAppProps};
 pub use browser_settings::BrowserSettings;
 pub use desktop_settings::{
-    DesktopConfig, DisplayMode, SidebarConfig, SidebarPosition, TaskbarPosition,
+    AnimationConfig, ClickConfig, ClickStyle, DesktopConfig, DisplayMode, DoubleClickAction,
+    FocusPolicy, IconConfig, PanelArrangement, ResizeEdgeSize, SidebarConfig, SidebarPosition,
+    TaskbarPosition, TitleBarStyle, WindowConfig, WorkspaceConfig,
 };
 #[allow(deprecated)]
 pub use language::{load_active_language, LangContext, LanguageSettings};
