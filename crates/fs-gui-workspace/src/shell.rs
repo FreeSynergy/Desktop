@@ -389,17 +389,31 @@ impl DesktopShell {
             }
         }
 
-        if !self.pinned_items.is_empty() {
-            items_col.push(Space::with_height(Length::Fill).into());
-            for item in &self.pinned_items {
-                items_col.push(self.view_sidebar_item(item));
-            }
-        }
-
-        let sidebar_col =
+        let scrollable_section =
             scrollable(column(items_col).spacing(2).padding([8, 4])).height(Length::Fill);
 
-        container(sidebar_col)
+        let sidebar_inner: Element<'_, DesktopMessage> = if self.pinned_items.is_empty() {
+            scrollable_section.into()
+        } else {
+            let separator = container(Space::with_height(1))
+                .width(Length::Fill)
+                .style(|_theme| container::Style {
+                    background: Some(iced::Background::Color(iced::Color::from_rgba(
+                        0.58, 0.67, 0.78, 0.12,
+                    ))),
+                    ..container::Style::default()
+                });
+            let mut pinned_col: Vec<Element<'_, DesktopMessage>> = vec![separator.into()];
+            for item in &self.pinned_items {
+                pinned_col.push(self.view_sidebar_item(item));
+            }
+            let pinned_section = column(pinned_col).spacing(2).padding([4, 4]);
+            column![scrollable_section, pinned_section]
+                .height(Length::Fill)
+                .into()
+        };
+
+        container(sidebar_inner)
             .width(220)
             .height(Length::Fill)
             .style(|_theme| container::Style {
