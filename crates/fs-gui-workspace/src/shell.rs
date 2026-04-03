@@ -25,9 +25,14 @@ fn tr_with(key: &str, args: &[(&str, &str)]) -> String {
     fs_i18n::t_with(key, args).to_string()
 }
 
+use fs_render::{new_shared_registry, register_standard_components, SharedComponentRegistry};
+
+use crate::app_lifecycle::AppLifecycleBus;
+
 use crate::header::{default_menu, HeaderState};
 use crate::launcher::{AppGroup, LauncherState};
 use crate::notification::{NotificationHistory, NotificationManager};
+use crate::shell_layout::ShellLayout;
 use crate::sidebar::{default_pinned_items, default_sidebar_sections, SidebarItem, SidebarSection};
 use crate::taskbar::{default_apps, AppEntry};
 use crate::window::{AppId, Window, WindowHost, WindowId, WindowManager};
@@ -63,6 +68,13 @@ pub enum DesktopMessage {
     HeaderMenuClose,
     HeaderAvatarToggle,
 
+    // ── Layout ───────────────────────────────────────────────────────────────
+    /// Toggle visibility of a shell section (Topbar/Sidebar/Bottombar).
+    LayoutToggleSection(fs_render::ShellKind),
+    /// Pin/unpin an app (persists to `PackageRegistry`).
+    PinApp(String),
+    UnpinApp(String),
+
     // ── Clock tick ────────────────────────────────────────────────────────────
     ClockTick,
 
@@ -81,6 +93,12 @@ pub struct DesktopShell {
     pub windows: WindowManager,
     pub active_app: Option<AppId>,
 
+    // ── Shell layout (Composite) ──────────────────────────────────────────────
+    pub shell_layout: ShellLayout,
+
+    // ── Component registry (Phase 3 components) ────────────────────────────────
+    pub components: SharedComponentRegistry,
+
     // ── Shell chrome ─────────────────────────────────────────────────────────
     pub header_state: HeaderState,
     pub taskbar_apps: Vec<AppEntry>,
@@ -91,6 +109,9 @@ pub struct DesktopShell {
     pub launcher_state: LauncherState,
     pub current_desktop: usize,
 
+    // ── App lifecycle bus (Observer) ──────────────────────────────────────────
+    pub lifecycle_bus: AppLifecycleBus,
+
     // ── Clock ─────────────────────────────────────────────────────────────────
     pub clock_time: String,
     pub clock_date: String,
@@ -99,9 +120,18 @@ pub struct DesktopShell {
 impl Default for DesktopShell {
     fn default() -> Self {
         crate::builtin_apps::ensure_registered();
+
+        let components = new_shared_registry();
+        {
+            let mut reg = components.lock().unwrap();
+            register_standard_components(&mut reg);
+        }
+
         Self {
             windows: WindowManager::default(),
             active_app: None,
+            shell_layout: ShellLayout::load(),
+            components,
             header_state: HeaderState::new(std::env::var("USER").unwrap_or_else(|_| "User".into())),
             taskbar_apps: default_apps(),
             notifications: NotificationManager::default(),
@@ -110,6 +140,7 @@ impl Default for DesktopShell {
             pinned_items: default_pinned_items(),
             launcher_state: LauncherState::default(),
             current_desktop: 0,
+            lifecycle_bus: AppLifecycleBus::with_defaults("desktop"),
             clock_time: Local::now().format("%H:%M").to_string(),
             clock_date: Local::now().format("%d.%m.%Y").to_string(),
         }
@@ -125,12 +156,19 @@ impl DesktopShell {
         match msg {
             // ── Window management ─────────────────────────────────────────────
             DesktopMessage::OpenApp(app_id) => {
+                self.lifecycle_bus
+                    .app_opened(app_id.name().to_lowercase().as_str());
                 self.active_app = Some(app_id);
                 let meta = Window::new(app_id.name()).with_icon(app_id.icon().to_string());
                 let open = crate::window::OpenWindow::new(meta, app_id);
                 self.windows.open_window(open);
             }
             DesktopMessage::CloseWindow(id) => {
+                // Emit closed event for the window being removed.
+                if let Some(win) = self.windows.open_windows().iter().find(|w| w.id == id) {
+                    self.lifecycle_bus
+                        .app_closed(win.app.name().to_lowercase().as_str());
+                }
                 self.windows.close_window(id);
                 if self.windows.open_windows().is_empty() {
                     self.active_app = None;
@@ -198,6 +236,29 @@ impl DesktopShell {
             }
             DesktopMessage::HeaderAvatarToggle => {
                 self.header_state.avatar_menu_open = !self.header_state.avatar_menu_open;
+            }
+
+            // ── Layout ───────────────────────────────────────────────────────
+            DesktopMessage::LayoutToggleSection(kind) => {
+                self.shell_layout.toggle_visibility(&kind);
+                self.shell_layout.save();
+                // Rebuild sidebar sections from registry after layout change.
+                self.sidebar_sections = default_sidebar_sections();
+                self.pinned_items = default_pinned_items();
+            }
+            DesktopMessage::PinApp(id) => {
+                use fs_db_desktop::package_registry::PackageRegistry;
+                let _ = PackageRegistry::set_pinned(&id, true);
+                self.lifecycle_bus.app_pinned(&id);
+                self.sidebar_sections = default_sidebar_sections();
+                self.pinned_items = default_pinned_items();
+            }
+            DesktopMessage::UnpinApp(id) => {
+                use fs_db_desktop::package_registry::PackageRegistry;
+                let _ = PackageRegistry::set_pinned(&id, false);
+                self.lifecycle_bus.app_unpinned(&id);
+                self.sidebar_sections = default_sidebar_sections();
+                self.pinned_items = default_pinned_items();
             }
 
             // ── Clock tick ────────────────────────────────────────────────────
@@ -368,7 +429,7 @@ impl DesktopShell {
     }
 
     fn view_sidebar(&self) -> Element<'_, DesktopMessage> {
-        let launcher_btn = button(text(format!("⊞  {}", tr("shell.launcher.title"))).size(13))
+        let launcher_btn = button(text(format!("⊞  {}", tr("shell-launcher-title"))).size(13))
             .on_press(DesktopMessage::LauncherToggle)
             .width(Length::Fill)
             .padding([6, 12]);
@@ -435,16 +496,35 @@ impl DesktopShell {
             .active_app
             .is_some_and(|a| a.name().to_lowercase() == item.id);
 
+        let is_pinned = self.pinned_items.iter().any(|p| p.id == item.id);
+
         let label = format!("{} {}", item.icon, item.label);
         let id = item.id.clone();
 
-        let btn = button(text(label).size(13))
-            .on_press(DesktopMessage::SidebarSelect(id))
+        let app_btn = button(text(label).size(13))
+            .on_press(DesktopMessage::SidebarSelect(id.clone()))
             .width(Length::Fill)
             .padding([6, 12]);
 
+        // Pin/unpin toggle — only shown for non-settings items.
+        let pin_btn: Element<'_, DesktopMessage> = if item.id == "settings" {
+            Space::with_width(0).into()
+        } else {
+            let (pin_icon, pin_msg): (&str, DesktopMessage) = if is_pinned {
+                ("📌", DesktopMessage::UnpinApp(id.clone()))
+            } else {
+                ("📍", DesktopMessage::PinApp(id.clone()))
+            };
+            button(text(pin_icon).size(11))
+                .on_press(pin_msg)
+                .padding([6, 4])
+                .into()
+        };
+
+        let item_row = row![app_btn, pin_btn].spacing(0).align_y(Alignment::Center);
+
         if is_active {
-            container(btn)
+            container(item_row)
                 .style(|_theme| container::Style {
                     background: Some(iced::Background::Color(iced::Color::from_rgba(
                         0.02, 0.74, 0.84, 0.15,
@@ -458,7 +538,7 @@ impl DesktopShell {
                 })
                 .into()
         } else {
-            btn.into()
+            item_row.into()
         }
     }
 
@@ -475,7 +555,7 @@ impl DesktopShell {
                             .size(20)
                             .color(iced::Color::from_rgb(0.02, 0.74, 0.84)),
                         Space::with_height(8),
-                        text(tr("shell.app.opening"))
+                        text(tr("shell-app-opening"))
                             .size(14)
                             .color(iced::Color::from_rgb(0.6, 0.6, 0.7)),
                     ]
@@ -497,11 +577,11 @@ impl DesktopShell {
                             .size(14)
                             .color(iced::Color::from_rgb(0.5, 0.5, 0.6)),
                         Space::with_height(32),
-                        text(tr("shell.home.hint"))
+                        text(tr("shell-home-hint"))
                             .size(14)
                             .color(iced::Color::from_rgb(0.6, 0.6, 0.7)),
                         Space::with_height(16),
-                        button(text(format!("⊞  {}", tr("shell.launcher.open"))).size(14))
+                        button(text(format!("⊞  {}", tr("shell-launcher-open"))).size(14))
                             .on_press(DesktopMessage::LauncherToggle)
                             .padding([8, 20]),
                     ]
@@ -587,7 +667,7 @@ impl DesktopShell {
         // Clone the page slice to avoid borrow-of-local issues when building elements.
         let page_groups: Vec<AppGroup> = AppGroup::page_slice(&groups, cur_page).to_vec();
 
-        let search_placeholder = tr("shell.launcher.search_placeholder");
+        let search_placeholder = tr("shell-launcher-search-placeholder");
         let search = text_input(&search_placeholder, &query)
             .on_input(DesktopMessage::LauncherSearch)
             .padding([10, 14])
@@ -600,7 +680,7 @@ impl DesktopShell {
             group_items.push(
                 container(
                     text(tr_with(
-                        "shell.launcher.no_apps",
+                        "shell-launcher-no-apps",
                         &[("query", query.as_str())],
                     ))
                     .size(14)

@@ -17,6 +17,7 @@ bevy    = ["dep:fs-gui-engine-bevy"]
 [dependencies]
 fs-gui-engine-iced = { workspace = true, optional = true }
 fs-gui-engine-bevy = { workspace = true, optional = true }
+fs-render          = { workspace = true }
 fs-settings        = { workspace = true }
 fs-i18n            = { workspace = true }
 fs-theme           = { workspace = true }
@@ -26,3 +27,4 @@ serde              = { workspace = true }
 tokio              = { workspace = true }
 tracing            = { workspace = true }
 chrono             = { workspace = true }
+toml               = { workspace = true }

@@ -101,7 +101,7 @@ pub trait SidebarEntry {
 /// An installed package knows how to render itself as a sidebar item.
 impl SidebarEntry for InstalledPackage {
     fn sidebar_item(&self) -> SidebarItem {
-        let key = format!("shell.nav.{}", self.id);
+        let key = format!("shell-nav-{}", self.id);
         let label = fs_i18n::t(&key);
         let label = if label == key {
             self.name.clone()
@@ -129,7 +129,7 @@ impl SidebarEntry for ManagerBundle {
         SidebarItem::folder(
             "managers-folder",
             ICON_MANAGERS,
-            fs_i18n::t("shell.nav.managers"),
+            fs_i18n::t("shell-nav-managers"),
             self.0.iter().map(SidebarEntry::sidebar_item).collect(),
         )
     }
@@ -190,7 +190,7 @@ pub fn default_pinned_items() -> Vec<SidebarItem> {
         pinned.push(SidebarItem::new(
             "settings",
             ICON_SETTINGS,
-            fs_i18n::t("shell.nav.settings"),
+            fs_i18n::t("shell-nav-settings"),
         ));
     }
 

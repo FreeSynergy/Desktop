@@ -2866,11 +2866,13 @@ dependencies = [
  "fs-gui-engine-bevy",
  "fs-gui-engine-iced",
  "fs-i18n",
+ "fs-render",
  "fs-session",
  "fs-settings",
  "fs-theme",
  "serde",
  "tokio",
+ "toml 1.0.7+spec-1.1.0",
  "tracing",
 ]
 
@@ -2987,6 +2989,7 @@ dependencies = [
  "fs-i18n",
  "fs-manager-language",
  "fs-pkg",
+ "fs-render",
  "fs-store",
  "fs-theme",
  "serde",

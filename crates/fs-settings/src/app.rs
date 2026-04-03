@@ -18,6 +18,7 @@ use crate::appearance::AppearanceState;
 use crate::browser_settings::BrowserSettingsState;
 use crate::desktop_settings::{DesktopConfig, DesktopTab};
 use crate::language::LanguageState;
+use crate::layout_settings::LayoutSettingsState;
 use crate::package_settings::PackageSettingsState;
 use crate::service_roles::ServiceRolesState;
 use crate::shortcuts::ShortcutsState;
@@ -33,6 +34,7 @@ pub enum SettingsSection {
     ServiceRoles,
     Accounts,
     Desktop,
+    Layout,
     Browser,
     Shortcuts,
     Packages,
@@ -47,6 +49,7 @@ impl SettingsSection {
             SettingsSection::ServiceRoles,
             SettingsSection::Accounts,
             SettingsSection::Desktop,
+            SettingsSection::Layout,
             SettingsSection::Browser,
             SettingsSection::Shortcuts,
             SettingsSection::Packages,
@@ -62,6 +65,7 @@ impl SettingsSection {
             Self::ServiceRoles => "service_roles",
             Self::Accounts => "accounts",
             Self::Desktop => "desktop",
+            Self::Layout => "layout",
             Self::Browser => "browser",
             Self::Shortcuts => "shortcuts",
             Self::Packages => "packages",
@@ -76,6 +80,7 @@ impl SettingsSection {
             Self::ServiceRoles => "Roles",
             Self::Accounts => "Accounts",
             Self::Desktop => "Desktop",
+            Self::Layout => "Layout",
             Self::Browser => "Browser",
             Self::Shortcuts => "Shortcuts",
             Self::Packages => "Packages",
@@ -90,6 +95,7 @@ impl SettingsSection {
             Self::ServiceRoles => "settings-section-roles",
             Self::Accounts => "settings-section-accounts",
             Self::Desktop => "settings-section-desktop",
+            Self::Layout => "settings-section-layout",
             Self::Browser => "settings-section-browser",
             Self::Shortcuts => "settings-section-shortcuts",
             Self::Packages => "settings-section-packages",
@@ -150,6 +156,10 @@ pub enum Message {
     ShortcutsStopRecording,
     ShortcutsResetAction(String),
 
+    // Layout
+    LayoutToggleSection(fs_render::layout::ShellKind),
+    SaveLayout,
+
     // Packages
     PackageSelected(String),
     PackageSearchChanged(String),
@@ -167,6 +177,7 @@ pub struct SettingsApp {
     pub status_msg: Option<String>,
     pub appearance: AppearanceState,
     pub desktop: DesktopState,
+    pub layout: LayoutSettingsState,
     pub browser: BrowserSettingsState,
     pub language: LanguageState,
     pub service_roles: ServiceRolesState,
@@ -206,6 +217,7 @@ impl SettingsApp {
             status_msg: None,
             appearance: AppearanceState::new(),
             desktop: DesktopState::default(),
+            layout: LayoutSettingsState::new(),
             browser: BrowserSettingsState::new(),
             language: LanguageState::new(),
             service_roles: ServiceRolesState::new(),
@@ -361,6 +373,33 @@ impl SettingsApp {
                 self.shortcuts.config.save();
             }
 
+            // Layout
+            Message::LayoutToggleSection(kind) => {
+                // Load → toggle → save → reload state for next render.
+                let layout_path = layout_config_path();
+                let content = std::fs::read_to_string(&layout_path).unwrap_or_default();
+                let mut proxy: Option<LayoutProxy> = toml::from_str(&content).ok();
+                if let Some(ref mut p) = proxy {
+                    for section in &mut p.sections {
+                        if section_kind_matches(&section.kind, &kind) {
+                            section.visible = !section.visible;
+                        }
+                    }
+                    if let Ok(new_content) = toml::to_string_pretty(p) {
+                        if let Some(parent) = layout_path.parent() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                        let _ = std::fs::write(&layout_path, new_content);
+                    }
+                }
+                self.layout.reload();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+            Message::SaveLayout => {
+                self.layout.reload();
+                self.status_msg = Some(fs_i18n::t("settings-saved").into());
+            }
+
             // Packages
             Message::PackageSelected(id) => self.packages.selected_id = id,
             Message::PackageSearchChanged(q) => self.packages.search = q,
@@ -427,6 +466,7 @@ impl SettingsApp {
         let content: Element<Message> = match self.active_section {
             SettingsSection::Appearance => crate::appearance::view_appearance(self),
             SettingsSection::Desktop => crate::desktop_settings::view_desktop(self),
+            SettingsSection::Layout => crate::layout_settings::view_layout_settings(self),
             SettingsSection::Browser => crate::browser_settings::view_browser(self),
             SettingsSection::Language => crate::language::view_language(self),
             SettingsSection::ServiceRoles => crate::service_roles::view_service_roles(self),
@@ -440,4 +480,44 @@ impl SettingsApp {
             .padding(24)
             .into()
     }
+}
+
+// ── Layout helpers (used by update() for LayoutToggleSection) ─────────────────
+
+fn layout_config_path() -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    std::path::PathBuf::from(home)
+        .join(".config")
+        .join("freesynergy")
+        .join("desktop")
+        .join("desktop-layout.toml")
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+struct LayoutSectionProxy {
+    kind: String,
+    #[serde(default = "default_true_app")]
+    visible: bool,
+    #[serde(flatten)]
+    extra: toml::Value,
+}
+
+fn default_true_app() -> bool {
+    true
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+struct LayoutProxy {
+    sections: Vec<LayoutSectionProxy>,
+}
+
+fn section_kind_matches(kind_str: &str, kind: &fs_render::layout::ShellKind) -> bool {
+    use fs_render::layout::ShellKind;
+    matches!(
+        (kind_str, kind),
+        ("topbar", ShellKind::Topbar)
+            | ("sidebar", ShellKind::Sidebar)
+            | ("bottombar", ShellKind::Bottombar)
+            | ("main", ShellKind::Main)
+    )
 }

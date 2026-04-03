@@ -82,39 +82,39 @@ pub fn default_menu() -> Vec<MenuItem> {
             label: "FreeSynergy".into(),
             items: vec![
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.about").into(),
+                    label: fs_i18n::t("shell-menu-about").into(),
                     shortcut: None,
                     id: "about",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("settings.title").into(),
+                    label: fs_i18n::t("settings-title").into(),
                     shortcut: Some("Ctrl+,"),
                     id: "settings",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.launcher").into(),
+                    label: fs_i18n::t("shell-menu-launcher").into(),
                     shortcut: Some("Ctrl+Space"),
                     id: "launcher",
                 },
                 MenuAction::Separator,
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.quit").into(),
+                    label: fs_i18n::t("shell-menu-quit").into(),
                     shortcut: Some("Ctrl+Q"),
                     id: "quit",
                 },
             ],
         },
         MenuItem {
-            label: fs_i18n::t("shell.menu.view").into(),
+            label: fs_i18n::t("shell-menu-view").into(),
             items: vec![
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.fullscreen").into(),
+                    label: fs_i18n::t("shell-menu-fullscreen").into(),
                     shortcut: Some("F11"),
                     id: "fullscreen",
                 },
                 MenuAction::Separator,
                 MenuAction::SubMenu {
-                    label: fs_i18n::t("shell.menu.theme").into(),
+                    label: fs_i18n::t("shell-menu-theme").into(),
                     items: vec![
                         SubAction {
                             label: "Midnight Blue".into(),
@@ -141,68 +141,68 @@ pub fn default_menu() -> Vec<MenuItem> {
             ],
         },
         MenuItem {
-            label: fs_i18n::t("shell.menu.services").into(),
+            label: fs_i18n::t("shell-menu-services").into(),
             items: vec![
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.open_container").into(),
+                    label: fs_i18n::t("shell-menu-open-container").into(),
                     shortcut: None,
                     id: "open-container-app",
                 },
                 MenuAction::Separator,
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.start_all").into(),
+                    label: fs_i18n::t("shell-menu-start-all").into(),
                     shortcut: None,
                     id: "start-all",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.stop_all").into(),
+                    label: fs_i18n::t("shell-menu-stop-all").into(),
                     shortcut: None,
                     id: "stop-all",
                 },
             ],
         },
         MenuItem {
-            label: fs_i18n::t("shell.menu.tools").into(),
+            label: fs_i18n::t("shell-menu-tools").into(),
             items: vec![
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.open_store").into(),
+                    label: fs_i18n::t("shell-menu-open-store").into(),
                     shortcut: Some("Ctrl+S"),
                     id: "open-store",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.open_tasks").into(),
+                    label: fs_i18n::t("shell-menu-open-tasks").into(),
                     shortcut: Some("Ctrl+T"),
                     id: "open-tasks",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.open_bots").into(),
+                    label: fs_i18n::t("shell-menu-open-bots").into(),
                     shortcut: None,
                     id: "open-bots",
                 },
                 MenuAction::Separator,
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.install_package").into(),
+                    label: fs_i18n::t("shell-menu-install-package").into(),
                     shortcut: Some("Ctrl+I"),
                     id: "install-package",
                 },
             ],
         },
         MenuItem {
-            label: fs_i18n::t("shell.menu.help").into(),
+            label: fs_i18n::t("shell-menu-help").into(),
             items: vec![
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.help").into(),
+                    label: fs_i18n::t("shell-menu-help").into(),
                     shortcut: Some("F1"),
                     id: "help",
                 },
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.keyboard_shortcuts").into(),
+                    label: fs_i18n::t("shell-menu-keyboard-shortcuts").into(),
                     shortcut: None,
                     id: "shortcuts",
                 },
                 MenuAction::Separator,
                 MenuAction::Action {
-                    label: fs_i18n::t("shell.menu.report_bug").into(),
+                    label: fs_i18n::t("shell-menu-report-bug").into(),
                     shortcut: None,
                     id: "report-bug",
                 },

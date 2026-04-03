@@ -448,7 +448,7 @@ impl ProfileApp {
             }
             ProfileMessage::SaveResult(result) => match result {
                 Ok(()) => {
-                    self.save_msg = Some(fs_i18n::t("profile.saved").into());
+                    self.save_msg = Some(fs_i18n::t("profile-msg-saved").into());
                     self.save_error = false;
                 }
                 Err(e) => {
@@ -538,7 +538,7 @@ impl ProfileApp {
 
     fn view_profile(&self) -> Element<'_, ProfileMessage> {
         // ── Header: title + logged-in user + logout button ────────────────────
-        let title = text(tr("profile.title")).size(24);
+        let title = text(tr("profile-title")).size(24);
 
         let header_row: Element<'_, ProfileMessage> =
             if let AuthState::LoggedIn { username, .. } = &self.auth {
@@ -571,7 +571,7 @@ impl ProfileApp {
             .spacing(8);
 
         // ── Display name + email ──────────────────────────────────────────────
-        let name_placeholder = tr("profile.label.display_name");
+        let name_placeholder = tr("profile-label-display-name");
         let name_label = text(name_placeholder.clone()).size(12);
         let name_input = text_input(&name_placeholder, &self.profile.display_name)
             .on_input(ProfileMessage::DisplayNameChanged)
@@ -579,7 +579,7 @@ impl ProfileApp {
             .size(14)
             .width(Length::Fill);
 
-        let email_placeholder = tr("profile.label.email");
+        let email_placeholder = tr("profile-label-email");
         let email_label = text(email_placeholder.clone()).size(12);
         let email_input = text_input(&email_placeholder, &self.profile.email)
             .on_input(ProfileMessage::EmailChanged)
@@ -592,7 +592,7 @@ impl ProfileApp {
         let name_email_row = row![name_col, Space::with_width(12), email_col].spacing(0);
 
         // ── Bio ───────────────────────────────────────────────────────────────
-        let bio_label = text(tr("profile.label.bio")).size(12);
+        let bio_label = text(tr("profile-label-bio")).size(12);
         let bio_input = text_input("A short description...", &self.profile.bio)
             .on_input(ProfileMessage::BioChanged)
             .padding([8, 12])
@@ -600,8 +600,8 @@ impl ProfileApp {
             .width(Length::Fill);
 
         // ── SSH Keys ─────────────────────────────────────────────────────────
-        let ssh_title = text(tr("profile.section.ssh_keys")).size(16);
-        let add_key_btn = button(text(tr("profile.btn.add_key")).size(13))
+        let ssh_title = text(tr("profile-section-ssh-keys")).size(16);
+        let add_key_btn = button(text(tr("profile-btn-add-key")).size(13))
             .on_press(ProfileMessage::ShowAddKey)
             .padding([6, 14]);
 
@@ -662,8 +662,8 @@ impl ProfileApp {
         }
 
         // ── Linked Accounts ───────────────────────────────────────────────────
-        let accounts_title = text(tr("profile.section.linked_accounts")).size(16);
-        let add_account_btn = button(text(tr("profile.btn.link_account")).size(13))
+        let accounts_title = text(tr("profile-section-linked-accounts")).size(16);
+        let add_account_btn = button(text(tr("profile-btn-link-account")).size(13))
             .on_press(ProfileMessage::ShowLinkAccount)
             .padding([6, 14]);
 

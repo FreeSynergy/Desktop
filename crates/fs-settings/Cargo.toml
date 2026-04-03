@@ -19,6 +19,7 @@ iced    = ["dep:fs-gui-engine-iced"]
 
 [dependencies]
 fs-db-desktop        = { workspace = true }
+fs-render            = { workspace = true }
 fs-browser           = { workspace = true }
 fs-store             = { workspace = true }
 fs-theme             = { workspace = true }

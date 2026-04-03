@@ -5,6 +5,7 @@ pub mod appearance;
 pub mod browser_settings;
 pub mod desktop_settings;
 pub mod language;
+pub mod layout_settings;
 pub mod package_settings;
 pub mod service_roles;
 pub mod shortcuts;
