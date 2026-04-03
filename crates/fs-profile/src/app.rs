@@ -329,6 +329,9 @@ impl ProfileApp {
                 let url = self.kanidm_url.clone();
                 let username = self.login_username.clone();
                 let password = self.login_password.clone();
+                // TODO(gRPC-First): replace with gRPC call to fs-manager-auth
+                // once it runs as a standalone container. KanidmBackend is a
+                // temporary direct dependency (gRPC-First exception: Kanidm REST).
                 return Task::perform(
                     async move {
                         use fs_auth::backend::KanidmBackend;
