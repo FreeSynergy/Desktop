@@ -23,6 +23,7 @@ fs-i18n            = { workspace = true }
 fs-theme           = { workspace = true }
 fs-session         = { workspace = true }
 fs-db-desktop      = { workspace = true }
+fs-help            = { workspace = true }
 serde              = { workspace = true }
 tokio              = { workspace = true }
 tracing            = { workspace = true }

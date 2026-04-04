@@ -6,6 +6,7 @@ pub mod builtin_apps;
 pub mod context_menu;
 pub mod db;
 pub mod header;
+pub mod help_sidebar;
 pub mod help_view;
 pub mod icons;
 pub mod launcher;
@@ -14,6 +15,7 @@ pub mod notification;
 pub mod shell;
 pub mod shell_layout;
 pub mod sidebar;
+pub mod sidebar_state;
 pub mod spinner;
 pub mod split_view;
 pub mod system_info;
@@ -49,6 +51,10 @@ pub use app_lifecycle::{AppLifecycleBus, AppLifecycleEvent, AppLifecycleObserver
 pub use app_shell::AppMode;
 pub use context_menu::{ContextMenuItem, ContextMenuState};
 pub use header::{Breadcrumb, HeaderState};
+pub use help_sidebar::{
+    ActiveWindowObserver, AiHelpSource, CapabilityCheck, HelpContent, HelpSidebarState, HelpSource,
+    LocalHelpTopicSource, NoHelpSource,
+};
 pub use help_view::{HelpApp, HelpSidebarPanel};
 pub use launcher::LauncherState;
 pub use multiwindow::{use_multiwindow, MultiwindowHandle};
@@ -58,6 +64,9 @@ pub use shell_layout::{ShellLayout, ShellSection, SlotEntry};
 pub use sidebar::{
     default_pinned_items, default_sidebar_sections, ManagerBundle, SidebarEntry, SidebarItem,
     SidebarSection,
+};
+pub use sidebar_state::{
+    MouseProximityObserver, SidebarMode, SidebarSide, SidebarState, SidebarTransition,
 };
 pub use spinner::{LoadingOverlay, LoadingSpinner, SpinnerSize};
 pub use split_view::SplitState;

@@ -23,6 +23,8 @@ use serde::{Deserialize, Serialize};
 
 use fs_render::layout::{ShellKind, SlotKind};
 
+pub use crate::sidebar_state::SidebarSide;
+
 // ── SlotEntry ─────────────────────────────────────────────────────────────────
 
 /// One slot within a shell section — holds one or more component IDs.
@@ -76,6 +78,10 @@ pub struct ShellSection {
     /// Slot assignments for this section.
     #[serde(default)]
     pub slots: Vec<SlotEntry>,
+    /// Side on which this sidebar is placed (Left or Right).
+    /// Only meaningful for `ShellKind::Sidebar`-family sections.
+    #[serde(default)]
+    pub position: SidebarSide,
 }
 
 fn default_true() -> bool {
@@ -91,7 +97,15 @@ impl ShellSection {
             visible: true,
             size: 0,
             slots,
+            position: SidebarSide::Left,
         }
+    }
+
+    /// Create a visible section placed on the given side.
+    #[must_use]
+    pub fn with_position(mut self, position: SidebarSide) -> Self {
+        self.position = position;
+        self
     }
 
     /// Translated label for this section.
@@ -151,10 +165,11 @@ impl ShellLayout {
     // ── Constructors ─────────────────────────────────────────────────────────
 
     /// Standard Desktop layout:
-    ///   Topbar  (`notification-bell`)
-    ///   Sidebar (`inventory-list` / `pinned-apps`)
-    ///   Main    (active app content)
-    ///   Bottombar (`system-info` — hidden by default)
+    ///   Topbar       (`notification-bell`)
+    ///   Left Sidebar (`inventory-list` / `pinned-apps` / settings fixed bottom)
+    ///   Main         (active app content)
+    ///   Right Sidebar (`help` / AI input — hidden by default, expands on hover)
+    ///   Bottombar    (`system-info` — hidden by default)
     #[must_use]
     pub fn standard() -> Self {
         Self {
@@ -164,7 +179,9 @@ impl ShellLayout {
                     visible: true,
                     size: 60,
                     slots: vec![SlotEntry::single(SlotKind::Top, "notification-bell")],
+                    position: SidebarSide::Left,
                 },
+                // Left sidebar = Taskbar (installed apps + pinned apps + settings)
                 ShellSection {
                     kind: ShellKind::Sidebar,
                     visible: true,
@@ -173,21 +190,41 @@ impl ShellLayout {
                         SlotEntry::single(SlotKind::Fill, "inventory-list"),
                         SlotEntry::single(SlotKind::Bottom, "pinned-apps"),
                     ],
+                    position: SidebarSide::Left,
                 },
                 ShellSection {
                     kind: ShellKind::Main,
                     visible: true,
                     size: 0,
                     slots: vec![],
+                    position: SidebarSide::Left,
+                },
+                // Right sidebar = Help + AI (collapsed by default, expands on hover)
+                ShellSection {
+                    kind: ShellKind::Sidebar,
+                    visible: true,
+                    size: 320,
+                    slots: vec![SlotEntry::single(SlotKind::Fill, "help-panel")],
+                    position: SidebarSide::Right,
                 },
                 ShellSection {
                     kind: ShellKind::Bottombar,
                     visible: false,
                     size: 32,
                     slots: vec![SlotEntry::single(SlotKind::Bottom, "system-info")],
+                    position: SidebarSide::Left,
                 },
             ],
         }
+    }
+
+    /// Returns all sidebar sections on the given side.
+    #[must_use]
+    pub fn sidebars_on_side(&self, side: SidebarSide) -> Vec<&ShellSection> {
+        self.sections
+            .iter()
+            .filter(|s| s.kind == ShellKind::Sidebar && s.position == side)
+            .collect()
     }
 
     // ── Section accessors ─────────────────────────────────────────────────────
@@ -298,9 +335,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn standard_layout_has_four_sections() {
+    fn standard_layout_has_five_sections() {
+        // Topbar + LeftSidebar + Main + RightSidebar + Bottombar
         let layout = ShellLayout::standard();
-        assert_eq!(layout.sections.len(), 4);
+        assert_eq!(layout.sections.len(), 5);
+    }
+
+    #[test]
+    fn standard_layout_has_two_sidebars() {
+        let layout = ShellLayout::standard();
+        let left = layout.sidebars_on_side(SidebarSide::Left);
+        let right = layout.sidebars_on_side(SidebarSide::Right);
+        assert_eq!(left.len(), 1);
+        assert_eq!(right.len(), 1);
     }
 
     #[test]

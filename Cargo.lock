@@ -2865,6 +2865,7 @@ dependencies = [
  "fs-db-desktop",
  "fs-gui-engine-bevy",
  "fs-gui-engine-iced",
+ "fs-help",
  "fs-i18n",
  "fs-render",
  "fs-session",
@@ -2874,6 +2875,14 @@ dependencies = [
  "tokio",
  "toml 1.0.7+spec-1.1.0",
  "tracing",
+]
+
+[[package]]
+name = "fs-help"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 1.0.7+spec-1.1.0",
 ]
 
 [[package]]
