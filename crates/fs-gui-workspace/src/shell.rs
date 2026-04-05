@@ -9,7 +9,7 @@
 #[cfg(feature = "iced")]
 use fs_gui_engine_iced::iced::{
     self, event, mouse, time,
-    widget::{button, column, container, row, scrollable, svg, text, text_input, Space},
+    widget::{button, column, container, row, scrollable, stack, svg, text, text_input, Space},
     window, Alignment, Border, Color, Element, Length, Shadow, Subscription, Task, Vector,
 };
 
@@ -233,6 +233,12 @@ pub struct DesktopShell {
     /// Current logical window width — updated via `WindowResized` events.
     pub window_width: f32,
 
+    // ── Corner menu (radial quarter-circle) ───────────────────────────────────
+    /// Whether the cursor is currently in the trigger zone (top-left corner).
+    pub corner_menu_open: bool,
+    /// Animated progress 0.0 (closed) → 1.0 (fully open), lerped each tick.
+    pub corner_menu_anim: f32,
+
     // ── Theme ─────────────────────────────────────────────────────────────────
     /// `true` = dark mode (default), `false` = light mode.
     pub dark_mode: bool,
@@ -289,6 +295,8 @@ impl Default for DesktopShell {
             left_anim_width: left_start,
             right_anim_width: right_start,
             window_width: 1280.0,
+            corner_menu_open: false,
+            corner_menu_anim: 0.0,
             dark_mode: true,
             clock_time: Local::now().format("%H:%M").to_string(),
             clock_date: Local::now().format("%d.%m.%Y").to_string(),
@@ -412,8 +420,8 @@ impl DesktopShell {
             }
 
             // ── Sidebar state machine ─────────────────────────────────────────
-            DesktopMessage::CursorMoved { x, y: _ } => {
-                // Left sidebar — collapse/expand jumps directly to Open (animation handles visual)
+            DesktopMessage::CursorMoved { x, y } => {
+                // Left sidebar
                 if let Some(t) =
                     self.left_proximity
                         .check(x, self.window_width, self.left_sidebar_state)
@@ -437,6 +445,11 @@ impl DesktopShell {
                         SidebarTransition::Collapse => SidebarState::Collapsed,
                     };
                 }
+                // Corner menu: open when cursor enters top-left corner zone (80×80 px),
+                // stay open while cursor remains within the arc radius (200 px).
+                let in_corner = x < 80.0 && y < 80.0;
+                let in_arc = self.corner_menu_open && (x * x + y * y).sqrt() < 200.0;
+                self.corner_menu_open = in_corner || in_arc;
             }
             DesktopMessage::WindowResized(w) => {
                 self.window_width = w;
@@ -453,6 +466,12 @@ impl DesktopShell {
                 }
                 if (self.right_anim_width - right_target).abs() < 0.5 {
                     self.right_anim_width = right_target;
+                }
+                // Corner menu animation lerp
+                let corner_target = f32::from(self.corner_menu_open);
+                self.corner_menu_anim += (corner_target - self.corner_menu_anim) * 0.22;
+                if (self.corner_menu_anim - corner_target).abs() < 0.01 {
+                    self.corner_menu_anim = corner_target;
                 }
             }
             DesktopMessage::ToggleTheme => {
@@ -702,10 +721,145 @@ impl DesktopShell {
             })
             .into();
 
-        shell_el
+        // Overlay the corner menu whenever it is at least partially visible.
+        if self.corner_menu_anim > 0.01 {
+            stack([shell_el, self.view_corner_menu()])
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
+        } else {
+            shell_el
+        }
     }
 
     // ── Corner menu ───────────────────────────────────────────────────────────
+
+    // ── Corner menu ───────────────────────────────────────────────────────────
+
+    fn corner_menu_entries() -> Vec<(&'static str, DesktopMessage, f32)> {
+        vec![
+            (
+                crate::icons::ICON_LAUNCHER,
+                DesktopMessage::LauncherToggle,
+                15.0,
+            ),
+            (
+                crate::icons::ICON_STORE,
+                DesktopMessage::SidebarSelect("store".into()),
+                30.0,
+            ),
+            (
+                crate::icons::ICON_SETTINGS,
+                DesktopMessage::SidebarSelect("settings".into()),
+                45.0,
+            ),
+            (
+                crate::icons::ICON_BOTS,
+                DesktopMessage::SidebarSelect("bots".into()),
+                60.0,
+            ),
+            (
+                crate::icons::ICON_HELP,
+                DesktopMessage::SidebarSelect("help".into()),
+                75.0,
+            ),
+        ]
+    }
+
+    fn view_corner_menu(&self) -> Element<'_, DesktopMessage> {
+        let p = self.palette();
+        let anim = self.corner_menu_anim;
+        let radius = 160.0_f32 * anim;
+        let btn_d = 40.0_f32;
+
+        // Quarter-circle background: square with only bottom-right radius = arc shape.
+        let arc_bg = container(Space::with_height(0))
+            .width(pxf(radius))
+            .height(pxf(radius))
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(Color::from_rgba(
+                    0.02,
+                    0.74,
+                    0.84,
+                    0.12 * anim,
+                ))),
+                border: Border {
+                    color: Color::from_rgba(0.02, 0.74, 0.84, 0.50 * anim),
+                    width: 1.5,
+                    radius: iced::border::Radius {
+                        top_left: 0.0,
+                        top_right: 0.0,
+                        bottom_right: radius,
+                        bottom_left: 0.0,
+                    },
+                },
+                shadow: Shadow {
+                    color: Color::from_rgba(0.02, 0.74, 0.84, 0.25 * anim),
+                    offset: Vector::new(4.0, 4.0),
+                    blur_radius: 20.0,
+                },
+                ..container::Style::default()
+            });
+
+        let bg_layer: Element<'_, DesktopMessage> = container(arc_bg)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into();
+
+        let icon_layers: Vec<Element<'_, DesktopMessage>> = Self::corner_menu_entries()
+            .into_iter()
+            .map(|(icon, action, angle_deg)| {
+                let rad = angle_deg.to_radians();
+                let cx = radius * rad.cos();
+                let cy = radius * rad.sin();
+                let top = (cy - btn_d * 0.5).max(2.0);
+                let left = (cx - btn_d * 0.5).max(2.0);
+
+                let handle = svg_icon(icon, 20.0, p.icon_color);
+                let btn = button(
+                    container(svg(handle).width(20).height(20))
+                        .width(pxf(btn_d))
+                        .height(pxf(btn_d))
+                        .center_x(pxf(btn_d))
+                        .center_y(pxf(btn_d))
+                        .style(move |_| container::Style {
+                            background: Some(iced::Background::Color(p.bg_chrome)),
+                            border: Border {
+                                color: Color::from_rgba(0.02, 0.74, 0.84, anim),
+                                width: 1.5,
+                                radius: (btn_d * 0.5).into(),
+                            },
+                            shadow: Shadow {
+                                color: Color::from_rgba(0.02, 0.74, 0.84, 0.30 * anim),
+                                offset: Vector::new(0.0, 0.0),
+                                blur_radius: 8.0,
+                            },
+                            ..container::Style::default()
+                        }),
+                )
+                .on_press(action)
+                .padding(0);
+
+                container(btn)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .padding(iced::Padding {
+                        top,
+                        right: 0.0,
+                        bottom: 0.0,
+                        left,
+                    })
+                    .into()
+            })
+            .collect();
+
+        let mut layers: Vec<Element<'_, DesktopMessage>> = vec![bg_layer];
+        layers.extend(icon_layers);
+        stack(layers)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+    }
 
     fn view_header(&self) -> Element<'_, DesktopMessage> {
         let p = self.palette();
