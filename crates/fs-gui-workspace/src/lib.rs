@@ -21,6 +21,7 @@ pub mod split_view;
 pub mod system_info;
 pub mod taskbar;
 pub mod theme_loader;
+pub mod view;
 pub mod wallpaper;
 pub mod web_desktop;
 pub mod widgets;
