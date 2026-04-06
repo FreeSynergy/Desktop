@@ -16,6 +16,7 @@
 // No direct network access from this module.
 
 use fs_help::{HelpSystem, HelpTopic};
+use serde_json;
 
 use crate::sidebar_state::{SidebarMode, SidebarState};
 
@@ -84,18 +85,49 @@ impl HelpSource for LocalHelpTopicSource {
 
 // ── AiHelpSource ──────────────────────────────────────────────────────────────
 
-/// Resolves help via AI capability stub (gRPC to fs-ai when present).
+/// Resolves help via the running fs-ai REST service (`POST /ai/chat`).
 ///
-/// In this phase the implementation is a stub that returns a canned response.
-/// Full gRPC wiring happens when fs-ai is registered in fs-registry (Phase 6).
+/// The endpoint is read from the `FS_AI_ENDPOINT` environment variable
+/// (e.g. `http://localhost:8080`).  Falls back to `HelpContent::None`
+/// when the service is unreachable or not configured.
 pub struct AiHelpSource;
+
+impl AiHelpSource {
+    fn endpoint() -> Option<String> {
+        std::env::var("FS_AI_ENDPOINT").ok()
+    }
+}
 
 impl HelpSource for AiHelpSource {
     fn resolve(&self, context: &str) -> HelpContent {
-        // Stub: returns a placeholder response indicating AI is available.
-        // Real impl: gRPC call to fs-ai service → stream response.
-        let response = format!("AI help for '{context}' — connect fs-ai for live responses.");
-        HelpContent::AiResponse(response)
+        let Some(base) = Self::endpoint() else {
+            return HelpContent::None;
+        };
+
+        let url = format!("{base}/ai/chat");
+        let body = serde_json::json!({
+            "question": format!("Help me with the context: {context}"),
+            "context": context
+        });
+
+        let client = reqwest::blocking::Client::new();
+        let result = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .and_then(reqwest::blocking::Response::error_for_status)
+            .and_then(reqwest::blocking::Response::json::<serde_json::Value>);
+
+        match result {
+            Ok(json) => {
+                let answer = json["answer"]
+                    .as_str()
+                    .unwrap_or("(no response)")
+                    .to_owned();
+                HelpContent::AiResponse(answer)
+            }
+            Err(_) => HelpContent::None,
+        }
     }
 
     fn source_name(&self) -> &'static str {
@@ -225,9 +257,10 @@ mod tests {
     }
 
     #[test]
-    fn ai_help_source_returns_response() {
+    fn ai_help_source_returns_none_without_endpoint() {
+        // Without FS_AI_ENDPOINT set the source gracefully returns None.
         let src = AiHelpSource;
-        assert!(matches!(src.resolve("browser"), HelpContent::AiResponse(_)));
+        assert!(matches!(src.resolve("browser"), HelpContent::None));
     }
 
     #[test]
