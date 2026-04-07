@@ -113,6 +113,7 @@ use crate::shell_layout::ShellLayout;
 use crate::taskbar::{default_apps, AppEntry};
 use crate::wallpaper::Wallpaper;
 use crate::window::{AppId, Window, WindowHost, WindowId, WindowManager};
+use fs_settings::SettingsApp;
 
 #[cfg(feature = "iced")]
 use fs_gui_engine_iced::{
@@ -199,6 +200,10 @@ pub enum DesktopMessage {
     /// Fired by the `HotReloadWatcher` when `desktop-layout.toml` changes on disk.
     LayoutReloaded,
 
+    // ── Embedded app messages ─────────────────────────────────────────────────
+    /// Forward a message to the embedded Settings app.
+    SettingsMsg(fs_settings::app::Message),
+
     // ── No-op / async completion ──────────────────────────────────────────────
     Noop,
 }
@@ -246,6 +251,11 @@ pub struct DesktopShell {
 
     // ── Wallpaper (G1.5) ──────────────────────────────────────────────────────
     pub wallpaper: Wallpaper,
+
+    // ── Embedded app states ───────────────────────────────────────────────────
+    /// Lazily initialised when `AppId::Settings` is first opened.
+    /// Rendered inline in the content area — no separate OS window.
+    pub settings_app: Option<SettingsApp>,
 
     // ── Layout mode (G1.9: replaces tiling_active bool) ──────────────────────
     /// Current window layout mode: Normal | Tiling | `FocusMode`.
@@ -313,6 +323,7 @@ impl Default for DesktopShell {
             notification_center_open: false,
             clock_time: Local::now().format("%H:%M").to_string(),
             clock_date: Local::now().format("%d.%m.%Y").to_string(),
+            settings_app: None,
         }
     }
 }
@@ -326,7 +337,12 @@ impl DesktopShell {
         match msg {
             // ── Window management ─────────────────────────────────────────────
             DesktopMessage::OpenApp(app_id) => {
-                Self::spawn_app(app_id);
+                // Embedded apps render inline — no separate OS window.
+                // External apps (Browser, Store, …) are future gRPC/IPC targets;
+                // we show an in-desktop window frame for them.
+                if app_id == AppId::Settings && self.settings_app.is_none() {
+                    self.settings_app = Some(SettingsApp::new());
+                }
                 self.lifecycle_bus
                     .app_opened(app_id.name().to_lowercase().as_str());
                 self.active_app = Some(app_id);
@@ -502,6 +518,13 @@ impl DesktopShell {
                 }
             }
 
+            // ── Embedded app messages ─────────────────────────────────────────
+            DesktopMessage::SettingsMsg(msg) => {
+                if let Some(app) = &mut self.settings_app {
+                    return app.update(msg).map(DesktopMessage::SettingsMsg);
+                }
+            }
+
             DesktopMessage::Noop => {}
         }
 
@@ -552,8 +575,8 @@ impl DesktopShell {
             _ => None,
         };
         if let Some(app) = app_id {
-            if app != AppId::Help {
-                Self::spawn_app(app);
+            if app == AppId::Settings && self.settings_app.is_none() {
+                self.settings_app = Some(SettingsApp::new());
             }
             self.active_app = Some(app);
             self.lifecycle_bus
@@ -561,24 +584,8 @@ impl DesktopShell {
         }
     }
 
-    /// Launch an external app binary as a detached child process.
-    fn spawn_app(app_id: AppId) {
-        let binary = match app_id {
-            AppId::Browser => "fs-browser",
-            AppId::Settings => "fs-settings",
-            AppId::Profile => "fs-profile",
-            AppId::Store => "fs-store",
-            AppId::Lenses => "fs-lenses",
-            AppId::Builder => "fs-builder",
-            AppId::Tasks => "fs-tasks",
-            AppId::Bots => "fs-bots",
-            AppId::Ai => "fs-ai",
-            AppId::Container => "fs-container",
-            AppId::Managers => "fs-managers",
-            AppId::Help => return,
-        };
-        let _ = std::process::Command::new(binary).spawn();
-    }
+    // spawn_app removed: all apps now render inline within the desktop.
+    // External apps (Browser, Store, …) will connect via gRPC/IPC in future phases.
 
     // ── Subscription ──────────────────────────────────────────────────────────
 
@@ -1144,26 +1151,18 @@ impl DesktopShell {
         let p = self.palette();
 
         let content: Element<'_, DesktopMessage> = if let Some(app_id) = self.active_app {
-            let handle = svg_icon(app_id.icon(), 48.0, p.icon_color);
-            let icon_el: Element<'_, DesktopMessage> = svg(handle).width(48).height(48).into();
-            container(
-                column![
-                    icon_el,
-                    Space::new().height(16),
-                    text(app_id.name()).size(20).color(p.cyan),
-                    Space::new().height(8),
-                    text(tr("shell-app-launched")).size(14).color(p.muted),
-                    Space::new().height(16),
-                    button(text(tr("shell-app-relaunch")).size(13))
-                        .on_press(DesktopMessage::OpenApp(app_id))
-                        .padding([8, 20]),
-                ]
-                .align_x(Alignment::Center)
-                .spacing(4),
-            )
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .into()
+            match app_id {
+                // ── Embedded: Settings renders its full UI inline ──────────────
+                AppId::Settings => {
+                    if let Some(settings) = &self.settings_app {
+                        settings.view().map(DesktopMessage::SettingsMsg)
+                    } else {
+                        self.view_app_window_frame(app_id)
+                    }
+                }
+                // ── All other apps: in-desktop window frame ────────────────────
+                _ => self.view_app_window_frame(app_id),
+            }
         } else {
             // Render the shell layout via IcedLayoutInterpreter when available.
             let descriptor = self.shell_layout.to_layout_descriptor();
@@ -1225,6 +1224,95 @@ impl DesktopShell {
                 background: Some(iced::Background::Color(p.bg_content)),
                 ..container::Style::default()
             })
+            .into()
+    }
+
+    // ── App window frame (for not-yet-embedded apps) ──────────────────────────
+
+    /// Render an in-desktop window chrome for apps that are not yet embedded.
+    ///
+    /// Shows a title bar with the app icon + name and a close button, so the
+    /// desktop looks like a real windowing environment even before all apps are
+    /// fully embedded.
+    fn view_app_window_frame(&self, app_id: AppId) -> Element<'_, DesktopMessage> {
+        let p = self.palette();
+        let icon_handle = svg_icon(app_id.icon(), 24.0, p.icon_color);
+        let icon_el: Element<'_, DesktopMessage> = svg(icon_handle).width(24).height(24).into();
+
+        let title = text(app_id.name()).size(15).color(p.cyan);
+
+        // Close button: removes the active app view.
+        let close_btn = button(text("✕").size(14).color(p.muted))
+            .on_press(DesktopMessage::CloseWindow(
+                self.windows
+                    .open_windows()
+                    .iter()
+                    .find(|w| w.app == app_id)
+                    .map_or(crate::window::WindowId(0), |w| w.meta.id),
+            ))
+            .padding([4, 8]);
+
+        let title_bar = container(
+            row![
+                icon_el,
+                Space::new().width(8),
+                title,
+                Space::new().width(Length::Fill),
+                close_btn
+            ]
+            .align_y(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .padding([8, 12])
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(p.bg_chrome)),
+            border: Border {
+                color: p.border_accent,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
+            ..container::Style::default()
+        });
+
+        let body = container(column![
+            Space::new().height(Length::Fill),
+            row![
+                Space::new().width(Length::Fill),
+                column![
+                    svg(svg_icon(app_id.icon(), 64.0, p.icon_color))
+                        .width(64)
+                        .height(64),
+                    Space::new().height(16),
+                    text(app_id.name()).size(22).color(p.cyan),
+                    Space::new().height(8),
+                    text(tr("shell-app-active")).size(13).color(p.muted),
+                ]
+                .align_x(Alignment::Center)
+                .spacing(2),
+                Space::new().width(Length::Fill),
+            ]
+            .align_y(Alignment::Center),
+            Space::new().height(Length::Fill),
+        ])
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(p.bg_content)),
+            ..container::Style::default()
+        });
+
+        container(column![title_bar, body].spacing(0))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(move |_| container::Style {
+                border: Border {
+                    color: p.border_accent,
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                ..container::Style::default()
+            })
+            .padding(1)
             .into()
     }
 
