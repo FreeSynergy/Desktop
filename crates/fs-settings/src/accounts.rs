@@ -206,7 +206,9 @@ pub fn view_accounts(app: &SettingsApp) -> Element<'_, Message> {
         .padding([12, 0])
         .into()
     } else {
-        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+        fs_gui_engine_iced::iced::widget::Space::new()
+            .height(0)
+            .into()
     };
 
     // Provider list
@@ -221,8 +223,7 @@ pub fn view_accounts(app: &SettingsApp) -> Element<'_, Message> {
             .enumerate()
             .map(|(idx, p)| {
                 row![
-                    checkbox("", p.enabled)
-                        .on_toggle(move |_| Message::AccountsToggleProvider(idx)),
+                    checkbox(p.enabled).on_toggle(move |_| Message::AccountsToggleProvider(idx)),
                     column![
                         text(p.name.as_str()).size(13),
                         text(p.discovery_url.as_str()).size(11),
@@ -246,7 +247,9 @@ pub fn view_accounts(app: &SettingsApp) -> Element<'_, Message> {
     let error_row: Element<Message> = if let Some(err) = &state.error {
         text(err.as_str()).size(12).into()
     } else {
-        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+        fs_gui_engine_iced::iced::widget::Space::new()
+            .height(0)
+            .into()
     };
 
     let content = column![

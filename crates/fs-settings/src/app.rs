@@ -453,7 +453,7 @@ impl SettingsApp {
                 .padding([4, 16])
                 .into()
         } else {
-            iced::widget::Space::with_height(0).into()
+            iced::widget::Space::new().height(0).into()
         };
 
         column![row![sidebar, content].height(Length::Fill), status_bar,].into()

@@ -592,38 +592,42 @@ impl DesktopShell {
             use fs_render::{HotReloadEvent, HotReloadWatcher};
             use iced::futures::{SinkExt, StreamExt};
 
-            iced::stream::channel(16, |mut tx| async move {
-                // The sync notify Receiver is !Send, so we bridge via a futures mpsc channel.
-                let (bridge_tx, mut bridge_rx) = iced::futures::channel::mpsc::channel::<bool>(16);
+            iced::stream::channel(
+                16,
+                |mut tx: iced::futures::channel::mpsc::Sender<DesktopMessage>| async move {
+                    // The sync notify Receiver is !Send, so we bridge via a futures mpsc channel.
+                    let (bridge_tx, mut bridge_rx) =
+                        iced::futures::channel::mpsc::channel::<bool>(16);
 
-                let layout_path = ShellLayout::config_path();
+                    let layout_path = ShellLayout::config_path();
 
-                std::thread::spawn(move || {
-                    let Ok((mut watcher, rx)) = HotReloadWatcher::new() else {
-                        return;
-                    };
-                    if let Some(dir) = layout_path.parent() {
-                        let _ = watcher.watch(dir);
-                    }
-                    let _watcher = watcher;
-                    let mut bridge = bridge_tx;
-                    for event in rx {
-                        let is_layout = matches!(
-                            &event,
-                            HotReloadEvent::LayoutChanged(p)
-                            if p.file_name().and_then(|n| n.to_str())
-                                == Some("desktop-layout.toml")
-                        );
-                        if is_layout && bridge.try_send(true).is_err() {
-                            break;
+                    std::thread::spawn(move || {
+                        let Ok((mut watcher, rx)) = HotReloadWatcher::new() else {
+                            return;
+                        };
+                        if let Some(dir) = layout_path.parent() {
+                            let _ = watcher.watch(dir);
                         }
-                    }
-                });
+                        let _watcher = watcher;
+                        let mut bridge = bridge_tx;
+                        for event in rx {
+                            let is_layout = matches!(
+                                &event,
+                                HotReloadEvent::LayoutChanged(p)
+                                if p.file_name().and_then(|n| n.to_str())
+                                    == Some("desktop-layout.toml")
+                            );
+                            if is_layout && bridge.try_send(true).is_err() {
+                                break;
+                            }
+                        }
+                    });
 
-                while bridge_rx.next().await.is_some() {
-                    let _ = tx.send(DesktopMessage::LayoutReloaded).await;
-                }
-            })
+                    while bridge_rx.next().await.is_some() {
+                        let _ = tx.send(DesktopMessage::LayoutReloaded).await;
+                    }
+                },
+            )
         });
 
         Subscription::batch([clock, hot_reload])
@@ -786,9 +790,9 @@ impl DesktopShell {
         };
 
         let overlay_content = column![
-            row![title, Space::with_width(Length::Fill), close_btn].align_y(Alignment::Center),
+            row![title, Space::new().width(Length::Fill), close_btn].align_y(Alignment::Center),
             hint,
-            Space::with_height(12),
+            Space::new().height(12),
             cards_row,
         ]
         .spacing(8)
@@ -824,7 +828,7 @@ impl DesktopShell {
                 let dismiss_id = e.id;
                 row![
                     text(e.title.as_str()).size(12),
-                    Space::with_width(Length::Fill),
+                    Space::new().width(Length::Fill),
                     button(text("×").size(12))
                         .on_press(DesktopMessage::NotificationDismiss(dismiss_id))
                         .padding([2, 6]),
@@ -857,13 +861,13 @@ impl DesktopShell {
         let overlay_content = column![
             row![
                 title,
-                Space::with_width(Length::Fill),
+                Space::new().width(Length::Fill),
                 mark_all_btn,
                 close_btn
             ]
             .align_y(Alignment::Center)
             .spacing(4),
-            Space::with_height(8),
+            Space::new().height(8),
             body,
         ]
         .spacing(4)
@@ -1049,9 +1053,9 @@ impl DesktopShell {
 
         let header_row = row![
             brand_row,
-            Space::with_width(12),
+            Space::new().width(12),
             menu_bar,
-            Space::with_width(Length::Fill),
+            Space::new().width(Length::Fill),
         ]
         .align_y(Alignment::Center)
         .spacing(4)
@@ -1060,17 +1064,17 @@ impl DesktopShell {
         // Append view buttons + titlebar controls
         let mut controls: Vec<Element<'_, DesktopMessage>> = vec![header_row.into()];
         controls.extend(view_btns);
-        controls.push(Space::with_width(8).into());
+        controls.push(Space::new().width(8).into());
         controls.push(tiling_btn.into());
-        controls.push(Space::with_width(4).into());
+        controls.push(Space::new().width(4).into());
         controls.push(theme_btn.into());
-        controls.push(Space::with_width(4).into());
+        controls.push(Space::new().width(4).into());
         controls.push(bell_btn.into());
-        controls.push(Space::with_width(8).into());
+        controls.push(Space::new().width(8).into());
         controls.push(avatar_btn.into());
-        controls.push(Space::with_width(12).into());
+        controls.push(Space::new().width(12).into());
         controls.push(clock.into());
-        controls.push(Space::with_width(8).into());
+        controls.push(Space::new().width(8).into());
 
         let header_inner = row(controls)
             .align_y(Alignment::Center)
@@ -1145,11 +1149,11 @@ impl DesktopShell {
             container(
                 column![
                     icon_el,
-                    Space::with_height(16),
+                    Space::new().height(16),
                     text(app_id.name()).size(20).color(p.cyan),
-                    Space::with_height(8),
+                    Space::new().height(8),
                     text(tr("shell-app-launched")).size(14).color(p.muted),
-                    Space::with_height(16),
+                    Space::new().height(16),
                     button(text(tr("shell-app-relaunch")).size(13))
                         .on_press(DesktopMessage::OpenApp(app_id))
                         .padding([8, 20]),
@@ -1164,6 +1168,12 @@ impl DesktopShell {
             // Render the shell layout via IcedLayoutInterpreter when available.
             let descriptor = self.shell_layout.to_layout_descriptor();
             let has_components = descriptor.sidebar.slots.all_components().next().is_some()
+                || descriptor
+                    .right_sidebar
+                    .slots
+                    .all_components()
+                    .next()
+                    .is_some()
                 || descriptor.topbar.slots.all_components().next().is_some();
 
             if has_components {
@@ -1183,15 +1193,15 @@ impl DesktopShell {
                     column![
                         text("FreeSynergy").size(40).color(p.cyan),
                         text("by KalEl").size(14).color(p.muted),
-                        Space::with_height(32),
+                        Space::new().height(32),
                         text(tr("shell-home-hint")).size(14).color(p.muted),
-                        Space::with_height(20),
+                        Space::new().height(20),
                         button(
                             row![
                                 svg(svg_icon(crate::icons::ICON_LAUNCHER, 16.0, "#06b6d4"))
                                     .width(16)
                                     .height(16),
-                                Space::with_width(6),
+                                Space::new().width(6),
                                 text(tr("shell-launcher-open")).size(14),
                             ]
                             .align_y(Alignment::Center),
@@ -1247,7 +1257,7 @@ impl DesktopShell {
             app_btns.push(btn.into());
         }
 
-        app_btns.push(Space::with_width(Length::Fill).into());
+        app_btns.push(Space::new().width(Length::Fill).into());
 
         let clock = column![
             text(&self.clock_time).size(13),
@@ -1333,7 +1343,7 @@ impl DesktopShell {
                 row_items.push(app_btn.into());
             }
             group_items.push(row(row_items).spacing(8).into());
-            group_items.push(Space::with_height(12).into());
+            group_items.push(Space::new().height(12).into());
         }
 
         // Pagination
@@ -1359,9 +1369,9 @@ impl DesktopShell {
                 .padding([4, 10]);
             let page_row = row![
                 prev_btn,
-                Space::with_width(8),
+                Space::new().width(8),
                 page_label,
-                Space::with_width(8),
+                Space::new().width(8),
                 next_btn
             ]
             .align_y(Alignment::Center);
@@ -1380,14 +1390,14 @@ impl DesktopShell {
         let launcher_content = column![
             row![
                 text(tr("shell-launcher-title")).size(16),
-                Space::with_width(Length::Fill),
+                Space::new().width(Length::Fill),
                 close_btn,
             ]
             .align_y(Alignment::Center)
             .padding([0, 4]),
-            Space::with_height(8),
+            Space::new().height(8),
             search,
-            Space::with_height(12),
+            Space::new().height(12),
             scrollable(column(group_items).spacing(4)).height(Length::Fill),
         ]
         .padding([16, 16])

@@ -718,7 +718,7 @@ fn view_animations_tab(cfg: &DesktopConfig) -> Element<'_, Message> {
         text(fs_i18n::t("settings-desktop-animations-disabled").to_string())
             .size(13)
             .width(Length::Fill),
-        checkbox("", cfg.animation.disabled).on_toggle(Message::DesktopAnimationsDisabledToggled),
+        checkbox(cfg.animation.disabled).on_toggle(Message::DesktopAnimationsDisabledToggled),
     ]
     .align_y(Alignment::Center)
     .spacing(8);

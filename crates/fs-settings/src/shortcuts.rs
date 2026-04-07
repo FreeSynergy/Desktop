@@ -281,7 +281,9 @@ pub fn view_shortcuts(app: &SettingsApp) -> Element<'_, Message> {
             .size(12)
             .into()
     } else {
-        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+        fs_gui_engine_iced::iced::widget::Space::new()
+            .height(0)
+            .into()
     };
 
     rows.push(recording_hint);

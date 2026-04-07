@@ -267,7 +267,9 @@ pub fn view_language(app: &SettingsApp) -> Element<'_, Message> {
 
         column(rows).spacing(6).into()
     } else {
-        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+        fs_gui_engine_iced::iced::widget::Space::new()
+            .height(0)
+            .into()
     };
 
     let content = column![

@@ -143,7 +143,7 @@ pub fn view_appearance(app: &SettingsApp) -> Element<'_, Message> {
         text(fs_i18n::t("settings-appearance-animations").to_string())
             .size(13)
             .width(Length::Fill),
-        checkbox("", state.animations_enabled).on_toggle(Message::AnimationsToggled),
+        checkbox(state.animations_enabled).on_toggle(Message::AnimationsToggled),
     ]
     .align_y(Alignment::Center)
     .spacing(8);

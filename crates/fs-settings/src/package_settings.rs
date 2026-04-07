@@ -223,7 +223,7 @@ pub fn view_packages(app: &SettingsApp) -> Element<'_, Message> {
 
     row![
         sidebar,
-        fs_gui_engine_iced::iced::widget::vertical_rule(1),
+        fs_gui_engine_iced::iced::widget::rule::vertical(1),
         scrollable(detail).width(Length::Fill),
     ]
     .spacing(16)
@@ -273,7 +273,7 @@ fn view_field_row<'a>(pkg_id: &'a str, field: &'a SettingsFieldView) -> Element<
             let checked = field.current_value == "true";
             let pkg = pkg_id.to_string();
             let key = field.key.clone();
-            checkbox("", checked)
+            checkbox(checked)
                 .on_toggle(move |v| {
                     Message::PackageFieldChanged(
                         pkg.clone(),
@@ -330,7 +330,9 @@ fn view_field_row<'a>(pkg_id: &'a str, field: &'a SettingsFieldView) -> Element<
             .size(10)
             .into()
     } else {
-        fs_gui_engine_iced::iced::widget::Space::with_height(0).into()
+        fs_gui_engine_iced::iced::widget::Space::new()
+            .height(0)
+            .into()
     };
 
     column![text(label_text).size(13), input_widget, help, restart,]

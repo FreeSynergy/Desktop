@@ -43,11 +43,9 @@ pub trait LayoutSectionStrategy {
         let info = self.info();
         let name = fs_i18n::t(info.name_key);
 
-        let visible_check = checkbox(
-            String::from(fs_i18n::t("shell-layout-visible")),
-            info.visible,
-        )
-        .on_toggle(move |_| Message::LayoutToggleSection(info.kind.clone()));
+        let visible_check = checkbox(info.visible)
+            .label(String::from(fs_i18n::t("shell-layout-visible")))
+            .on_toggle(move |_| Message::LayoutToggleSection(info.kind.clone()));
 
         let slot_rows: Vec<Element<Message>> = info
             .slots
@@ -74,7 +72,7 @@ pub trait LayoutSectionStrategy {
             .collect();
 
         let detail: Element<'_, Message> = if slot_rows.is_empty() {
-            Space::with_height(0).into()
+            Space::new().height(0).into()
         } else {
             column(slot_rows).spacing(2).padding([4, 0]).into()
         };
@@ -229,9 +227,9 @@ pub fn view_layout_settings(app: &SettingsApp) -> Element<'_, Message> {
     column![
         title,
         hint,
-        Space::with_height(16),
+        Space::new().height(16),
         scrollable(column(section_rows).spacing(8)).height(Length::Fill),
-        Space::with_height(16),
+        Space::new().height(16),
         save_btn,
     ]
     .spacing(4)

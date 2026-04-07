@@ -309,9 +309,11 @@ impl ShellLayout {
     ///
     /// Component IDs from each section's slots are mapped to lightweight
     /// `ComponentRef` entries (no WASM path — in-process registered components).
+    /// Left sidebar → `desc.sidebar`; right sidebar → `desc.right_sidebar`.
     #[must_use]
     pub fn to_layout_descriptor(&self) -> LayoutDescriptor {
         let mut desc = LayoutDescriptor::default();
+        let mut left_sidebar_set = false;
 
         for section in &self.sections {
             if !section.visible {
@@ -320,7 +322,14 @@ impl ShellLayout {
             let shell_cfg = section_to_shell_config(section);
             match section.kind {
                 ShellKind::Topbar => desc.topbar = shell_cfg,
-                ShellKind::Sidebar => desc.sidebar = shell_cfg,
+                ShellKind::Sidebar => {
+                    if section.position == SidebarSide::Right {
+                        desc.right_sidebar = shell_cfg;
+                    } else if !left_sidebar_set {
+                        desc.sidebar = shell_cfg;
+                        left_sidebar_set = true;
+                    }
+                }
                 ShellKind::Bottombar => desc.bottombar = shell_cfg,
                 ShellKind::Main => desc.main = shell_cfg,
             }
